@@ -97,9 +97,13 @@ public static class ServerProfileParser
 
         var protocol = scheme switch
         {
-            "shadowsocks" => "Shadowsocks",
+            "ss" or "shadowsocks" => "Shadowsocks",
+            "vless" => "VLESS",
+            "vmess" => "VMess",
+            "trojan" => "Trojan",
             "hy2" or "hysteria2" => "Hysteria2",
             "socks" or "socks5" => "SOCKS",
+            "http" => "HTTP",
             _ => char.ToUpperInvariant(scheme[0]) + scheme[1..]
         };
 
