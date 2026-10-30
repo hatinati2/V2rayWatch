@@ -31,6 +31,7 @@ jobs:
         shell: pwsh
         run: |
           & "$env:GITHUB_WORKSPACE\Windows\rebrand.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
+          & "$env:GITHUB_WORKSPACE\Windows\apply-dashboard.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
