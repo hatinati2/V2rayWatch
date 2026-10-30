@@ -142,9 +142,12 @@ $dashboardMarkup = @'
           </Border>
           <Border Grid.Row="1" Style="{StaticResource VW.Card}" Margin="7,6,0,0">
             <StackPanel>
-              <TextBlock Text="ترافیک مستقیم" Foreground="{StaticResource VW.Muted}" FontSize="12"/>
+              <TextBlock Text="{x:Static resx:ResUI.TbSettingsDisplayRealTimeSpeed}" Foreground="{StaticResource VW.Muted}" FontSize="12"/>
               <TextBlock Text="{Binding StatusBarViewModel.SpeedDirectDisplay, TargetNullValue=—}" Foreground="#F4F8FF" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,0" TextWrapping="Wrap"/>
-              <TextBlock Text="آمار مستقیم در صورت فعال بودن" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,7,0,0"/>
+              <Canvas x:Name="vwTrafficCanvas" Height="36" Margin="0,8,0,0" ClipToBounds="True">
+                <Polyline x:Name="vwDownloadLine" Stroke="{StaticResource VW.Green}" StrokeThickness="2" Points=""/>
+                <Polyline x:Name="vwUploadLine" Stroke="{StaticResource VW.Cyan}" StrokeThickness="2" Points=""/>
+              </Canvas>
             </StackPanel>
           </Border>
         </Grid>
@@ -283,6 +286,66 @@ if (-not $code.Contains("vwDashboard.FlowDirection")) {
     $initializeMarker = "        InitializeComponent();"
     if (-not $code.Contains($initializeMarker)) { throw "Could not locate InitializeComponent in upstream MainWindow.xaml.cs." }
     $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $flowStatement)
+    [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
+}
+
+
+if (-not $code.Contains("_vwTrafficSubscription")) {
+    $fieldMarker = "    private static Config _config;"
+    if (-not $code.Contains($fieldMarker)) { throw "Could not locate MainWindow fields for live traffic chart." }
+    $fields = @'
+    private readonly Queue<(double Up, double Down)> _vwTrafficSamples = new();
+    private IDisposable? _vwTrafficSubscription;
+'@
+    $code = $code.Replace($fieldMarker, $fieldMarker + [Environment]::NewLine + $fields.TrimEnd())
+
+    $initializeMarker = "        InitializeComponent();"
+    if (-not $code.Contains($initializeMarker)) { throw "Could not locate InitializeComponent for live traffic chart." }
+    $chartInit = @'
+        _vwTrafficSubscription = AppEvents.DispatcherStatisticsRequested.AsObservable()
+            .Subscribe(update => Dispatcher.BeginInvoke(new Action(() => UpdateVwTrafficChart(update))));
+        Closed += (_, _) => _vwTrafficSubscription?.Dispose();
+'@
+    $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $flowStatement + [Environment]::NewLine + $chartInit.TrimEnd())
+
+    $methodMarker = "    private void AddHelpMenuItem()"
+    $chartMethods = @'
+    private void UpdateVwTrafficChart(ServerSpeedItem update)
+    {
+        if (vwTrafficCanvas.ActualWidth <= 1 || vwTrafficCanvas.ActualHeight <= 1)
+        {
+            return;
+        }
+
+        _vwTrafficSamples.Enqueue((Math.Max(0, update.ProxyUp), Math.Max(0, update.ProxyDown)));
+        while (_vwTrafficSamples.Count > 48)
+        {
+            _vwTrafficSamples.Dequeue();
+        }
+
+        var samples = _vwTrafficSamples.ToArray();
+        var maxValue = Math.Max(1d, samples.Max(sample => Math.Max(sample.Up, sample.Down)));
+        var width = vwTrafficCanvas.ActualWidth;
+        var height = vwTrafficCanvas.ActualHeight;
+        var downloadPoints = new global::System.Windows.Media.PointCollection();
+        var uploadPoints = new global::System.Windows.Media.PointCollection();
+
+        for (var index = 0; index < samples.Length; index++)
+        {
+            var x = samples.Length == 1 ? width : index * (width - 2) / (samples.Length - 1);
+            var downloadY = height - 2 - samples[index].Down / maxValue * (height - 4);
+            var uploadY = height - 2 - samples[index].Up / maxValue * (height - 4);
+            downloadPoints.Add(new global::System.Windows.Point(x, downloadY));
+            uploadPoints.Add(new global::System.Windows.Point(x, uploadY));
+        }
+
+        vwDownloadLine.Points = downloadPoints;
+        vwUploadLine.Points = uploadPoints;
+    }
+
+'@
+    if (-not $code.Contains($methodMarker)) { throw "Could not find insertion point for live traffic chart method." }
+    $code = $code.Replace($methodMarker, $chartMethods + $methodMarker)
     [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
 }
 
