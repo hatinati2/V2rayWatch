@@ -110,7 +110,7 @@ $dashboardMarkup = @'
           <Grid>
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <DockPanel>
-              <TextBlock Text="وضعیت اتصال" Foreground="#F4F8FF" FontWeight="SemiBold" FontSize="15"/>
+              <TextBlock Text="{x:Static resx:ResUI.menuServers}" Foreground="#F4F8FF" FontWeight="SemiBold" FontSize="15"/>
               <TextBlock Text="ENGINE STATUS" Foreground="{StaticResource VW.Muted}" FontSize="9" DockPanel.Dock="Left" VerticalAlignment="Center"/>
             </DockPanel>
             <Grid Grid.Row="1" Margin="0,15">
@@ -125,8 +125,8 @@ $dashboardMarkup = @'
               </StackPanel>
             </Grid>
             <StackPanel Grid.Row="2" Orientation="Horizontal">
-              <Button Style="{StaticResource VW.Button}" Background="#087EBA" BorderBrush="{StaticResource VW.Cyan}" Content="فعال‌سازی سرور انتخابی" Command="{Binding ProfilesViewModel.SetDefaultServerCmd}"/>
-              <Button Style="{StaticResource VW.Button}" Content="تست تأخیر" Command="{Binding ProfilesViewModel.FastRealPingCmd}"/>
+              <Button Style="{StaticResource VW.Button}" Background="#087EBA" BorderBrush="{StaticResource VW.Cyan}" Content="{x:Static resx:ResUI.menuSetDefaultServer}" Command="{Binding ProfilesViewModel.SetDefaultServerCmd}"/>
+              <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuRealPingServer}" Command="{Binding ProfilesViewModel.FastRealPingCmd}"/>
             </StackPanel>
           </Grid>
         </Border>
@@ -135,7 +135,7 @@ $dashboardMarkup = @'
           <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
           <Border Grid.Row="0" Style="{StaticResource VW.Card}" Margin="7,0,0,6">
             <StackPanel>
-              <TextBlock Text="ترافیک پروکسی" Foreground="{StaticResource VW.Muted}" FontSize="12"/>
+              <TextBlock Text="{x:Static resx:ResUI.menuSystemproxy}" Foreground="{StaticResource VW.Muted}" FontSize="12"/>
               <TextBlock Text="{Binding StatusBarViewModel.SpeedProxyDisplay, TargetNullValue=—}" Foreground="#F4F8FF" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,0" TextWrapping="Wrap"/>
               <TextBlock Text="دریافت و ارسال واقعی از هسته" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,7,0,0"/>
             </StackPanel>
@@ -169,17 +169,17 @@ $dashboardMarkup = @'
                       BorderBrush="{StaticResource VW.Line}" GridLinesVisibility="Horizontal"
                       HeadersVisibility="Column" FontSize="12">
               <DataGrid.Columns>
-                <DataGridTextColumn Header="نام سرور" Binding="{Binding Remarks}" Width="2*"/>
+                <DataGridTextColumn Header="{x:Static resx:ResUI.menuServers}" Binding="{Binding Remarks}" Width="2*"/>
                 <DataGridTextColumn Header="پروتکل" Binding="{Binding ConfigType}" Width="*"/>
                 <DataGridTextColumn Header="میزبان" Binding="{Binding Address}" Width="2*"/>
                 <DataGridTextColumn Header="پورت" Binding="{Binding Port}" Width="65"/>
-                <DataGridTextColumn Header="تأخیر" Binding="{Binding DelayVal}" Width="75"/>
-                <DataGridTextColumn Header="سرعت" Binding="{Binding SpeedVal}" Width="75"/>
+                <DataGridTextColumn Header="{x:Static resx:ResUI.LvTestDelay}" Binding="{Binding DelayVal}" Width="75"/>
+                <DataGridTextColumn Header="{x:Static resx:ResUI.LvTestSpeed}" Binding="{Binding SpeedVal}" Width="75"/>
               </DataGrid.Columns>
             </DataGrid>
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,10,0,0">
-              <Button Style="{StaticResource VW.Button}" Content="انتخاب و فعال‌سازی" Command="{Binding ProfilesViewModel.SetDefaultServerCmd}"/>
-              <Button Style="{StaticResource VW.Button}" Content="تست سرورها" Command="{Binding ProfilesViewModel.MixedTestServerCmd}"/>
+              <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSetDefaultServer}" Command="{Binding ProfilesViewModel.SetDefaultServerCmd}"/>
+              <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuMixedTestServer}" Command="{Binding ProfilesViewModel.MixedTestServerCmd}"/>
               <Button Style="{StaticResource VW.Button}" Content="افزودن از Clipboard" Command="{Binding AddServerViaClipboardCmd}"/>
             </StackPanel>
           </Grid>
@@ -188,7 +188,7 @@ $dashboardMarkup = @'
         <StackPanel Grid.Column="1">
           <Border Style="{StaticResource VW.Card}" Margin="7,0,0,9">
             <StackPanel>
-              <TextBlock Text="پراکسی ویندوز" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
+              <TextBlock Text="{x:Static resx:ResUI.menuSystemproxy}" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
               <TextBlock Text="System Proxy" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,3,0,8"/>
               <StackPanel Orientation="Horizontal">
                 <Button Style="{StaticResource VW.Button}" Background="#087EBA" Content="فعال‌سازی" Command="{Binding StatusBarViewModel.SystemProxySetCmd}"/>
@@ -199,7 +199,7 @@ $dashboardMarkup = @'
 
           <Border Style="{StaticResource VW.Card}" Margin="7,0,0,9">
             <StackPanel>
-              <TextBlock Text="حالت TUN" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
+              <TextBlock Text="{x:Static resx:ResUI.TbEnableTunAs}" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
               <TextBlock Text="برای TUN ممکن است دسترسی مدیر لازم باشد." Foreground="{StaticResource VW.Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,8"/>
               <CheckBox Content="فعال‌سازی TUN" IsChecked="{Binding StatusBarViewModel.EnableTun, Mode=TwoWay}" Foreground="{StaticResource VW.Cyan}" FontSize="13"/>
             </StackPanel>
@@ -207,7 +207,7 @@ $dashboardMarkup = @'
 
           <Border Style="{StaticResource VW.Card}" Margin="7,0,0,9">
             <StackPanel>
-              <TextBlock Text="مسیریابی" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
+              <TextBlock Text="{x:Static resx:ResUI.menuRouting}" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
               <ComboBox ItemsSource="{Binding StatusBarViewModel.RoutingItems}"
                         SelectedItem="{Binding StatusBarViewModel.SelectedRouting, Mode=TwoWay}"
                         DisplayMemberPath="Remarks" Margin="0,9,0,0" Padding="7"
@@ -218,7 +218,7 @@ $dashboardMarkup = @'
 
           <Border Style="{StaticResource VW.Card}" Margin="7,0,0,0">
             <StackPanel>
-              <TextBlock Text="اشتراک‌ها" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
+              <TextBlock Text="{x:Static resx:ResUI.menuSubscription}" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
               <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSubSetting}" Command="{Binding SubSettingCmd}" HorizontalAlignment="Stretch" Margin="0,7,0,0"/>
               <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSubUpdate}" Command="{Binding SubUpdateCmd}" HorizontalAlignment="Stretch"/>
             </StackPanel>
