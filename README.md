@@ -1,17 +1,22 @@
 # V2rayWatch
 
-**Current Android source package: 0.2.1 (experimental)**
+V2rayWatch is a multi-platform project with separate Android and Windows applications.
 
-V2rayWatch monitors proxy profiles by performing real outbound delay tests through Xray Core.
+## Android
 
-## Languages
+The Android app is a bilingual Persian/English connection-monitoring tool. It imports supported links, scans QR codes, and measures real outbound delay using Xray Core. It is not yet a full Android VPN client.
 
-The Android app has Persian and English interfaces. Use the **EN / FA** switch in the app bar. The selected language is saved on the device.
+Current Android source package: `V2rayWatch-project-0.2.1.zip`.
 
-## Build the Android APK
+## Windows
 
-Upload `V2rayWatch-project-0.2.1.zip` to the repository root. GitHub Actions automatically unpacks the project and builds a debug APK. The APK is published as the `V2rayWatch-0.2.1-debug-apk` workflow artifact.
+The Windows desktop client is based on upstream [v2rayN](https://github.com/2dust/v2rayN) 7.25.6, with V2rayWatch branding and Persian/English UI. It is intended to include the upstream Xray and sing-box engines and the corresponding profile management, QR import, subscriptions, routing, Windows System Proxy, and TUN features.
 
-See `README.fa.md` and `README.en.md` inside the source archive for documentation.
+The Windows component is derived from GPL-3.0 software. See [Windows/THIRD_PARTY_NOTICES.md](Windows/THIRD_PARTY_NOTICES.md). The corresponding modified source is supplied with the Windows release.
 
-This is an experimental monitoring app, not yet a full VPN client. Windows development is deferred until the Android version is validated.
+## Build and releases
+
+- [GitHub Actions](https://github.com/hatinati2/V2rayWatch/actions)
+- [GitHub Releases](https://github.com/hatinati2/V2rayWatch/releases)
+
+Windows builds are experimental until validated on a real Windows 10/11 device. The Android debug APK is also a preview build, not a production release.
