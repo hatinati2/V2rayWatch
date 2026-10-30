@@ -17,7 +17,8 @@
 | تست گروهی سرورها | `ProfilesViewModel.MixedTestServerCmd` |
 | افزودن از کلیپ‌بورد | `AddServerViaClipboardCmd` |
 | اطلاعات اتصال و ورودی | `StatusBarViewModel.RunningServerDisplay`, `RunningInfoDisplay`, `InboundDisplay` |
-| ترافیک زنده | `StatusBarViewModel.SpeedProxyDisplay`, `SpeedDirectDisplay` |
+| ترافیک متنی زنده | `StatusBarViewModel.SpeedProxyDisplay`, `SpeedDirectDisplay` |
+| نمودار زنده دانلود/آپلود | رویداد `AppEvents.DispatcherStatisticsRequested`؛ نمونه‌های واقعی `ProxyDown` و `ProxyUp` رسم می‌شوند (۴۸ نمونه اخیر) |
 | System Proxy | `SystemProxySetCmd`, `SystemProxyClearCmd` |
 | TUN | `StatusBarViewModel.EnableTun` |
 | مسیریابی | `RoutingItems`, `SelectedRouting`, `RoutingSettingCmd` |
@@ -41,10 +42,17 @@ Workflow ویندوز دو کار انجام می‌دهد:
 
 Build موفق، خطای کامپایل را رد می‌کند اما جای تست اجرای برنامه روی Windows 10/11 واقعی، بررسی rendering فونت فارسی، اتصال به سرور معتبر، System Proxy و TUN را نمی‌گیرد.
 
+## پیش‌نمایش قابل دریافت
+
+یک بستهٔ آزمایشی portable از workflow ویندوز در بخش Artifacts این اجرا ذخیره شده است:
+https://github.com/hatinati2/V2rayWatch/actions/runs/41144162561
+
+این artifact از branch توسعه ساخته شده و Release پایدار نیست؛ فایل artifact موقت است و تاریخ انقضا دارد.
+
 ## محدودیت‌ها و گام بعدی
 
 - هنوز هیچ Release جدیدی از این شاخه منتشر نشده است.
 - کنترل‌های پراکسی/TUN اکنون از فرمان‌های upstream استفاده می‌کنند؛ اجرای واقعی آن‌ها نیازمند تست روی دستگاه ویندوزی است.
-- نمودار بصری مستقل هنوز اضافه نشده؛ در حال حاضر مقدار سرعت متنی واقعی ViewModel نشان داده می‌شود.
+- نمودار ترافیک با داده‌های واقعی ProxyUp/ProxyDown اضافه شده است؛ نمایش آن وابسته به فعال بودن آمار/سرعت لحظه‌ای در تنظیمات upstream است.
 - ظاهر و ترجمهٔ تمام پیام‌ها/پنجره‌های ثانویه هنوز یکدست‌سازی نشده است.
 - بسته‌بندی قابل توزیع باید همراه فایل‌های core و مجوزها انجام شود و سپس روی ویندوز واقعی آزموده شود.
