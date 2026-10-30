@@ -17,7 +17,7 @@ jobs:
 
       - name: Unpack Android project
         run: |
-          unzip source/LinkWatchAndroid.zip
+          unzip LinkWatchAndroid.zip
           cp -a LinkWatchAndroid/. .
 
       - name: Set up JDK 17
