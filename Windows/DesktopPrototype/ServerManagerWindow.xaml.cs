@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Net.Http;
 
 namespace V2rayWatch.DesktopPrototype;
 
@@ -38,11 +39,44 @@ public partial class ServerManagerWindow : Window
         }
     }
 
-    private void Import_Click(object sender, RoutedEventArgs e)
+    private async void Import_Click(object sender, RoutedEventArgs e)
     {
+        var originalText = ImportTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(originalText))
+        {
+            SetStatus("لینک یا متن اشتراک خالی است.", "Subscription input is empty.", error: true);
+            return;
+        }
+
+        ImportButton.IsEnabled = false;
         try
         {
-            var parsed = ServerProfileParser.ParseMany(ImportTextBox.Text);
+            var importText = originalText;
+            if (!importText.Contains("\\n", StringComparison.Ordinal) &&
+                Uri.TryCreate(importText, UriKind.Absolute, out var subscriptionUri) &&
+                subscriptionUri.Scheme is "http" or "https")
+            {
+                SetStatus("در حال دریافت اشتراک…", "Downloading subscription…", error: false);
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+                using var response = await client.GetAsync(subscriptionUri, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+                if (response.Content.Headers.ContentLength is > 3_000_000)
+                    throw new InvalidOperationException("حجم اشتراک بیش از ۳ مگابایت است.");
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                using var reader = new StreamReader(stream);
+                var builder = new System.Text.StringBuilder();
+                var buffer = new char[8192];
+                int read;
+                while ((read = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    builder.Append(buffer, 0, read);
+                    if (builder.Length > 3_000_000)
+                        throw new InvalidOperationException("حجم اشتراک بیش از ۳ مگابایت است.");
+                }
+                importText = builder.ToString();
+            }
+
+            var parsed = ServerProfileParser.ParseMany(importText);
             var existing = _profiles.Select(p => p.RawUri).ToHashSet(StringComparer.Ordinal);
             var added = 0;
             foreach (var profile in parsed)
@@ -65,7 +99,11 @@ public partial class ServerManagerWindow : Window
         }
         catch (Exception ex)
         {
-            SetStatus($"ذخیره‌سازی ناموفق بود: {ex.Message}", $"Could not save profiles: {ex.Message}", error: true);
+            SetStatus($"واردکردن اشتراک ناموفق بود: {ex.Message}", $"Subscription import failed: {ex.Message}", error: true);
+        }
+        finally
+        {
+            ImportButton.IsEnabled = true;
         }
     }
 
