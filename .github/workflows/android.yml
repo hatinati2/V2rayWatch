@@ -2,7 +2,8 @@ name: Android build
 
 on:
   push:
-  pull_request:
+    paths:
+      - "V2rayWatch-project-0.2.0.zip"
   workflow_dispatch:
 
 permissions:
@@ -17,7 +18,7 @@ jobs:
 
       - name: Unpack Android project
         run: |
-          unzip V2rayWatch-project.zip
+          unzip V2rayWatch-project-0.2.0.zip
           rsync -a --exclude='.github/' LinkWatchAndroid/ ./
 
       - name: Set up JDK 17
