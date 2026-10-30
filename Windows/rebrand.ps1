@@ -47,6 +47,8 @@ $newLanguage = @'
         }
 '@
 $languageText = $languageText.Replace("`r`n", "`n")
+$oldLanguage = $oldLanguage.Replace("`r`n", "`n")
+$newLanguage = $newLanguage.Replace("`r`n", "`n")
 if (-not $languageText.Contains($oldLanguage)) { throw "Language default block not found; refusing to patch." }
 Write-Utf8NoBom $languagePath $languageText.Replace($oldLanguage, $newLanguage)
 
