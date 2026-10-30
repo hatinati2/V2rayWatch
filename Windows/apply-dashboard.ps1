@@ -26,6 +26,7 @@ $legacyContent.SetAttribute("Visibility", "Collapsed")
 
 $dashboardMarkup = @'
 <Grid x:Name="vwDashboard"
+      DataContext="{Binding BindingRoot, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:resx="clr-namespace:ServiceLib.Resx;assembly=ServiceLib"
