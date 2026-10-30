@@ -44,7 +44,7 @@ jobs:
           dotnet publish "./upstream/v2rayN/v2rayN/v2rayN.csproj" -c Release -r win-x64 -p:SelfContained=true -p:EnableWindowsTargeting=true -o "$env:GITHUB_WORKSPACE\publish"
           if ($LASTEXITCODE -ne 0) { throw "Windows application publish failed." }
 
-          dotnet publish "./upstream/AmazTool/AmazTool.csproj" -c Release -r win-x64 -p:SelfContained=true -p:PublishTrimmed=true -p:EnableWindowsTargeting=true -o "$env:GITHUB_WORKSPACE\publish"
+          dotnet publish "./upstream/v2rayN/AmazTool/AmazTool.csproj" -c Release -r win-x64 -p:SelfContained=true -p:PublishTrimmed=true -p:EnableWindowsTargeting=true -o "$env:GITHUB_WORKSPACE\publish"
           if ($LASTEXITCODE -ne 0) { throw "AmazTool publish failed." }
 
       - name: Add pinned Xray and sing-box cores
