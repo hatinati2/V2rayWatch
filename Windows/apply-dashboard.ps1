@@ -306,7 +306,7 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
             .Subscribe(update => Dispatcher.BeginInvoke(new Action(() => UpdateVwTrafficChart(update))));
         Closed += (_, _) => _vwTrafficSubscription?.Dispose();
 '@
-    $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $flowStatement + [Environment]::NewLine + $chartInit.TrimEnd())
+    $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $chartInit.TrimEnd())
 
     $methodMarker = "    private void AddHelpMenuItem()"
     $chartMethods = @'
