@@ -19,7 +19,7 @@ jobs:
       - name: Unpack Android project
         run: |
           unzip V2rayWatch-project-0.2.1.zip
-          rsync -a LinkWatchAndroid/ . --exclude='.git/' --exclude='.github/'
+          rsync -a --exclude='.git/' --exclude='.github/' LinkWatchAndroid/ ./
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
