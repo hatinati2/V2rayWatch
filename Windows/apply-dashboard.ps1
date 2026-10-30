@@ -28,6 +28,7 @@ $dashboardMarkup = @'
 <Grid x:Name="vwDashboard"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:resx="clr-namespace:ServiceLib.Resx;assembly=ServiceLib"
       Background="#081426" FlowDirection="RightToLeft">
   <Grid.Resources>
     <SolidColorBrush x:Key="VW.Panel" Color="#101F38"/>
@@ -80,8 +81,8 @@ $dashboardMarkup = @'
         <TextBlock Text="  WINDOWS CLIENT" Foreground="{StaticResource VW.Muted}" FontSize="10" VerticalAlignment="Center" Margin="12,5,0,0"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
-        <Button Style="{StaticResource VW.Button}" Content="بازخوانی" Command="{Binding ReloadCmd}"/>
-        <Button Style="{StaticResource VW.Button}" Content="افزودن از Clipboard" Command="{Binding AddServerViaClipboardCmd}"/>
+        <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuReload}" Command="{Binding ReloadCmd}"/>
+        <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuAddServerViaClipboard}" Command="{Binding AddServerViaClipboardCmd}"/>
       </StackPanel>
       <TextBlock Text="کلاینت دسکتاپ فارسی / English" Foreground="{StaticResource VW.Muted}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
     </DockPanel>
@@ -211,15 +212,15 @@ $dashboardMarkup = @'
                         SelectedItem="{Binding StatusBarViewModel.SelectedRouting, Mode=TwoWay}"
                         DisplayMemberPath="Remarks" Margin="0,9,0,0" Padding="7"
                         Background="#142746" Foreground="#EAF2FF" BorderBrush="{StaticResource VW.Line}"/>
-              <Button Style="{StaticResource VW.Button}" Content="تنظیم قواعد مسیریابی" Command="{Binding RoutingSettingCmd}" HorizontalAlignment="Stretch" Margin="0,8,0,0"/>
+              <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuRoutingSetting}" Command="{Binding RoutingSettingCmd}" HorizontalAlignment="Stretch" Margin="0,8,0,0"/>
             </StackPanel>
           </Border>
 
           <Border Style="{StaticResource VW.Card}" Margin="7,0,0,0">
             <StackPanel>
               <TextBlock Text="اشتراک‌ها" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
-              <Button Style="{StaticResource VW.Button}" Content="مدیریت اشتراک‌ها" Command="{Binding SubSettingCmd}" HorizontalAlignment="Stretch" Margin="0,7,0,0"/>
-              <Button Style="{StaticResource VW.Button}" Content="به‌روزرسانی اشتراک‌ها" Command="{Binding SubUpdateCmd}" HorizontalAlignment="Stretch"/>
+              <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSubSetting}" Command="{Binding SubSettingCmd}" HorizontalAlignment="Stretch" Margin="0,7,0,0"/>
+              <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSubUpdate}" Command="{Binding SubUpdateCmd}" HorizontalAlignment="Stretch"/>
             </StackPanel>
           </Border>
         </StackPanel>
@@ -236,10 +237,10 @@ $dashboardMarkup = @'
           <Border Background="#075E91" CornerRadius="10" Padding="12" Margin="0,0,0,5">
             <TextBlock Text="⌂   داشبورد" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
           </Border>
-          <Button Style="{StaticResource VW.NavButton}" Content="▤   سرورها" Command="{Binding AddServerViaClipboardCmd}"/>
-          <Button Style="{StaticResource VW.NavButton}" Content="▱   اشتراک‌ها" Command="{Binding SubSettingCmd}"/>
-          <Button Style="{StaticResource VW.NavButton}" Content="⌘   مسیریابی" Command="{Binding RoutingSettingCmd}"/>
-          <Button Style="{StaticResource VW.NavButton}" Content="⚙   تنظیمات" Command="{Binding OptionSettingCmd}"/>
+          <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuServers}" Command="{Binding AddServerViaClipboardCmd}"/>
+          <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuSubscription}" Command="{Binding SubSettingCmd}"/>
+          <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuRouting}" Command="{Binding RoutingSettingCmd}"/>
+          <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuSetting}" Command="{Binding OptionSettingCmd}"/>
           <Button Style="{StaticResource VW.NavButton}" Content="↻   بازخوانی هسته" Command="{Binding ReloadCmd}"/>
         </StackPanel>
         <Border DockPanel.Dock="Bottom" Background="#122844" CornerRadius="10" Padding="11" Margin="0,20,0,0">
@@ -272,5 +273,17 @@ $settings.Indent = $true
 $settings.OmitXmlDeclaration = $true
 $writer = [System.Xml.XmlWriter]::Create($xamlPath, $settings)
 try { $document.Save($writer) } finally { $writer.Dispose() }
+
+
+$codePath = Join-Path $SourceRoot "v2rayN\v2rayN\Views\MainWindow.xaml.cs"
+if (-not (Test-Path $codePath)) { throw "Upstream MainWindow.xaml.cs not found: $codePath" }
+$code = [System.IO.File]::ReadAllText($codePath)
+$flowStatement = '        vwDashboard.FlowDirection = global::System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("fa", global::System.StringComparison.OrdinalIgnoreCase) ? global::System.Windows.FlowDirection.RightToLeft : global::System.Windows.FlowDirection.LeftToRight;'
+if (-not $code.Contains("vwDashboard.FlowDirection")) {
+    $initializeMarker = "        InitializeComponent();"
+    if (-not $code.Contains($initializeMarker)) { throw "Could not locate InitializeComponent in upstream MainWindow.xaml.cs." }
+    $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $flowStatement)
+    [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
+}
 
 Write-Host "V2rayWatch dashboard inserted into the upstream WPF main window."
