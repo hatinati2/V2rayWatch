@@ -5,6 +5,8 @@ on:
     paths:
       - "Windows/DesktopPrototype/**"
       - "Windows/DesktopPrototype.Tests/**"
+      - "Windows/apply-dashboard.ps1"
+      - "Windows/rebrand.ps1"
       - ".github/workflows/windows-ui-prototype.yml"
   workflow_dispatch:
 
@@ -25,3 +27,29 @@ jobs:
         run: dotnet build Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release
       - name: Run profile parser smoke tests
         run: dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
+
+  build-upstream-dashboard:
+    name: Build branded upstream WPF dashboard
+    runs-on: windows-latest
+    steps:
+      - name: Checkout V2rayWatch
+        uses: actions/checkout@v4
+      - name: Checkout pinned v2rayN source
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch 7.25.6 --recurse-submodules https://github.com/2dust/v2rayN.git upstream
+          if ($LASTEXITCODE -ne 0) { throw "Could not fetch upstream v2rayN 7.25.6." }
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Apply V2rayWatch branding and dashboard
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE\Windows\rebrand.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
+          & "$env:GITHUB_WORKSPACE\Windows\apply-dashboard.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
+      - name: Build integrated Windows client
+        shell: pwsh
+        run: |
+          dotnet build "./upstream/v2rayN/v2rayN/v2rayN.csproj" -c Release -r win-x64 -p:EnableWindowsTargeting=true
+          if ($LASTEXITCODE -ne 0) { throw "Integrated V2rayWatch WPF build failed." }
