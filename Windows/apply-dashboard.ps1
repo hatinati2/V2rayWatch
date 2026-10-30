@@ -137,7 +137,7 @@ $dashboardMarkup = @'
             <StackPanel>
               <TextBlock Text="{x:Static resx:ResUI.TbSettingsDisplayRealTimeSpeed}" Foreground="{StaticResource VW.Muted}" FontSize="12"/>
               <TextBlock Text="{Binding StatusBarViewModel.SpeedProxyDisplay, TargetNullValue=—}" Foreground="#F4F8FF" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,0" TextWrapping="Wrap"/>
-              <TextBlock Text="دریافت و ارسال واقعی از هسته" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,7,0,0"/>
+              
             </StackPanel>
           </Border>
           <Border Grid.Row="1" Style="{StaticResource VW.Card}" Margin="7,6,0,0">
@@ -159,7 +159,7 @@ $dashboardMarkup = @'
           <Grid>
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <DockPanel Margin="0,0,0,12">
-              <TextBlock Text="سرورها" Foreground="#F4F8FF" FontSize="16" FontWeight="SemiBold"/>
+              <TextBlock Text="{x:Static resx:ResUI.menuServers}" Foreground="#F4F8FF" FontSize="16" FontWeight="SemiBold"/>
               <TextBlock Text="PROFILES" Foreground="{StaticResource VW.Muted}" FontSize="9" DockPanel.Dock="Left" VerticalAlignment="Center"/>
             </DockPanel>
             <DataGrid x:Name="vwProfilesGrid" Grid.Row="1"
@@ -173,9 +173,9 @@ $dashboardMarkup = @'
                       HeadersVisibility="Column" FontSize="12">
               <DataGrid.Columns>
                 <DataGridTextColumn Header="{x:Static resx:ResUI.menuServers}" Binding="{Binding Remarks}" Width="2*"/>
-                <DataGridTextColumn Header="پروتکل" Binding="{Binding ConfigType}" Width="*"/>
-                <DataGridTextColumn Header="میزبان" Binding="{Binding Address}" Width="2*"/>
-                <DataGridTextColumn Header="پورت" Binding="{Binding Port}" Width="65"/>
+                <DataGridTextColumn Header="{x:Static resx:ResUI.LvServiceType}" Binding="{Binding ConfigType}" Width="*"/>
+                <DataGridTextColumn Header="{x:Static resx:ResUI.TbSortingHost}" Binding="{Binding Address}" Width="2*"/>
+                <DataGridTextColumn Header="{x:Static resx:ResUI.LvPort}" Binding="{Binding Port}" Width="65"/>
                 <DataGridTextColumn Header="{x:Static resx:ResUI.LvTestDelay}" Binding="{Binding DelayVal}" Width="75"/>
                 <DataGridTextColumn Header="{x:Static resx:ResUI.LvTestSpeed}" Binding="{Binding SpeedVal}" Width="75"/>
               </DataGrid.Columns>
@@ -183,7 +183,7 @@ $dashboardMarkup = @'
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,10,0,0">
               <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSetDefaultServer}" Command="{Binding ProfilesViewModel.SetDefaultServerCmd}"/>
               <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuMixedTestServer}" Command="{Binding ProfilesViewModel.MixedTestServerCmd}"/>
-              <Button Style="{StaticResource VW.Button}" Content="افزودن از Clipboard" Command="{Binding AddServerViaClipboardCmd}"/>
+              <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuAddServerViaClipboard}" Command="{Binding AddServerViaClipboardCmd}"/>
             </StackPanel>
           </Grid>
         </Border>
@@ -194,8 +194,8 @@ $dashboardMarkup = @'
               <TextBlock Text="{x:Static resx:ResUI.menuSystemproxy}" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
               <TextBlock Text="System Proxy" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,3,0,8"/>
               <StackPanel Orientation="Horizontal">
-                <Button Style="{StaticResource VW.Button}" Background="#087EBA" Content="فعال‌سازی" Command="{Binding StatusBarViewModel.SystemProxySetCmd}"/>
-                <Button Style="{StaticResource VW.Button}" Content="غیرفعال‌سازی" Command="{Binding StatusBarViewModel.SystemProxyClearCmd}"/>
+                <Button Style="{StaticResource VW.Button}" Background="#087EBA" Content="{x:Static resx:ResUI.menuSystemProxySet}" Command="{Binding StatusBarViewModel.SystemProxySetCmd}"/>
+                <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSystemProxyClear}" Command="{Binding StatusBarViewModel.SystemProxyClearCmd}"/>
               </StackPanel>
             </StackPanel>
           </Border>
@@ -234,7 +234,7 @@ $dashboardMarkup = @'
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Top" Margin="7,8,7,23">
           <TextBlock Text="V2rayWatch" Foreground="#F4F8FF" FontSize="19" FontWeight="Bold"/>
-          <TextBlock Text="امن، سریع، ساده" Foreground="{StaticResource VW.Muted}" FontSize="11" Margin="0,4,0,0"/>
+          
         </StackPanel>
         <StackPanel>
           <Border Background="#075E91" CornerRadius="10" Padding="12" Margin="0,0,0,5">
@@ -244,7 +244,7 @@ $dashboardMarkup = @'
           <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuSubscription}" Command="{Binding SubSettingCmd}"/>
           <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuRouting}" Command="{Binding RoutingSettingCmd}"/>
           <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuSetting}" Command="{Binding OptionSettingCmd}"/>
-          <Button Style="{StaticResource VW.NavButton}" Content="↻   بازخوانی هسته" Command="{Binding ReloadCmd}"/>
+          <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuReload}" Command="{Binding ReloadCmd}"/>
         </StackPanel>
         <Border DockPanel.Dock="Bottom" Background="#122844" CornerRadius="10" Padding="11" Margin="0,20,0,0">
           <StackPanel>
