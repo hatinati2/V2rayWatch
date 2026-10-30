@@ -8,7 +8,7 @@ static void Check(bool condition, string message)
 }
 
 var vless = ServerProfileParser.ParseOne("vless://11111111-1111-1111-1111-111111111111@edge.example.net:443?type=ws&security=tls#VLESS%20Main");
-Check(vless.Protocol == "Vless", "VLESS protocol detected");
+Check(vless.Protocol == "VLESS", "VLESS protocol detected");
 Check(vless.Host == "edge.example.net" && vless.Port == 443, "VLESS host and port parsed");
 Check(vless.Name == "VLESS Main", "VLESS profile name decoded");
 
