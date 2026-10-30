@@ -83,8 +83,8 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="1.6*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,8,0">
               <StackPanel>
-                <DockPanel><TextBlock Text="سرورهای من" Foreground="#F4F8FF" FontSize="16" FontWeight="SemiBold"/><Button Content="افزودن سرور +" DockPanel.Dock="Left" IsEnabled="False" Padding="10,5"/></DockPanel>
-                <TextBlock Text="هنوز سروری اضافه نشده است" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" Margin="0,30,0,8"/>
+                <DockPanel><TextBlock Text="سرورهای من" Foreground="#F4F8FF" FontSize="16" FontWeight="SemiBold"/><Button x:Name="ManageServersButton" Content="مدیریت سرورها +" DockPanel.Dock="Left" Padding="10,5" Click="ManageServers_Click"/></DockPanel>
+                <TextBlock x:Name="ServerSummaryText" Text="هنوز سروری اضافه نشده است" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" Margin="0,30,0,8"/>
                 <TextBlock Text="از بخش سرورها می‌توانید لینک یا QR وارد کنید." Foreground="{StaticResource MutedBrush}" FontSize="12" HorizontalAlignment="Center"/>
               </StackPanel>
             </Border>
