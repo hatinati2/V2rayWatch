@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "Windows/DesktopPrototype/**"
+      - "Windows/DesktopPrototype.Tests/**"
       - ".github/workflows/windows-ui-prototype.yml"
   workflow_dispatch:
 
@@ -22,3 +23,5 @@ jobs:
           dotnet-version: 10.0.x
       - name: Build WPF prototype
         run: dotnet build Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release
+      - name: Run profile parser smoke tests
+        run: dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
