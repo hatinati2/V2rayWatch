@@ -56,7 +56,7 @@ Write-Utf8NoBom $languagePath $languageText.Replace($oldLanguage, $newLanguage)
 Replace-TextOnce "v2rayN\Directory.Build.props" '<Version>7.25.6</Version>' '<Version>0.1.0</Version>'
 
 # Give the executable and Windows resources V2rayWatch names.
-$projectPath = Join-Path $SourceRoot "v2rayN\v2rayN.csproj"
+$projectPath = Join-Path $SourceRoot "v2rayN\v2rayN\v2rayN.csproj"
 $projectText = [System.IO.File]::ReadAllText($projectPath)
 if (-not $projectText.Contains('<OutputType>WinExe</OutputType>')) { throw "WPF project output type marker not found." }
 $projectText = $projectText.Replace('<OutputType>WinExe</OutputType>', '<OutputType>WinExe</OutputType>' + [Environment]::NewLine + '    <AssemblyName>V2rayWatch</AssemblyName>')
