@@ -91,6 +91,7 @@ jobs:
           $copyExitCode = $LASTEXITCODE
           Write-Host "Robocopy source staging exit code: $copyExitCode"
           if ($copyExitCode -gt 7) { throw "Failed to stage corresponding GPL source (robocopy exit code $copyExitCode)." }
+          $global:LASTEXITCODE = 0
           New-Item -ItemType Directory -Force -Path "$sourcePackage\V2rayWatch-branding" | Out-Null
           Copy-Item "$env:GITHUB_WORKSPACE\Windows\rebrand.ps1" "$sourcePackage\V2rayWatch-branding\rebrand.ps1"
           Copy-Item "$env:GITHUB_WORKSPACE\Windows\README.fa.md" "$sourcePackage\V2rayWatch-branding\README.fa.md"
