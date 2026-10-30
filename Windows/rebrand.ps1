@@ -46,8 +46,10 @@ $newLanguage = @'
             };
         }
 '@
-if (-not $languageText.Contains($oldLanguage)) { throw "Language default block not found; refusing to patch." }
-Write-Utf8NoBom $languagePath $languageText.Replace($oldLanguage, $newLanguage)
+$languagePattern = '(?m)^[ \\t]*if \\(config\\.UiItem\\.CurrentLanguage\\.IsNullOrEmpty\\(\\)\\)\\r?\\n[ \\t]*\\{\\r?\\n[ \\t]*config\\.UiItem\\.CurrentLanguage = Thread\\.CurrentThread\\.CurrentCulture\\.TwoLetterISOLanguageName\\.Equals\\("zh", StringComparison\\.CurrentCultureIgnoreCase\\)\\r?\\n[ \\t]*\\? Global\\.Languages\\.First\\(\\)\\r?\\n[ \\t]*: Global\\.Languages\\[2\\];\\r?\\n[ \\t]*\\}';
+if (-not [regex]::IsMatch($languageText, $languagePattern)) { throw "Language default block not found; refusing to patch." }
+$languageText = [regex]::Replace($languageText, $languagePattern, $newLanguage, 1)
+Write-Utf8NoBom $languagePath $languageText
 
 # Point the in-app V2rayWatch updater to this repository.
 Replace-TextOnce "v2rayN\Directory.Build.props" '<Version>7.25.6</Version>' '<Version>0.1.0</Version>'
