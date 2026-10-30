@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - "V2rayWatch-project-0.2.1.zip"
-      - ".github/workflows/android.yml"
   workflow_dispatch:
 
 permissions:
