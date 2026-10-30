@@ -110,7 +110,7 @@ $dashboardMarkup = @'
           <Grid>
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <DockPanel>
-              <TextBlock Text="{x:Static resx:ResUI.menuServers}" Foreground="#F4F8FF" FontWeight="SemiBold" FontSize="15"/>
+              <TextBlock Text="{x:Static resx:ResUI.TbConnections}" Foreground="#F4F8FF" FontWeight="SemiBold" FontSize="15"/>
               <TextBlock Text="ENGINE STATUS" Foreground="{StaticResource VW.Muted}" FontSize="9" DockPanel.Dock="Left" VerticalAlignment="Center"/>
             </DockPanel>
             <Grid Grid.Row="1" Margin="0,15">
@@ -135,7 +135,7 @@ $dashboardMarkup = @'
           <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
           <Border Grid.Row="0" Style="{StaticResource VW.Card}" Margin="7,0,0,6">
             <StackPanel>
-              <TextBlock Text="{x:Static resx:ResUI.menuSystemproxy}" Foreground="{StaticResource VW.Muted}" FontSize="12"/>
+              <TextBlock Text="{x:Static resx:ResUI.TbSettingsDisplayRealTimeSpeed}" Foreground="{StaticResource VW.Muted}" FontSize="12"/>
               <TextBlock Text="{Binding StatusBarViewModel.SpeedProxyDisplay, TargetNullValue=—}" Foreground="#F4F8FF" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,0" TextWrapping="Wrap"/>
               <TextBlock Text="دریافت و ارسال واقعی از هسته" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,7,0,0"/>
             </StackPanel>
@@ -203,8 +203,8 @@ $dashboardMarkup = @'
           <Border Style="{StaticResource VW.Card}" Margin="7,0,0,9">
             <StackPanel>
               <TextBlock Text="{x:Static resx:ResUI.TbEnableTunAs}" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
-              <TextBlock Text="برای TUN ممکن است دسترسی مدیر لازم باشد." Foreground="{StaticResource VW.Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,8"/>
-              <CheckBox Content="فعال‌سازی TUN" IsChecked="{Binding StatusBarViewModel.EnableTun, Mode=TwoWay}" Foreground="{StaticResource VW.Cyan}" FontSize="13"/>
+              <TextBlock Text="{x:Static resx:ResUI.NotRunAsAdmin}" Foreground="{StaticResource VW.Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,8"/>
+              <CheckBox Content="{x:Static resx:ResUI.TbEnableTunAs}" IsChecked="{Binding StatusBarViewModel.EnableTun, Mode=TwoWay}" Foreground="{StaticResource VW.Cyan}" FontSize="13"/>
             </StackPanel>
           </Border>
 
