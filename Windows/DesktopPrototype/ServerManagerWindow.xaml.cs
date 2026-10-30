@@ -52,7 +52,7 @@ public partial class ServerManagerWindow : Window
         try
         {
             var importText = originalText;
-            if (!importText.Contains("\\n", StringComparison.Ordinal) &&
+            if (!importText.Contains('\n') && !importText.Contains('\r') &&
                 Uri.TryCreate(importText, UriKind.Absolute, out var subscriptionUri) &&
                 subscriptionUri.Scheme is "http" or "https")
             {
