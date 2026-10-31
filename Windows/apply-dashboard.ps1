@@ -745,6 +745,211 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
     [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
 }
 
+# Add persisted appearance controls and a working language preference toggle.
+$code = [System.IO.File]::ReadAllText($codePath)
+if (-not $code.Contains("VwInitializeAppearance")) {
+    $fieldMarker = "    private static Config _config;"
+    if (-not $code.Contains($fieldMarker)) { throw "Could not locate MainWindow fields for appearance settings." }
+    $appearanceFields = @'
+    private string _vwFontFamily = "Tahoma";
+    private string _vwFontColor = "#172B4D";
+    private int _vwFontSize = 14;
+'@
+    $code = $code.Replace($fieldMarker, $fieldMarker + [Environment]::NewLine + $appearanceFields.TrimEnd())
+
+    $initializeMonitorLine = "        Loaded += (_, _) => VwInitializeMonitor();"
+    if (-not $code.Contains($initializeMonitorLine)) { throw "Could not locate monitor Loaded hook for appearance initialization." }
+    $code = $code.Replace($initializeMonitorLine, $initializeMonitorLine + [Environment]::NewLine + "        Loaded += (_, _) => VwInitializeAppearance();")
+
+    $appearanceMethods = @'
+
+    private static string VwAppearanceSettingsPath()
+    {
+        var folder = global::System.IO.Path.Combine(global::System.Environment.GetFolderPath(global::System.Environment.SpecialFolder.LocalApplicationData), "V2rayWatch");
+        global::System.IO.Directory.CreateDirectory(folder);
+        return global::System.IO.Path.Combine(folder, "appearance-settings.json");
+    }
+
+    private void VwInitializeAppearance()
+    {
+        try
+        {
+            var path = VwAppearanceSettingsPath();
+            if (global::System.IO.File.Exists(path))
+            {
+                var saved = global::System.Text.Json.JsonSerializer.Deserialize<global::System.Collections.Generic.Dictionary<string, string>>(global::System.IO.File.ReadAllText(path));
+                if (saved != null)
+                {
+                    if (saved.TryGetValue("fontFamily", out var family) && !string.IsNullOrWhiteSpace(family)) _vwFontFamily = family;
+                    if (saved.TryGetValue("fontColor", out var color) && !string.IsNullOrWhiteSpace(color)) _vwFontColor = color;
+                    if (saved.TryGetValue("fontSize", out var sizeText) && int.TryParse(sizeText, out var size)) _vwFontSize = global::System.Math.Clamp(size, 12, 16);
+                }
+            }
+        }
+        catch { }
+
+        VwSelectComboStringTag(vwFontFamilyCombo, _vwFontFamily);
+        VwSelectComboStringTag(vwFontColorCombo, _vwFontColor);
+        VwSelectComboTag(vwFontSizeCombo, _vwFontSize);
+        VwUpdateDashboardLanguage();
+        VwApplyAppearance();
+        vwAppearanceStatus.Text = VwIsPersian() ? "تنظیمات ظاهر ذخیره می‌شود و فقط روی همین برنامه اثر دارد." : "Appearance settings are saved for this app only.";
+    }
+
+    private static void VwSelectComboStringTag(global::System.Windows.Controls.ComboBox combo, string value)
+    {
+        foreach (var item in combo.Items.OfType<global::System.Windows.Controls.ComboBoxItem>())
+        {
+            if (string.Equals(item.Tag?.ToString(), value, global::System.StringComparison.OrdinalIgnoreCase))
+            {
+                combo.SelectedItem = item;
+                return;
+            }
+        }
+    }
+
+    private static string VwReadComboStringTag(global::System.Windows.Controls.ComboBox combo, string fallback)
+    {
+        return combo.SelectedItem is global::System.Windows.Controls.ComboBoxItem item && !string.IsNullOrWhiteSpace(item.Tag?.ToString())
+            ? item.Tag.ToString()!
+            : fallback;
+    }
+
+    private void VwSaveAppearance()
+    {
+        try
+        {
+            var values = new global::System.Collections.Generic.Dictionary<string, string>
+            {
+                ["fontFamily"] = _vwFontFamily,
+                ["fontColor"] = _vwFontColor,
+                ["fontSize"] = _vwFontSize.ToString(global::System.Globalization.CultureInfo.InvariantCulture)
+            };
+            global::System.IO.File.WriteAllText(VwAppearanceSettingsPath(), global::System.Text.Json.JsonSerializer.Serialize(values));
+        }
+        catch { }
+    }
+
+    private void VwApplyAppearance_Click(object sender, RoutedEventArgs e)
+    {
+        _vwFontFamily = VwReadComboStringTag(vwFontFamilyCombo, "Tahoma");
+        _vwFontColor = VwReadComboStringTag(vwFontColorCombo, "#172B4D");
+        _vwFontSize = global::System.Math.Clamp(VwReadComboTag(vwFontSizeCombo, 14), 12, 16);
+        VwSaveAppearance();
+        VwApplyAppearance();
+        vwAppearanceStatus.Text = VwIsPersian() ? "فونت و رنگ نوشته اعمال و ذخیره شد." : "Font and text color applied and saved.";
+    }
+
+    private void VwApplyAppearance()
+    {
+        global::System.Windows.Media.FontFamily family;
+        try { family = new global::System.Windows.Media.FontFamily(_vwFontFamily); }
+        catch { family = new global::System.Windows.Media.FontFamily("Tahoma"); }
+
+        var converted = new global::System.Windows.Media.ColorConverter().ConvertFromString(_vwFontColor);
+        var color = converted is global::System.Windows.Media.Color parsed ? parsed : global::System.Windows.Media.Color.FromRgb(23, 43, 77);
+        var brush = new global::System.Windows.Media.SolidColorBrush(color);
+        brush.Freeze();
+        vwDashboard.Resources["VW.TextBrush"] = brush;
+        vwDashboard.FontFamily = family;
+        vwDashboard.Foreground = brush;
+        VwApplyAppearanceToTree(vwDashboard, family, brush, _vwFontSize);
+        vwProfilesGrid.FontFamily = family;
+        vwProfilesGrid.FontSize = _vwFontSize;
+        vwProfilesGrid.Foreground = brush;
+    }
+
+    private static void VwApplyAppearanceToTree(global::System.Windows.DependencyObject root, global::System.Windows.Media.FontFamily family, global::System.Windows.Media.Brush brush, int fontSize)
+    {
+        if (root is global::System.Windows.Controls.TextBlock textBlock)
+        {
+            textBlock.FontFamily = family;
+            textBlock.Foreground = brush;
+            if (textBlock.FontSize < fontSize) textBlock.FontSize = fontSize;
+        }
+        else if (root is global::System.Windows.Controls.Control control)
+        {
+            control.FontFamily = family;
+            control.Foreground = brush;
+            if (control.FontSize < fontSize) control.FontSize = fontSize;
+        }
+
+        var childCount = global::System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (var index = 0; index < childCount; index++)
+        {
+            VwApplyAppearanceToTree(global::System.Windows.Media.VisualTreeHelper.GetChild(root, index), family, brush, fontSize);
+        }
+    }
+
+    private void VwUpdateDashboardLanguage()
+    {
+        var persian = VwIsPersian();
+        vwDashboard.FlowDirection = persian ? global::System.Windows.FlowDirection.RightToLeft : global::System.Windows.FlowDirection.LeftToRight;
+        vwConnectionModeLabel.Text = persian ? "اتصال ویندوز" : "WINDOWS CONNECTION";
+        vwManualProbeButton.Content = persian ? "تست واقعی همه لینک‌ها" : "Test all links";
+        vwSystemProxyDescription.Text = persian
+            ? "ترافیک برنامه‌های ویندوز از پروفایل فعال عبور می‌کند؛ این گزینه برای تست سلامت لینک لازم نیست."
+            : "Routes Windows app traffic through the active profile. It is not required for link health checks.";
+        vwTunDescription.Text = persian
+            ? "تونل ترافیک ویندوز از مسیر پروفایل فعال؛ برای تست مستقل لینک‌ها لازم نیست."
+            : "Routes Windows traffic through the active profile. It is not required for independent link tests.";
+        vwAppearanceTitle.Text = persian ? "ظاهر و خوانایی" : "Appearance & readability";
+        vwFontFamilyLabel.Text = persian ? "نوع فونت" : "Font family";
+        vwFontColorLabel.Text = persian ? "رنگ نوشته" : "Text color";
+        vwFontSizeLabel.Text = persian ? "اندازه نوشته" : "Text size";
+        vwApplyAppearanceButton.Content = persian ? "اعمال و ذخیره" : "Apply and save";
+        vwLanguageToggleButton.Content = persian ? "تغییر زبان به English" : "Switch language to فارسی";
+        vwMonitorIntervalCombo.ToolTip = persian ? "فاصلهٔ بررسی خودکار لینک‌ها" : "Automatic link check interval";
+        vwMonitorFailureCombo.ToolTip = persian ? "تعداد خطاهای پیاپی تا ارسال هشدار" : "Consecutive failures before an alert";
+        foreach (var item in vwMonitorIntervalCombo.Items.OfType<global::System.Windows.Controls.ComboBoxItem>())
+        {
+            if (int.TryParse(item.Tag?.ToString(), out var seconds)) item.Content = persian ? $"هر {seconds} ثانیه" : $"{seconds} seconds";
+        }
+        foreach (var item in vwMonitorFailureCombo.Items.OfType<global::System.Windows.Controls.ComboBoxItem>())
+        {
+            if (int.TryParse(item.Tag?.ToString(), out var failures)) item.Content = persian ? $"{failures} خطای متوالی" : $"{failures} consecutive failures";
+        }
+        if (_vwMonitorCts == null)
+        {
+            vwMonitorToggleButton.Content = persian ? "شروع پایش" : "Start monitoring";
+            vwMonitorStatus.Text = persian ? "پایش متوقف است" : "Monitoring stopped";
+        }
+        vwMonitorToggleButton.ToolTip = persian ? "بررسی دوره‌ای لینک‌ها؛ مستقل از System Proxy و TUN" : "Periodically check links, independently of System Proxy and TUN.";
+    }
+
+    private async void VwLanguageToggle_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var config = AppManager.Instance.Config;
+            var current = config.UiItem.CurrentLanguage;
+            var next = string.Equals(current, "fa", global::System.StringComparison.OrdinalIgnoreCase) ? "en" : "fa";
+            config.UiItem.CurrentLanguage = next;
+            var culture = new global::System.Globalization.CultureInfo(next);
+            global::System.Threading.Thread.CurrentThread.CurrentUICulture = culture;
+            global::System.Threading.Thread.CurrentThread.CurrentCulture = culture;
+            global::System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
+            global::System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+            await ConfigHandler.SaveConfig(config);
+            VwUpdateDashboardLanguage();
+            vwAppearanceStatus.Text = next == "fa"
+                ? "زبان فارسی ذخیره شد؛ برای ترجمهٔ کامل منوها برنامه را ببند و دوباره اجرا کن."
+                : "English saved. Restart the app to translate all upstream menus.";
+            NoticeManager.Instance.Enqueue(ResUI.NeedRebootTips);
+        }
+        catch (Exception ex)
+        {
+            vwAppearanceStatus.Text = (VwIsPersian() ? "ذخیره زبان ناموفق بود: " : "Could not save language: ") + ex.Message;
+        }
+    }
+
+'@
+    $methodMarker = "    private void AddHelpMenuItem()"
+    if (-not $code.Contains($methodMarker)) { throw "Could not locate MainWindow method insertion point for appearance controls." }
+    $code = $code.Replace($methodMarker, $appearanceMethods + $methodMarker)
+    [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
+}
+
 # Add V2rayWatch-specific per-profile health fields to the upstream profile row model.
 $profileModelPath = Join-Path $SourceRoot "v2rayN\ServiceLib\Models\Dto\ProfileItemModel.cs"
 if (-not (Test-Path $profileModelPath)) { throw "ProfileItemModel.cs not found; cannot add link health columns." }
