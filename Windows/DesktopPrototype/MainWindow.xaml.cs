@@ -84,6 +84,7 @@ public partial class MainWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplySubscriptionLanguage();
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "V2rayWatch.ico");
         Drawing.Icon trayIcon;
         try { trayIcon = File.Exists(iconPath) ? new Drawing.Icon(iconPath) : (Drawing.Icon)Drawing.SystemIcons.Application.Clone(); }
@@ -268,23 +269,34 @@ public partial class MainWindow : Window
 
     private void RemoveSubscriptionRow_Click(object sender, RoutedEventArgs e)
     {
+        e.Handled = true;
         if (_busy)
         {
             SetStatus(_english ? "Please wait until the current operation finishes." : "ابتدا صبر کن عملیات فعلی تمام شود.", true);
             return;
         }
 
-        if (sender is FrameworkElement element && element.DataContext is SubscriptionSource source)
-            RemoveSubscriptionSource(source);
+        if (sender is not Button button)
+            return;
+
+        // Use the explicit row binding first; DataContext is kept as a defensive fallback.
+        var source = button.Tag as SubscriptionSource ?? button.DataContext as SubscriptionSource;
+        if (source is null || !_subscriptions.Contains(source))
+        {
+            SetStatus(_english ? "The selected subscription could not be identified." : "اشتراک انتخاب‌شده شناسایی نشد.", true);
+            return;
+        }
+
+        SubscriptionsGrid.SelectedItem = source;
+        SubscriptionsGrid.ScrollIntoView(source);
+        RemoveSubscriptionSource(source);
     }
 
     private void RemoveSubscriptionSource(SubscriptionSource source)
     {
         if (_busy || !_subscriptions.Contains(source)) return;
 
-        var ownedProfiles = _profiles
-            .Where(profile => string.Equals(profile.SourceSubscriptionId, source.Id, StringComparison.Ordinal))
-            .ToList();
+        var ownedProfiles = SubscriptionProfileOperations.FindOwnedProfiles(_profiles, source.Id);
         var answer = System.Windows.MessageBox.Show(
             _english
                 ? $"Remove subscription '{source.Name}' and its {ownedProfiles.Count} imported profile(s)? Manually added profiles will remain."
@@ -292,7 +304,7 @@ public partial class MainWindow : Window
             "V2rayWatch", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
         if (answer != System.Windows.MessageBoxResult.Yes) return;
 
-        foreach (var profile in ownedProfiles) _profiles.Remove(profile);
+        SubscriptionProfileOperations.RemoveOwnedProfiles(_profiles, source.Id);
         _subscriptions.Remove(source);
         SubscriptionsGrid.SelectedItem = null;
         SaveData();
@@ -570,7 +582,6 @@ public partial class MainWindow : Window
     {
         FlowDirection = _english ? System.Windows.FlowDirection.LeftToRight : System.Windows.FlowDirection.RightToLeft;
         foreach (var profile in _profiles) profile.English = _english;
-        foreach (var subscription in _subscriptions) subscription.English = _english;
         LanguageButton.Content = _english ? "EN / FA" : "FA / EN";
         ThemeButton.Content = _data.LightTheme ? (_english ? "Dark theme" : "تم تیره") : (_english ? "Light theme" : "تم روشن");
         HeaderSubtitle.Text = _english ? "Real proxy profile testing and monitoring" : "پایش و تست واقعی لینک‌های پروکسی";
@@ -597,16 +608,11 @@ public partial class MainWindow : Window
         PrimaryUrlLabel.Text = _english ? "Primary test URL" : "آدرس تست اصلی";
         FallbackUrlLabel.Text = _english ? "Fallback URL" : "آدرس جایگزین";
         SaveSettingsButton.Content = _english ? "Save settings" : "ذخیره تنظیمات";
-        SubscriptionsTitle.Text = _english ? "Subscriptions" : "مدیریت اشتراک‌ها";
-        SubscriptionsHint.Text = _english ? "Subscription sources are saved and can be updated individually." : "منابع Subscription ذخیره می‌شوند و هرکدام را می‌توان جداگانه به‌روزرسانی کرد.";
         UpdateSubscriptionButton.Content = _english ? "Update selected" : "به‌روزرسانی اشتراک انتخاب‌شده";
         UpdateAllSubscriptionsButton.Content = _english ? "Update all subscriptions" : "به‌روزرسانی همه اشتراک‌ها";
         RemoveSubscriptionButton.Content = _english ? "Remove subscription" : "حذف منبع اشتراک";
         RemoveAllSubscriptionsButton.Content = _english ? "Remove all subscriptions and their profiles" : "حذف همه اشتراک‌ها و لینک‌هایشان";
-        SubscriptionsGrid.Columns[0].Header = _english ? "Name" : "نام";
-        SubscriptionsGrid.Columns[1].Header = _english ? "Links" : "تعداد";
-        SubscriptionsGrid.Columns[2].Header = _english ? "Last fetched" : "آخرین دریافت";
-        SubscriptionsGrid.Columns[3].Header = _english ? "Action" : "عملیات";
+        ApplySubscriptionLanguage();
         ProfilesGrid.Columns[0].Header = _english ? "Profile" : "نام پروفایل";
         ProfilesGrid.Columns[1].Header = _english ? "Protocol" : "پروتکل";
         ProfilesGrid.Columns[2].Header = _english ? "Host" : "میزبان";
@@ -617,6 +623,26 @@ public partial class MainWindow : Window
             ? "Ready; each link is tested independently of Windows VPN and proxy settings."
             : "آماده؛ تست هر لینک مستقل از VPN و پراکسی سیستم انجام می‌شود.";
         RefreshSummary();
+    }
+
+    private void ApplySubscriptionLanguage()
+    {
+        SubscriptionsTitle.Text = SubscriptionDisplayText.GetSectionTitle(_english);
+        SubscriptionsHint.Text = SubscriptionDisplayText.GetSectionHint(_english);
+        SubscriptionsGrid.FlowDirection = _english
+            ? System.Windows.FlowDirection.LeftToRight
+            : System.Windows.FlowDirection.RightToLeft;
+
+        var headers = SubscriptionDisplayText.GetColumnHeaders(_english);
+        for (var index = 0; index < headers.Count && index < SubscriptionsGrid.Columns.Count; index++)
+            SubscriptionsGrid.Columns[index].Header = headers[index];
+
+        foreach (var subscription in _subscriptions)
+            subscription.English = _english;
+
+        // Force the grid to re-evaluate localized row properties and header visuals.
+        SubscriptionsGrid.Items.Refresh();
+        SubscriptionsGrid.UpdateLayout();
     }
 
     private void LoadSettingsToControls()
