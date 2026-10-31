@@ -35,7 +35,7 @@ On update:
 
 ## Current limitations
 
-- The test engine in this preview is Xray. Exact protocol/transport support depends on the bundled Xray version. sing-box-based testing is not implemented in this preview.
+- The test engine in this preview is the official Xray Core binary from XTLS/Xray-core. Exact protocol/transport support depends on the bundled Xray version. sing-box-based testing is not implemented in this preview.
 - Some full Xray JSON configurations or advanced transports may need additional compatibility work.
 - Monitoring runs while the app remains open (including in the system tray). Automatic monitoring as a Windows Service or after a full process exit is not implemented yet.
 - A monitoring round may take longer than the selected interval depending on profile count and probe timeouts; rounds do not overlap.
@@ -53,4 +53,4 @@ Parser and generated-Xray-config smoke tests:
 
     dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj -c Release
 
-The portable GitHub Actions artifact includes V2rayWatch.exe and core/xray.exe. Keep the Xray license and third-party notices with the package.
+The portable GitHub Actions artifact includes V2rayWatch.exe and the official XTLS/Xray-core v26.10.31 Windows x64 binary. CI verifies the archive SHA-256 against the official .dgst file. Keep the Xray license and third-party notices with the package.
