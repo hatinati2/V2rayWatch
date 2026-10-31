@@ -704,10 +704,11 @@ if (-not $profilesVm.Contains("VwSpeedTestResultReceived")) {
             _vwSpeedtestSemaphore.Release();
         }
 '@
-    $nl = [Environment]::NewLine
-    $profilesVm = $profilesVm.Replace($nl, "`n")
-    $oldCallback = $oldCallback.Replace($nl, "`n")
-    $newCallback = $newCallback.Replace($nl, "`n")
+    $crlf = ([string][char]13) + [string][char]10
+    $lf = [string][char]10
+    $profilesVm = $profilesVm.Replace($crlf, $lf).Replace([string][char]13, $lf)
+    $oldCallback = $oldCallback.Replace($crlf, $lf).Replace([string][char]13, $lf)
+    $newCallback = $newCallback.Replace($crlf, $lf).Replace([string][char]13, $lf)
     if (-not $profilesVm.Contains($oldCallback)) { throw "Could not locate existing SpeedtestService callback block." }
     $profilesVm = $profilesVm.Replace($oldCallback, $newCallback)
 
