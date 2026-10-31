@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -82,7 +83,7 @@ using(var echDoc=JsonDocument.Parse(hy2Ech.ConfigJson))
 var badHy2=false;try{ServerProfileParser.ParseOne("hy2://pass@hy2.example.net:443?obfs=salamander#missing-password");}catch(FormatException){badHy2=true;}
 Check(badHy2,"Salamander needs a password");
 var xrayPath=Environment.GetEnvironmentVariable("V2RAYWATCH_XRAY_PATH");
-if(!string.IsNullOrWhiteSpace(xrayPath)&&File.Exists(xrayPath)){ValidateWithXray(xrayPath,hy2);ValidateWithXray(xrayPath,hy2Gecko);}
+if(!string.IsNullOrWhiteSpace(xrayPath)&&File.Exists(xrayPath)){ValidateWithXray(xrayPath!,hy2);ValidateWithXray(xrayPath!,hy2Gecko);}
 
 var multi = ServerProfileParser.ParseMany(
     "vless://id@one.example.net:443#One\n" +
