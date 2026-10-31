@@ -239,7 +239,8 @@ $dashboardMarkup = @'
                       RowBackground="#FFFFFF" AlternatingRowBackground="#F1F5F9"
                       BorderBrush="{StaticResource VW.Line}" GridLinesVisibility="Horizontal"
                       HeadersVisibility="Column" FontSize="13" ColumnHeaderStyle="{StaticResource VW.DataGridHeader}"
-                      CellStyle="{StaticResource VW.DataGridCell}" RowStyle="{StaticResource VW.DataGridRow}">
+                      CellStyle="{StaticResource VW.DataGridCell}" RowStyle="{StaticResource VW.DataGridRow}"
+                      RowDetailsVisibilityMode="Visible">
               <DataGrid.Columns>
                 <DataGridTextColumn Header="{x:Static resx:ResUI.menuServers}" Binding="{Binding Remarks}" Width="2*"/>
                 <DataGridTextColumn Header="{x:Static resx:ResUI.LvServiceType}" Binding="{Binding ConfigType}" Width="*"/>
@@ -250,6 +251,51 @@ $dashboardMarkup = @'
                 <DataGridTextColumn Header="Link health" Binding="{Binding VwHealth}" Width="115"/>
                 <DataGridTextColumn Header="Checked" Binding="{Binding VwLastChecked}" Width="75"/>
               </DataGrid.Columns>
+              <DataGrid.RowDetailsTemplate>
+                <DataTemplate>
+                  <Grid Margin="9,1,9,5">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="88"/>
+                      <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Last 20 checks" Foreground="#64748B" FontSize="10" VerticalAlignment="Center"
+                               ToolTip="Oldest result on the left, newest on the right"/>
+                    <ItemsControl Grid.Column="1" ItemsSource="{Binding VwHistory}" ToolTip="20 most recent monitoring results">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <UniformGrid Rows="1" Columns="20"/>
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Height="9" Margin="1,2" CornerRadius="2" Background="#CBD5E1">
+                            <Border.Style>
+                              <Style TargetType="{x:Type Border}">
+                                <Setter Property="Background" Value="#CBD5E1"/>
+                                <Setter Property="ToolTip" Value="No result recorded"/>
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding}" Value="G">
+                                    <Setter Property="Background" Value="#16A34A"/>
+                                    <Setter Property="ToolTip" Value="Connected"/>
+                                  </DataTrigger>
+                                  <DataTrigger Binding="{Binding}" Value="R">
+                                    <Setter Property="Background" Value="#DC2626"/>
+                                    <Setter Property="ToolTip" Value="Disconnected"/>
+                                  </DataTrigger>
+                                  <DataTrigger Binding="{Binding}" Value="N">
+                                    <Setter Property="Background" Value="#CBD5E1"/>
+                                    <Setter Property="ToolTip" Value="Not tested / not testable"/>
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </Border.Style>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+                </DataTemplate>
+              </DataGrid.RowDetailsTemplate>
             </DataGrid>
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,10,0,0">
               <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSetDefaultServer}" Command="{Binding ProfilesViewModel.SetDefaultServerCmd}"/>
@@ -443,6 +489,9 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
     private readonly global::System.Collections.Generic.HashSet<string> _vwMonitorDown = new();
     private readonly global::System.Collections.Generic.HashSet<string> _vwMonitorRoundProfileIds = new();
     private readonly global::System.Collections.Generic.Dictionary<string, int> _vwMonitorResults = new();
+    private readonly global::System.Collections.Generic.Dictionary<string, global::System.Collections.Generic.List<string>> _vwMonitorHistory = new();
+    private const int VwMonitorHistoryLimit = 20;
+    private bool _vwMonitorHistoryLoaded;
     private bool _vwMonitorRoundRunning;
     private int _vwMonitorIntervalSeconds = 20;
     private int _vwMonitorFailureThreshold = 2;
@@ -523,6 +572,7 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
         _vwMonitorFailureThreshold = global::System.Math.Clamp(_vwMonitorFailureThreshold, 1, 3);
         vwMonitorIntervalInput.Text = _vwMonitorIntervalSeconds.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
         VwSelectComboTag(vwMonitorFailureCombo, _vwMonitorFailureThreshold);
+        VwLoadMonitorHistory(profilesViewModel.ProfileItems);
     }
 
     private static void VwSelectComboTag(global::System.Windows.Controls.ComboBox combo, int value)
@@ -716,10 +766,100 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
         }
     }
 
+    private static string VwMonitorHistoryPath()
+    {
+        var folder = global::System.IO.Path.Combine(global::System.Environment.GetFolderPath(global::System.Environment.SpecialFolder.LocalApplicationData), "V2rayWatch");
+        global::System.IO.Directory.CreateDirectory(folder);
+        return global::System.IO.Path.Combine(folder, "monitor-history.json");
+    }
+
+    private void VwLoadMonitorHistory(global::System.Collections.Generic.IEnumerable<global::ServiceLib.Models.Dto.ProfileItemModel> profiles)
+    {
+        if (!_vwMonitorHistoryLoaded)
+        {
+            try
+            {
+                var path = VwMonitorHistoryPath();
+                if (global::System.IO.File.Exists(path))
+                {
+                    var saved = global::System.Text.Json.JsonSerializer.Deserialize<global::System.Collections.Generic.Dictionary<string, global::System.Collections.Generic.List<string>>>(global::System.IO.File.ReadAllText(path));
+                    if (saved != null)
+                    {
+                        foreach (var pair in saved)
+                        {
+                            _vwMonitorHistory[pair.Key] = pair.Value ?? new global::System.Collections.Generic.List<string>();
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                _vwMonitorHistory.Clear();
+            }
+            _vwMonitorHistoryLoaded = true;
+        }
+
+        var liveIds = new global::System.Collections.Generic.HashSet<string>();
+        foreach (var profile in profiles)
+        {
+            liveIds.Add(profile.IndexId);
+            VwEnsureProfileHistory(profile);
+        }
+
+        foreach (var staleId in _vwMonitorHistory.Keys.Where(id => !liveIds.Contains(id)).ToArray())
+        {
+            _vwMonitorHistory.Remove(staleId);
+        }
+    }
+
+    private void VwEnsureProfileHistory(global::ServiceLib.Models.Dto.ProfileItemModel profile)
+    {
+        if (!_vwMonitorHistory.TryGetValue(profile.IndexId, out var history))
+        {
+            history = new global::System.Collections.Generic.List<string>();
+            _vwMonitorHistory[profile.IndexId] = history;
+        }
+
+        history.RemoveAll(value => value != "G" && value != "R" && value != "N");
+        if (history.Count > VwMonitorHistoryLimit)
+            history.RemoveRange(0, history.Count - VwMonitorHistoryLimit);
+        while (history.Count < VwMonitorHistoryLimit)
+            history.Insert(0, "N");
+
+        profile.VwHistory.Clear();
+        foreach (var state in history)
+            profile.VwHistory.Add(state);
+    }
+
+    private void VwRecordMonitorHistory(global::ServiceLib.Models.Dto.ProfileItemModel profile, string state)
+    {
+        VwEnsureProfileHistory(profile);
+        var history = _vwMonitorHistory[profile.IndexId];
+        history.Add(state);
+        if (history.Count > VwMonitorHistoryLimit)
+            history.RemoveRange(0, history.Count - VwMonitorHistoryLimit);
+
+        profile.VwHistory.Clear();
+        foreach (var value in history)
+            profile.VwHistory.Add(value);
+    }
+
+    private void VwSaveMonitorHistory()
+    {
+        try
+        {
+            global::System.IO.File.WriteAllText(
+                VwMonitorHistoryPath(),
+                global::System.Text.Json.JsonSerializer.Serialize(_vwMonitorHistory));
+        }
+        catch { }
+    }
+
     private void VwCompleteMonitorRound()
     {
         var profiles = ViewModel?.ProfilesViewModel?.ProfileItems;
         if (profiles == null) return;
+        VwLoadMonitorHistory(profiles);
         var tested = 0;
         var down = 0;
         foreach (var profile in profiles)
@@ -730,6 +870,7 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
                 if (profile.ConfigType == EConfigType.Custom || (!profile.ConfigType.IsComplexType() && profile.Port <= 0))
                 {
                     profile.VwHealth = VwIsPersian() ? "پشتیبانی نمی‌شود" : "Not testable";
+                    VwRecordMonitorHistory(profile, "N");
                     continue;
                 }
                 // A valid profile with no final result indicates a failed core startup/probe.
@@ -739,12 +880,14 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
             profile.VwLastChecked = global::System.DateTime.Now.ToString("HH:mm:ss");
             if (delay > 0)
             {
+                VwRecordMonitorHistory(profile, "G");
                 profile.VwHealth = VwIsPersian() ? $"متصل · {delay} ms" : $"Connected · {delay} ms";
                 _vwMonitorFailures[profile.IndexId] = 0;
                 if (_vwMonitorDown.Remove(profile.IndexId)) VwShowMonitorNotification(profile.Remarks, false, delay);
             }
             else
             {
+                VwRecordMonitorHistory(profile, "R");
                 var failures = _vwMonitorFailures.GetValueOrDefault(profile.IndexId) + 1;
                 _vwMonitorFailures[profile.IndexId] = failures;
                 var isDown = failures >= _vwMonitorFailureThreshold;
@@ -758,6 +901,7 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
                 }
             }
         }
+        VwSaveMonitorHistory();
         vwMonitorStatus.Text = VwIsPersian()
             ? $"آخرین دور: {tested} لینک تست شد، {down} لینک قطع"
             : $"Last round: {tested} tested, {down} down";
@@ -1025,6 +1169,8 @@ if (-not $profileModel.Contains("VwHealth")) {
 
     [Reactive]
     public partial string VwLastChecked { get; set; } = "—";
+
+    public global::System.Collections.ObjectModel.ObservableCollection<string> VwHistory { get; } = new();
 '@
     $profileModel = $profileModel.Replace($delayValMarker, $delayValMarker + [Environment]::NewLine + $healthFields.TrimEnd())
     [System.IO.File]::WriteAllText($profileModelPath, $profileModel, [System.Text.UTF8Encoding]::new($false))
