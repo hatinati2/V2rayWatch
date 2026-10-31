@@ -9,7 +9,6 @@ on:
       - "Windows/**"
       - ".github/workflows/release.yml"
       - "V2rayWatch-project-0.2.1.zip"
-      - "AndroidApp/**"
 
 permissions:
   contents: write
