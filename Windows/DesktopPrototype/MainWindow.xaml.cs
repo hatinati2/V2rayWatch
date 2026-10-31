@@ -472,13 +472,13 @@ public partial class MainWindow : Window
     private async void RemoveAllSubscriptions_Click(object sender, RoutedEventArgs e)
     {
         if(_subscriptions.Count==0){SetStatus(_english?"There are no subscription sources to remove.":"اشتراکی برای حذف وجود ندارد.",false);return;}
-        var owned=_profiles.Count(p=>p.SourceSubscriptionId is not null);
+        var owned=_profiles.Count(p=>!string.IsNullOrWhiteSpace(p.SourceSubscriptionId));
         var answer=System.Windows.MessageBox.Show(
             _english?$"Remove all {_subscriptions.Count} subscription URLs and their {owned} imported profiles? Manual profiles will remain.":$"همهٔ {_subscriptions.Count} آدرس اشتراک و {owned} پروفایل واردشده از آن‌ها حذف شوند؟ لینک‌های دستی باقی می‌مانند؟",
             "V2rayWatch",System.Windows.MessageBoxButton.YesNo,System.Windows.MessageBoxImage.Warning);
         if(answer!=System.Windows.MessageBoxResult.Yes)return;
         if(_monitorCancellation is not null)await StopMonitoringAsync();
-        foreach(var profile in _profiles.Where(p=>p.SourceSubscriptionId is not null).ToList())_profiles.Remove(profile);
+        foreach(var profile in _profiles.Where(p=>!string.IsNullOrWhiteSpace(p.SourceSubscriptionId)).ToList())_profiles.Remove(profile);
         _subscriptions.Clear();SearchInput.Clear();SaveData();RefreshSummary();
         SetStatus(_english?"All subscription URLs and their profiles were removed.":"همهٔ اشتراک‌ها و لینک‌های متعلق به آن‌ها حذف شدند.",false);
     }

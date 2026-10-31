@@ -57,7 +57,11 @@ using (var doc = JsonDocument.Parse(hy2.ConfigJson))
     Check(stream.GetProperty("finalmask").GetProperty("quicParams").GetProperty("udpHop").GetProperty("ports").GetString()=="443,5000-6000","multi-port hopping retained");
     Check(stream.GetProperty("tlsSettings").GetProperty("pinnedPeerCertSha256").GetString()=="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","certificate pin retained");
     Check(hy2.Port==443,"initial Hysteria2 port");
+    Check(!hy2.ConfigJson.Contains("allowInsecure",StringComparison.OrdinalIgnoreCase),"legacy insecure TLS bypass not sent to Xray");
+    Check(!string.IsNullOrWhiteSpace(hy2.ImportWarning),"legacy insecure TLS request is surfaced as a warning");
 }
+var vlessLegacyInsecure=ServerProfileParser.ParseOne("vless://11111111-1111-4111-8111-111111111111@vless.example.net:443?security=tls&sni=vless.example.net&insecure=1#legacy-tls");
+Check(!vlessLegacyInsecure.ConfigJson.Contains("allowInsecure",StringComparison.OrdinalIgnoreCase),"legacy insecure flag removed from VLESS TLS too");
 var hy2Gecko=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?obfs=gecko&obfs-password=secret#Gecko");
 using(var geckoDoc=JsonDocument.Parse(hy2Gecko.ConfigJson))
 {

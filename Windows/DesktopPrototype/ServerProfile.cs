@@ -15,6 +15,7 @@ public sealed class ServerProfile
     public string RawUri { get; set; } = "";
     public string ConfigJson { get; set; } = "";
     public string SourceSubscriptionId { get; set; } = "";
+    public string ImportWarning { get; set; } = "";
     public string Status { get; set; } = "Unknown";
     [System.Text.Json.Serialization.JsonIgnore]
     public bool English { get; set; }
@@ -121,26 +122,56 @@ public static class ServerProfileParser
     public static ServerProfile ParseOne(string value)
     {
         var raw = value.Trim();
+        ServerProfile profile;
         if (raw.StartsWith('{'))
-            return ParseXrayJson(raw);
-
-        var separator = raw.IndexOf("://", StringComparison.Ordinal);
-        if (separator <= 0)
-            throw new FormatException("قالب لینک معتبر نیست.");
-
-        var scheme = raw[..separator].ToLowerInvariant();
-        if (!SupportedSchemes.Contains(scheme))
-            throw new FormatException($"پروتکل {scheme} پشتیبانی نمی‌شود.");
-
-        return scheme switch
         {
-            "vmess" => ParseVmess(raw),
-            "vless" => ParseVless(raw),
-            "trojan" => ParseTrojan(raw),
-            "ss" or "shadowsocks" => ParseShadowsocks(raw),
-            "hy2" or "hysteria2" => ParseHysteria2(raw),
-            _ => throw new FormatException("پروتکل پشتیبانی نمی‌شود.")
-        };
+            profile = ParseXrayJson(raw);
+        }
+        else
+        {
+            var separator = raw.IndexOf("://", StringComparison.Ordinal);
+            if (separator <= 0)
+                throw new FormatException("قالب لینک معتبر نیست.");
+
+            var scheme = raw[..separator].ToLowerInvariant();
+            if (!SupportedSchemes.Contains(scheme))
+                throw new FormatException($"پروتکل {scheme} پشتیبانی نمی‌شود.");
+
+            profile = scheme switch
+            {
+                "vmess" => ParseVmess(raw),
+                "vless" => ParseVless(raw),
+                "trojan" => ParseTrojan(raw),
+                "ss" or "shadowsocks" => ParseShadowsocks(raw),
+                "hy2" or "hysteria2" => ParseHysteria2(raw),
+                _ => throw new FormatException("پروتکل پشتیبانی نمی‌شود.")
+            };
+        }
+
+        var config = JsonNode.Parse(profile.ConfigJson);
+        if (RemoveLegacyAllowInsecure(config))
+        {
+            profile.ConfigJson = config!.ToJsonString();
+            profile.ImportWarning = "پارامتر قدیمی allowInsecure/insecure برای سازگاری و امنیت حذف شد؛ اعتبارسنجی گواهی TLS فعال می‌ماند. برای گواهی خودامضا از pinSHA256 معتبر استفاده کنید.";
+        }
+        return profile;
+    }
+
+    private static bool RemoveLegacyAllowInsecure(JsonNode? node)
+    {
+        var removed = false;
+        if (node is JsonObject obj)
+        {
+            removed |= obj.Remove("allowInsecure");
+            foreach (var pair in obj.ToArray())
+                removed |= RemoveLegacyAllowInsecure(pair.Value);
+        }
+        else if (node is JsonArray array)
+        {
+            foreach (var item in array)
+                removed |= RemoveLegacyAllowInsecure(item);
+        }
+        return removed;
     }
 
     private static ServerProfile ParseVless(string raw)

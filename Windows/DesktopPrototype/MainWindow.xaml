@@ -61,7 +61,7 @@
       <Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource ThemeGridSelectedBrush}"/><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers>
     </Style>
     <Style x:Key="GridRow" TargetType="DataGridRow">
-      <Setter Property="Background" Value="{DynamicResource ThemePanelBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}"/><Setter Property="MinHeight" Value="36"/>
+      <Setter Property="Background" Value="{DynamicResource ThemePanelBrush}"/><Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}"/><Setter Property="MinHeight" Value="36"/><Setter Property="ToolTip" Value="{Binding ImportWarning}"/>
       <Style.Triggers>
         <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource ThemeGridSelectedBrush}"/></Trigger>
         <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource ThemeGridHoverBrush}"/></Trigger>
