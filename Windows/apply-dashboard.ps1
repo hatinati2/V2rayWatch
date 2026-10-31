@@ -681,7 +681,8 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
                     _vwMonitorRoundRunning = false;
                 }
                 var remaining = global::System.TimeSpan.FromSeconds(_vwMonitorIntervalSeconds) - roundTimer.Elapsed;
-                await Task.Delay(remaining > global::System.TimeSpan.Zero ? remaining : global::System.TimeSpan.FromSeconds(1), cancellationToken);
+                if (remaining > global::System.TimeSpan.Zero)
+                    await Task.Delay(remaining, cancellationToken);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
