@@ -1,6 +1,10 @@
 name: Android build
 
 on:
+  pull_request:
+    paths:
+      - "AndroidApp/**"
+      - ".github/workflows/android.yml"
   push:
     branches:
       - main
