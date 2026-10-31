@@ -10,7 +10,6 @@ import com.linkwatch.app.LinkWatchApplication
 import com.linkwatch.app.core.XrayDelayTester
 import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.reduceLinkCheck
-import com.linkwatch.app.data.UptimeMark
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
