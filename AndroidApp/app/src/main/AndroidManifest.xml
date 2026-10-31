@@ -11,7 +11,7 @@
     <application
         android:name=".LinkWatchApplication"
         android:allowBackup="false"
-        android:label="V2rayWatch"
+        android:label="${appLabel}"
         android:supportsRtl="true"
         android:theme="@style/Theme.LinkWatch"
         android:usesCleartextTraffic="false">
