@@ -43,7 +43,7 @@ public sealed class LongTermHistoryStore : IDisposable
             DataSource = path,
             Mode = SqliteOpenMode.ReadWriteCreate,
             Cache = SqliteCacheMode.Shared,
-            Pooling = true
+            Pooling = false
         }.ToString());
         _connection.Open();
         Execute("""
