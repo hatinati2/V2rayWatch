@@ -28,12 +28,19 @@ The app uses `CoreController.measureDelay(url)` from AndroidLibXrayLite. The def
 - Manual real-delay tests and continuous foreground monitoring
 - A 20-result uptime strip under each profile: green for successful checks, red for failed checks, and gray for empty history; oldest on the left and newest on the right
 - History is persisted with each encrypted profile (AES-GCM); it survives app restarts and is updated only by scheduled monitoring checks, not manual tests
+- Portable encrypted backup/restore using a user passphrase; the file uses PBKDF2-HMAC-SHA256 and AES-256-GCM and includes profiles, monitoring settings, and uptime history
 - Configurable check intervals: 20, 30, 60, or 120 seconds
 - Alerts when a profile goes down or recovers
 
 ## Uptime history
 
 Each profile retains its 20 most recent automatic monitoring results. When upgrading from 0.2.1, existing profiles and settings are preserved; the new history starts filling from monitoring rounds performed after the upgrade.
+
+## Secure backup and restore
+
+Use the Backup button in the top app bar to create a `.v2vwbackup` file. The passphrase must be at least 12 characters and must be stored separately from the backup file. Restore merges new profiles, skips duplicates, never deletes existing profiles, restores monitoring settings, and does not automatically start monitoring. Live connection states reset to Unknown while uptime history is preserved.
+
+See [ANDROID_RELEASE_SIGNING.md](ANDROID_RELEASE_SIGNING.md) for persistent Android upload-key setup and signed candidate builds. Never commit or share the signing keystore.
 
 ## Current limitations
 
