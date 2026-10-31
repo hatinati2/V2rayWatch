@@ -552,7 +552,16 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
     private void VwOnSpeedTestResultReceived(SpeedTestResult result)
     {
         if (!_vwMonitorRoundRunning || string.IsNullOrWhiteSpace(result.IndexId)) return;
-        if (int.TryParse(result.Delay, out var delay)) _vwMonitorResults[result.IndexId] = delay;
+        if (int.TryParse(result.Delay, out var delay))
+        {
+            _vwMonitorResults[result.IndexId] = delay;
+        }
+        else if (!string.IsNullOrWhiteSpace(result.Speed))
+        {
+            // FastRealPing may fall back to a mixed test when a core cannot start;
+            // that path reports the failure text in Speed instead of Delay.
+            _vwMonitorResults[result.IndexId] = -1;
+        }
     }
 
     private void VwCompleteMonitorRound()
@@ -565,8 +574,13 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
         {
             if (!_vwMonitorResults.TryGetValue(profile.IndexId, out var delay))
             {
-                if (profile.VwHealth == "Unknown") profile.VwHealth = VwIsPersian() ? "تست‌نشده" : "Not tested";
-                continue;
+                if (profile.ConfigType == EConfigType.Custom || (!profile.ConfigType.IsComplexType() && profile.Port <= 0))
+                {
+                    profile.VwHealth = VwIsPersian() ? "پشتیبانی نمی‌شود" : "Not testable";
+                    continue;
+                }
+                // A valid profile with no final result indicates a failed core startup/probe.
+                delay = -1;
             }
             tested++;
             profile.VwLastChecked = global::System.DateTime.Now.ToString("HH:mm:ss");
