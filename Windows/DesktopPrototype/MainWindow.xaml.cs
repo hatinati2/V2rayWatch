@@ -55,7 +55,7 @@ public partial class MainWindow : Window
                 }
                 catch { profile.Status = "NotTestable"; }
             }
-            profile.UptimeHistory ??= [];
+            NormalizeHistory(profile);
         }
 
         _profiles = new ObservableCollection<ServerProfile>(_data.Profiles);
@@ -124,6 +124,7 @@ public partial class MainWindow : Window
             foreach (var profile in parsed)
             {
                 if (!existing.Add(profile.RawUri)) continue;
+                NormalizeHistory(profile);
                 _profiles.Add(profile);
                 added++;
             }
@@ -154,6 +155,7 @@ public partial class MainWindow : Window
             {
                 if (!existing.Add(profile.RawUri)) continue;
                 profile.SourceSubscriptionId = source.Id;
+                NormalizeHistory(profile);
                 _profiles.Add(profile);
                 added++;
             }
@@ -194,6 +196,7 @@ public partial class MainWindow : Window
                     existingSourceProfile.Host = incoming.Host;
                     existingSourceProfile.Port = incoming.Port;
                     existingSourceProfile.ConfigJson = incoming.ConfigJson;
+                    NormalizeHistory(existingSourceProfile);
                     updated++;
                 }
                 else if (!allOtherRaw.Contains(incoming.RawUri))
@@ -308,9 +311,16 @@ public partial class MainWindow : Window
         else
         {
             profile.DelayMs = null;
-            profile.ConsecutiveFailures++;
-            profile.Status = fromMonitor && profile.ConsecutiveFailures < _data.Settings.ConsecutiveFailureThreshold
-                ? "Unstable" : "Disconnected";
+            if (fromMonitor)
+            {
+                profile.ConsecutiveFailures++;
+                profile.Status = profile.ConsecutiveFailures < _data.Settings.ConsecutiveFailureThreshold
+                    ? "Unstable" : "Disconnected";
+            }
+            else
+            {
+                profile.Status = "Disconnected";
+            }
         }
 
         if (fromMonitor)
@@ -493,12 +503,12 @@ public partial class MainWindow : Window
         UpdateSubscriptionButton.Content = _english ? "Update selected" : "به‌روزرسانی اشتراک انتخاب‌شده";
         UpdateAllSubscriptionsButton.Content = _english ? "Update all subscriptions" : "به‌روزرسانی همه اشتراک‌ها";
         RemoveSubscriptionButton.Content = _english ? "Remove subscription" : "حذف منبع اشتراک";
-        NameColumn.Header = _english ? "Profile" : "نام پروفایل";
-        ProtocolColumn.Header = _english ? "Protocol" : "پروتکل";
-        EndpointColumn.Header = _english ? "Host" : "میزبان";
-        StatusColumn.Header = _english ? "Status" : "وضعیت";
-        DelayColumn.Header = _english ? "Delay" : "تأخیر";
-        LastCheckColumn.Header = _english ? "Last check" : "آخرین بررسی";
+        ProfilesGrid.Columns[0].Header = _english ? "Profile" : "نام پروفایل";
+        ProfilesGrid.Columns[1].Header = _english ? "Protocol" : "پروتکل";
+        ProfilesGrid.Columns[2].Header = _english ? "Host" : "میزبان";
+        ProfilesGrid.Columns[3].Header = _english ? "Status" : "وضعیت";
+        ProfilesGrid.Columns[4].Header = _english ? "Delay" : "تأخیر";
+        ProfilesGrid.Columns[5].Header = _english ? "Last check" : "آخرین بررسی";
         StatusText.Text = _english
             ? "Ready; each link is tested independently of Windows VPN and proxy settings."
             : "آماده؛ تست هر لینک مستقل از VPN و پراکسی سیستم انجام می‌شود.";
@@ -539,6 +549,15 @@ public partial class MainWindow : Window
         UpdateSubscriptionButton.IsEnabled = !busy;
         UpdateAllSubscriptionsButton.IsEnabled = !busy;
         if (message is not null) SetStatus(message, false);
+    }
+
+    private static void NormalizeHistory(ServerProfile profile)
+    {
+        profile.UptimeHistory ??= [];
+        if (profile.UptimeHistory.Count > 20)
+            profile.UptimeHistory = profile.UptimeHistory.TakeLast(20).ToList();
+        while (profile.UptimeHistory.Count < 20)
+            profile.UptimeHistory.Insert(0, "N");
     }
 
     private void RefreshSummary()
