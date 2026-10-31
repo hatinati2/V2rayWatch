@@ -1193,7 +1193,21 @@ if (-not $code.Contains("VwInitializeAppearance")) {
     {
         var persian = VwIsPersian();
         vwDashboard.FlowDirection = persian ? global::System.Windows.FlowDirection.RightToLeft : global::System.Windows.FlowDirection.LeftToRight;
-        vwConnectionModeLabel.Text = persian ? "اتصال ویندوز" : "WINDOWS CONNECTION";
+        vwConnectionModeLabel.Text = persian ? "پروفایل فعلی" : "CURRENT PROFILE";
+        vwReconnectButton.Content = persian ? "اتصال / راه‌اندازی مجدد" : "Connect / reconnect";
+        vwReconnectButton.ToolTip = persian ? "پروفایل انتخاب‌شده را بارگذاری و هسته را اجرا می‌کند." : "Loads the selected profile and starts the core.";
+        vwImportButton.Content = persian ? "افزودن لینک" : "Add profile";
+        vwSettingsButton.Content = persian ? "تنظیمات" : "Settings";
+        vwProfilesSectionTitle.Text = persian ? "پروفایل‌های ذخیره‌شده" : "SAVED PROFILES";
+        vwProxySpeedTitle.Text = persian ? "سرعت عبوری پروکسی" : "Proxy throughput";
+        vwDirectSpeedTitle.Text = persian ? "ترافیک مستقیم" : "Direct traffic";
+        vwSpeedDisplayToggle.Content = persian ? "نمایش سرعت زنده" : "Live speed";
+        vwTrafficChartTitle.Text = persian ? "روند ترافیک پروکسی" : "Proxy traffic history";
+        vwDownloadLegend.Text = persian ? "دانلود" : "Download";
+        vwUploadLegend.Text = persian ? "آپلود" : "Upload";
+        vwMonitorTitle.Text = persian ? "پایش خودکار لینک‌ها" : "Automatic link monitor";
+        vwMonitorHelp.Text = persian ? "سلامت سرورها را دوره‌ای بررسی کن؛ بدون تغییر پراکسی ویندوز." : "Periodically check server health without changing Windows proxy settings.";
+        vwMonitorFailureLabel.Text = persian ? "خطا تا هشدار" : "Failures to alert";
         vwManualProbeButton.Content = persian ? "تست واقعی همه لینک‌ها" : "Test all links";
         vwSystemProxyDescription.Text = persian
             ? "ترافیک برنامه‌های ویندوز از پروفایل فعال عبور می‌کند؛ این گزینه برای تست سلامت لینک لازم نیست."
@@ -1352,3 +1366,76 @@ if (-not $profilesVm.Contains("VwSpeedTestResultReceived")) {
     [System.IO.File]::WriteAllText($profilesVmPath, $profilesVm, [System.Text.UTF8Encoding]::new($false))
 }
 Write-Host "V2rayWatch dashboard inserted into the upstream WPF main window."
+
+# Make the dashboard's live-speed control persist the upstream setting and restart cleanly.
+$code = [System.IO.File]::ReadAllText($codePath)
+if (-not $code.Contains("VwInitializeSpeedSettings")) {
+    $appearanceLoadedLine = "        Loaded += (_, _) => VwInitializeAppearance();"
+    if (-not $code.Contains($appearanceLoadedLine)) { throw "Could not locate appearance Loaded hook for speed settings." }
+    $speedLoadedLine = $appearanceLoadedLine + [Environment]::NewLine + "        Loaded += (_, _) => VwInitializeSpeedSettings();"
+    $code = $code.Replace($appearanceLoadedLine, $speedLoadedLine)
+
+    $speedMethods = @'
+
+    private void VwInitializeSpeedSettings()
+    {
+        var enabled = AppManager.Instance.Config.GuiItem.DisplayRealTimeSpeed;
+        vwSpeedDisplayToggle.IsChecked = enabled;
+        vwSpeedStatus.Text = enabled
+            ? (VwIsPersian() ? "آمار زنده فعال است" : "Live statistics are enabled")
+            : (VwIsPersian() ? "برای شروع، این گزینه را روشن کن؛ برنامه دوباره راه‌اندازی می‌شود." : "Turn this on to enable live speeds; the app will restart.");
+
+        var singBoxActive = AppManager.Instance.IsRunningCore(ECoreType.sing_box);
+        vwDirectSpeedStatus.Text = singBoxActive
+            ? (VwIsPersian() ? "هستهٔ sing-box سرعت مستقیم را جداگانه گزارش نمی‌کند." : "sing-box does not report a separate direct-traffic figure.")
+            : (VwIsPersian() ? "مقادیر از آمار واقعی هسته دریافت می‌شوند." : "Values are supplied by the active core.");
+    }
+
+    private async void VwSpeedDisplayToggle_Click(object sender, RoutedEventArgs e)
+    {
+        var config = AppManager.Instance.Config;
+        var previousValue = config.GuiItem.DisplayRealTimeSpeed;
+        var requestedValue = vwSpeedDisplayToggle.IsChecked == true;
+        if (requestedValue == previousValue) return;
+
+        vwSpeedDisplayToggle.IsEnabled = false;
+        config.GuiItem.DisplayRealTimeSpeed = requestedValue;
+        try
+        {
+            if (await ConfigHandler.SaveConfig(config) != 0)
+                throw new global::System.InvalidOperationException("Could not save the live-speed setting.");
+
+            var executablePath = global::System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(executablePath))
+                throw new global::System.InvalidOperationException("Could not locate the running executable.");
+
+            var restart = global::System.Diagnostics.Process.Start(new global::System.Diagnostics.ProcessStartInfo
+            {
+                FileName = executablePath,
+                Arguments = "rebootas",
+                WorkingDirectory = global::System.AppContext.BaseDirectory,
+                UseShellExecute = false
+            });
+            if (restart == null)
+                throw new global::System.InvalidOperationException("Could not restart V2rayWatch.");
+
+            vwSpeedStatus.Text = VwIsPersian()
+                ? "تنظیم ذخیره شد؛ برنامه در حال راه‌اندازی مجدد است..."
+                : "Setting saved. Restarting V2rayWatch...";
+            await AppManager.Instance.AppExitAsync(true);
+        }
+        catch (Exception ex)
+        {
+            config.GuiItem.DisplayRealTimeSpeed = previousValue;
+            try { await ConfigHandler.SaveConfig(config); } catch { }
+            vwSpeedDisplayToggle.IsChecked = previousValue;
+            vwSpeedDisplayToggle.IsEnabled = true;
+            vwSpeedStatus.Text = (VwIsPersian() ? "ذخیره/راه‌اندازی ناموفق بود: " : "Save/restart failed: ") + ex.Message;
+        }
+    }
+'@
+    $methodMarker = "    private void AddHelpMenuItem()"
+    if (-not $code.Contains($methodMarker)) { throw "Could not locate MainWindow method insertion point for speed settings." }
+    $code = $code.Replace($methodMarker, $speedMethods + $methodMarker)
+    [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
+}
