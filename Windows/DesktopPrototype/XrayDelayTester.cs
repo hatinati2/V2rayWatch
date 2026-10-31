@@ -28,11 +28,11 @@ public sealed class XrayDelayTester
         var workDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "V2rayWatch", "runtime", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(workDirectory);
 
         Process? process = null;
         try
         {
+            Directory.CreateDirectory(workDirectory);
             using var startupTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             startupTimeout.CancelAfter(TimeSpan.FromSeconds(12));
             var port = GetFreePort();
