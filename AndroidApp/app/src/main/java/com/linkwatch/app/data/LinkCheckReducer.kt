@@ -7,6 +7,13 @@ data class LinkCheckTransition(
 )
 
 /**
+ * A CHECKING state is transient. If the process died during a probe, show the
+ * profile as UNKNOWN on the next launch instead of leaving it stuck forever.
+ */
+fun recoverInterruptedCheck(profile: ProxyProfile): ProxyProfile =
+    if (profile.state == LinkState.CHECKING) profile.copy(state = LinkState.UNKNOWN) else profile
+
+/**
  * Applies one completed probe to the latest profile snapshot.
  *
  * Keeping this reducer pure makes failure-threshold and uptime-history behavior
