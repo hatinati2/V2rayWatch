@@ -31,80 +31,85 @@ public sealed class XrayDelayTester
         try
         {
             await Concurrency.WaitAsync(cancellationToken).ConfigureAwait(false);
-            var workDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "V2rayWatch", "runtime", Guid.NewGuid().ToString("N"));
-
-            Process? process = null;
             try
             {
-                Directory.CreateDirectory(workDirectory);
-            using var startupTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            startupTimeout.CancelAfter(TimeSpan.FromSeconds(12));
-            var port = GetFreePort();
-            var configPath = Path.Combine(workDirectory, "config.json");
-            var config = BuildTestConfig(profile.ConfigJson, port);
-            await File.WriteAllTextAsync(configPath, config.ToJsonString(), new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
-
-            var start = new ProcessStartInfo
-            {
-                FileName = _corePath,
-                WorkingDirectory = Path.GetDirectoryName(_corePath)!,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-            start.ArgumentList.Add("run");
-            start.ArgumentList.Add("-c");
-            start.ArgumentList.Add(configPath);
-            process = new Process { StartInfo = start, EnableRaisingEvents = true };
-            if (!process.Start())
-                return new DelayTestResult(false, null, "راه‌اندازی Xray Core انجام نشد.");
-            _ = process.StandardOutput.ReadToEndAsync();
-            _ = process.StandardError.ReadToEndAsync();
-
-            await WaitForCoreAsync(process, port, startupTimeout.Token).ConfigureAwait(false);
-            var primary = await ProbeAsync(settings.PrimaryTestUrl, port, settings.TimeoutSeconds, cancellationToken).ConfigureAwait(false);
-            if (primary.Success)
-                return primary;
-
-            if (Uri.TryCreate(settings.FallbackTestUrl, UriKind.Absolute, out var fallback) &&
-                fallback.Scheme == Uri.UriSchemeHttps &&
-                !string.Equals(settings.FallbackTestUrl, settings.PrimaryTestUrl, StringComparison.OrdinalIgnoreCase))
-            {
-                var secondary = await ProbeAsync(settings.FallbackTestUrl, port, settings.TimeoutSeconds, cancellationToken).ConfigureAwait(false);
-                if (secondary.Success) return secondary;
-                return new DelayTestResult(false, null, $"{primary.Error}؛ مسیر جایگزین: {secondary.Error}");
-            }
-            return primary;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (OperationCanceledException)
-        {
-            return new DelayTestResult(false, null, "مهلت تست تمام شد.");
-        }
-        catch (Exception ex)
-        {
-            return new DelayTestResult(false, null, SafeError(ex));
-        }
-        finally
-        {
-            if (process is not null)
-            {
+                var workDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "V2rayWatch", "runtime", Guid.NewGuid().ToString("N"));
+                Process? process = null;
                 try
                 {
-                    if (!process.HasExited) process.Kill(entireProcessTree: true);
-                    await process.WaitForExitAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                    Directory.CreateDirectory(workDirectory);
+                    using var startupTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    startupTimeout.CancelAfter(TimeSpan.FromSeconds(12));
+                    var port = GetFreePort();
+                    var configPath = Path.Combine(workDirectory, "config.json");
+                    var config = BuildTestConfig(profile.ConfigJson, port);
+                    await File.WriteAllTextAsync(configPath, config.ToJsonString(), new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+
+                    var start = new ProcessStartInfo
+                    {
+                        FileName = _corePath,
+                        WorkingDirectory = Path.GetDirectoryName(_corePath)!,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    start.ArgumentList.Add("run");
+                    start.ArgumentList.Add("-c");
+                    start.ArgumentList.Add(configPath);
+                    process = new Process { StartInfo = start, EnableRaisingEvents = true };
+                    if (!process.Start())
+                        return new DelayTestResult(false, null, "راه‌اندازی Xray Core انجام نشد.");
+                    _ = process.StandardOutput.ReadToEndAsync();
+                    _ = process.StandardError.ReadToEndAsync();
+
+                    await WaitForCoreAsync(process, port, startupTimeout.Token).ConfigureAwait(false);
+                    var primary = await ProbeAsync(settings.PrimaryTestUrl, port, settings.TimeoutSeconds, cancellationToken).ConfigureAwait(false);
+                    if (primary.Success)
+                        return primary;
+
+                    if (Uri.TryCreate(settings.FallbackTestUrl, UriKind.Absolute, out var fallback) &&
+                        fallback.Scheme == Uri.UriSchemeHttps &&
+                        !string.Equals(settings.FallbackTestUrl, settings.PrimaryTestUrl, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var secondary = await ProbeAsync(settings.FallbackTestUrl, port, settings.TimeoutSeconds, cancellationToken).ConfigureAwait(false);
+                        if (secondary.Success) return secondary;
+                        return new DelayTestResult(false, null, $"{primary.Error}؛ مسیر جایگزین: {secondary.Error}");
+                    }
+                    return primary;
                 }
-                catch { }
-                process.Dispose();
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
+                    return new DelayTestResult(false, null, "مهلت تست تمام شد.");
+                }
+                catch (Exception ex)
+                {
+                    return new DelayTestResult(false, null, SafeError(ex));
+                }
+                finally
+                {
+                    if (process is not null)
+                    {
+                        try
+                        {
+                            if (!process.HasExited) process.Kill(entireProcessTree: true);
+                            await process.WaitForExitAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                        }
+                        catch { }
+                        process.Dispose();
+                    }
+                    try { Directory.Delete(workDirectory, recursive: true); } catch { }
+                }
             }
-                try { Directory.Delete(workDirectory, recursive: true); } catch { }
+            finally
+            {
                 Concurrency.Release();
             }
         }
