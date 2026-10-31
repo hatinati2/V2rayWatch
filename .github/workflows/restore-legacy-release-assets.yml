@@ -1,0 +1,81 @@
+name: Restore historical v0.2.3 release assets
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/restore-legacy-release-assets.yml"
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  restore:
+    if: contains(github.event.head_commit.message, 'restore-legacy-release-assets-v0.2.3')
+    name: Restore original v0.2.3 binaries and checksums
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download original Windows release build
+        uses: actions/download-artifact@v4
+        with:
+          name: V2rayWatch-Windows-build
+          run-id: 41187180078
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: restore/windows
+
+      - name: Download original Android preview
+        uses: actions/download-artifact@v4
+        with:
+          name: V2rayWatch-Android-preview
+          run-id: 41187180078
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: restore/android
+
+      - name: Verify original asset checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd restore/windows
+            sha256sum --check V2rayWatch-Windows-SHA256SUMS.txt
+          )
+          (
+            cd restore/android
+            sha256sum --check V2rayWatch-Android-0.2.2-debug-preview.apk.sha256
+          )
+
+      - name: Restore original v0.2.3 GitHub Release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.2.3
+          name: V2rayWatch 0.2.3
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          body: |
+            ## V2rayWatch Windows 0.2.3
+
+            - Bilingual Persian / English interface.
+            - Windows x64 portable client based on upstream v2rayN 7.25.6 (GPL-3.0), with V2rayWatch branding.
+            - Integrated V2rayWatch monitoring dashboard with independently scheduled per-profile outbound checks (1–99,999 seconds), failure thresholds, tray down/recovery alerts, and persistent 20-check uptime history.
+            - Profile import and management, subscriptions and QR import, System Proxy, TUN, routing, Xray and sing-box cores.
+            - The project owner confirmed this Windows build works on their Windows device. The binary is unsigned; SmartScreen may show an unknown-publisher warning.
+
+            ## Android 0.2.2 preview (separate component version)
+
+            The Android APK is a debug-signed preview of the monitoring app, not a full Android VPN/TUN client. It includes the per-profile 20-check uptime strip. Test on a physical device; this APK is not a Google Play build.
+
+            ## Licensing
+
+            The Windows application is derived from 2dust/v2rayN 7.25.6 and distributed under GPL-3.0. The corresponding modified upstream source and V2rayWatch rebrand/dashboard scripts are included as V2rayWatch-Windows-source-GPL-3.0.zip. Third-party notices and SHA-256 checksums are attached.
+          files: |
+            restore/windows/V2rayWatch-Windows-x64.zip
+            restore/windows/v2rayN-windows-64.zip
+            restore/windows/V2rayWatch-Windows-source-GPL-3.0.zip
+            restore/windows/V2rayWatch-Windows-SHA256SUMS.txt
+            restore/android/V2rayWatch-Android-0.2.2-debug-preview.apk
+            restore/android/V2rayWatch-Android-0.2.2-debug-preview.apk.sha256
