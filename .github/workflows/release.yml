@@ -9,6 +9,7 @@ on:
       - "Windows/**"
       - ".github/workflows/release.yml"
       - "V2rayWatch-project-0.2.1.zip"
+      - "AndroidApp/**"
 
 permissions:
   contents: write
@@ -116,10 +117,6 @@ jobs:
       - name: Checkout V2rayWatch
         uses: actions/checkout@v4
 
-      - name: Unpack Android source
-        run: |
-          unzip V2rayWatch-project-0.2.1.zip
-          rsync -a --exclude='.git/' --exclude='.github/' LinkWatchAndroid/ ./
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -140,24 +137,25 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Build Android debug APK
-        run: gradle --no-daemon assembleDebug
+      - name: Run Android unit tests and build debug APK
+        working-directory: AndroidApp
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
       - name: Stage Android preview APK
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/debug/app-debug.apk release/V2rayWatch-Android-0.2.1-debug-preview.apk
+          cp AndroidApp/app/build/outputs/apk/debug/app-debug.apk release/V2rayWatch-Android-0.2.2-debug-preview.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: V2rayWatch-Android-preview
-          path: release/V2rayWatch-Android-0.2.1-debug-preview.apk
+          path: release/V2rayWatch-Android-0.2.2-debug-preview.apk
           if-no-files-found: error
 
   publish-release:
     name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/heads/release/')
+    if: startsWith(github.ref, 'refs/heads/release/') && !startsWith(github.ref, 'refs/heads/release/android-')
     needs:
       - build-windows
       - build-android
@@ -193,7 +191,7 @@ jobs:
             - Windows x64 portable client based on upstream v2rayN 7.25.6 (GPL-3.0), with V2rayWatch branding.
             - Includes Xray and sing-box core binaries, profile management, subscriptions, QR import, routing, system proxy and TUN features available in the upstream client.
 
-            ## Android 0.2.1 preview
+            ## Android 0.2.2 preview
 
             The Android APK is a debug preview of the monitoring app, not a full Android VPN client. Install and test before relying on it.
 
@@ -204,6 +202,6 @@ jobs:
             release-assets/V2rayWatch-Windows-x64.zip
             release-assets/v2rayN-windows-64.zip
             release-assets/V2rayWatch-Windows-source-GPL-3.0.zip
-            release-assets/V2rayWatch-Android-0.2.1-debug-preview.apk
+            release-assets/V2rayWatch-Android-0.2.2-debug-preview.apk
           fail_on_unmatched_files: true
           make_latest: false
