@@ -10,6 +10,8 @@ import com.linkwatch.app.LinkWatchApplication
 import com.linkwatch.app.core.XrayDelayTester
 import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.ProxyProfile
+import com.linkwatch.app.data.UptimeMark
+import com.linkwatch.app.data.appendUptimeMark
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -91,7 +93,11 @@ class MonitorService : Service() {
                                     delayMs = result.delayMs,
                                     lastCheckedAt = System.currentTimeMillis(),
                                     consecutiveFailures = nextFailures,
-                                    lastError = if (result.success) "" else result.error
+                                    lastError = if (result.success) "" else result.error,
+                                    uptimeHistory = appendUptimeMark(
+                                        current.uptimeHistory.orEmpty(),
+                                        if (result.success) UptimeMark.CONNECTED else UptimeMark.DISCONNECTED
+                                    )
                                 )
                                 // A profile deleted during its probe must not be re-created by this completion.
                                 if (repository.getProfiles().any { it.id == current.id }) {
