@@ -111,4 +111,20 @@ class LinkCheckReducerTest {
         assertEquals(UptimeMark.DISCONNECTED, transition.profile.uptimeHistory.last())
         assertEquals(UPTIME_HISTORY_LIMIT - 1, transition.profile.uptimeHistory.count { it == UptimeMark.CONNECTED })
     }
+
+    @Test
+    fun interruptedCheckIsResetToUnknownAfterRestart() {
+        val checking = profile.copy(state = LinkState.CHECKING)
+        val recovered = recoverInterruptedCheck(checking)
+
+        assertEquals(LinkState.UNKNOWN, recovered.state)
+        assertEquals(checking.rawLink, recovered.rawLink)
+        assertEquals(checking.consecutiveFailures, recovered.consecutiveFailures)
+    }
+
+    @Test
+    fun nonCheckingStatesArePreservedOnRestart() {
+        val disconnected = profile.copy(state = LinkState.DISCONNECTED)
+        assertEquals(disconnected, recoverInterruptedCheck(disconnected))
+    }
 }
