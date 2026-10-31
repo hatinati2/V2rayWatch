@@ -28,6 +28,7 @@ object EncryptedBackupCodec {
     private const val HEADER_SIZE = 8 + 1 + 4 + SALT_SIZE + NONCE_SIZE
     const val MAX_BACKUP_BYTES = 25 * 1024 * 1024
     const val MIN_PASSPHRASE_LENGTH = 12
+    const val MAX_PASSPHRASE_LENGTH = 256
 
     private val random = SecureRandom()
 
@@ -92,7 +93,7 @@ object EncryptedBackupCodec {
     }
 
     private fun requirePassphrase(passphrase: CharArray) {
-        require(passphrase.size >= MIN_PASSPHRASE_LENGTH) {
+        require(passphrase.size in MIN_PASSPHRASE_LENGTH..MAX_PASSPHRASE_LENGTH) {
             "Use a backup passphrase with at least $MIN_PASSPHRASE_LENGTH characters"
         }
     }
