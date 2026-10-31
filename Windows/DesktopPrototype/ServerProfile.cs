@@ -16,6 +16,8 @@ public sealed class ServerProfile
     public string ConfigJson { get; set; } = "";
     public string SourceSubscriptionId { get; set; } = "";
     public string Status { get; set; } = "Unknown";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool English { get; set; }
     public int ConsecutiveFailures { get; set; }
     public long? DelayMs { get; set; }
     public DateTimeOffset? LastCheckedUtc { get; set; }
@@ -27,12 +29,12 @@ public sealed class ServerProfile
     public string LastCheckedDisplay => LastCheckedUtc?.ToLocalTime().ToString("HH:mm:ss") ?? "—";
     public string StatusDisplay => Status switch
     {
-        "Connected" => "متصل",
-        "Unstable" => "ناپایدار",
-        "Disconnected" => "قطع",
-        "Checking" => "در حال بررسی",
-        "NotTestable" => "غیرقابل تست",
-        _ => "بررسی نشده"
+        "Connected" => English ? "Connected" : "متصل",
+        "Unstable" => English ? "Unstable" : "ناپایدار",
+        "Disconnected" => English ? "Disconnected" : "قطع",
+        "Checking" => English ? "Checking" : "در حال بررسی",
+        "NotTestable" => English ? "Not testable" : "غیرقابل تست",
+        _ => English ? "Not checked" : "بررسی نشده"
     };
 }
 
