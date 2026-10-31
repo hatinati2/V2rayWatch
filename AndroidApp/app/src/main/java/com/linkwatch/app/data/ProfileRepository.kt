@@ -102,7 +102,11 @@ class ProfileRepository private constructor(context: Context) {
             settings = settings()
         )
         val json = gson.toJson(payload).toByteArray(Charsets.UTF_8)
-        return EncryptedBackupCodec.encrypt(json, passphrase)
+        return try {
+            EncryptedBackupCodec.encrypt(json, passphrase)
+        } finally {
+            json.fill(0)
+        }
     }
 
     @Synchronized
