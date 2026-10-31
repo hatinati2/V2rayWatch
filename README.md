@@ -2,14 +2,16 @@
 
 V2rayWatch is a multi-platform project with separate Android and Windows applications.
 
-## Latest releases
+## Latest release — V2rayWatch 0.2.3
+
+The current V2rayWatch releases include:
 
 - **Windows 0.2.3:** portable desktop client based on v2rayN 7.25.6, with an integrated V2rayWatch dashboard, independent per-profile monitoring, a 20-check uptime history, System Proxy, and TUN support. See the [Windows / multi-platform release](https://github.com/hatinati2/V2rayWatch/releases/tag/v0.2.3).
-- **Android 0.2.3:** signed sideload APK with persistent release signing, encrypted backup and restore, resilient per-profile monitoring, independent disconnect and recovery alerts, custom alert sounds and vibration patterns, and a matching launcher icon. Download the [official Android APK](https://github.com/hatinati2/V2rayWatch/releases/download/android-v0.2.3/V2rayWatch-Android-0.2.3-release.apk) and its [SHA-256 checksum](https://github.com/hatinati2/V2rayWatch/releases/download/android-v0.2.3/V2rayWatch-Android-0.2.3-SHA256SUMS.txt), or view the [Android 0.2.3 release page](https://github.com/hatinati2/V2rayWatch/releases/tag/android-v0.2.3).
+- **Android 0.2.3:** official signed sideload APK with persistent release signing, encrypted backup and restore, resilient per-profile monitoring, independent disconnect and recovery alerts, custom alert sounds and vibration patterns, and a matching launcher icon. Download the [official Android 0.2.3 APK](https://github.com/hatinati2/V2rayWatch/releases/download/android-v0.2.3/V2rayWatch-Android-0.2.3-release.apk) and its [SHA-256 checksum](https://github.com/hatinati2/V2rayWatch/releases/download/android-v0.2.3/V2rayWatch-Android-0.2.3-SHA256SUMS.txt), or view the [Android 0.2.3 release page](https://github.com/hatinati2/V2rayWatch/releases/tag/android-v0.2.3).
 
-The Android component has its own `android-v0.2.3` tag and GitHub Release. It is intentionally separate from the existing Windows / multi-platform `v0.2.3` release; neither release replaces the other.
+The Android 0.2.3 package is published as a separate component release under the `android-v0.2.3` tag. It does not replace or modify the Windows / multi-platform `v0.2.3` release.
 
-**Download note:** the older Windows / multi-platform release page still contains a legacy debug-signed Android 0.2.2 preview asset. Do not use that preview for a new installation; use the official signed Android 0.2.3 APK linked above.
+**Download note:** the older Windows / multi-platform release page still contains a legacy debug-signed Android 0.2.2 preview asset. That file is not the current Android release; use the official signed Android 0.2.3 APK linked above for new installations.
 
 ## Android application
 
