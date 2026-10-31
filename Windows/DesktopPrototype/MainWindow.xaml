@@ -129,12 +129,12 @@
                       ColumnHeaderStyle="{StaticResource GridHeader}" CellStyle="{StaticResource GridCell}" RowStyle="{StaticResource GridRow}"
                       SelectionChanged="ProfilesGrid_SelectionChanged" RowDetailsVisibilityMode="Visible">
               <DataGrid.Columns>
-                <DataGridTextColumn x:Name="NameColumn" Header="نام پروفایل" Binding="{Binding Name}" Width="1.7*"/>
-                <DataGridTextColumn x:Name="ProtocolColumn" Header="پروتکل" Binding="{Binding Protocol}" Width="*"/>
-                <DataGridTextColumn x:Name="EndpointColumn" Header="میزبان" Binding="{Binding Endpoint}" Width="1.6*"/>
-                <DataGridTextColumn x:Name="StatusColumn" Header="وضعیت" Binding="{Binding StatusDisplay}" Width="*"/>
-                <DataGridTextColumn x:Name="DelayColumn" Header="تأخیر" Binding="{Binding DelayDisplay}" Width="85"/>
-                <DataGridTextColumn x:Name="LastCheckColumn" Header="آخرین بررسی" Binding="{Binding LastCheckedDisplay}" Width="95"/>
+                <DataGridTextColumn Header="نام پروفایل" Binding="{Binding Name}" Width="1.7*"/>
+                <DataGridTextColumn Header="پروتکل" Binding="{Binding Protocol}" Width="*"/>
+                <DataGridTextColumn Header="میزبان" Binding="{Binding Endpoint}" Width="1.6*"/>
+                <DataGridTextColumn Header="وضعیت" Binding="{Binding StatusDisplay}" Width="*"/>
+                <DataGridTextColumn Header="تأخیر" Binding="{Binding DelayDisplay}" Width="85"/>
+                <DataGridTextColumn Header="آخرین بررسی" Binding="{Binding LastCheckedDisplay}" Width="95"/>
               </DataGrid.Columns>
               <DataGrid.RowDetailsTemplate>
                 <DataTemplate>
@@ -145,7 +145,7 @@
                       <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" Columns="20"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                          <Border Height="9" Margin="1" CornerRadius="2" Background="#718096">
+                          <Border Height="9" Margin="1" CornerRadius="2">
                             <Border.Style>
                               <Style TargetType="Border">
                                 <Setter Property="Background" Value="#718096"/>
