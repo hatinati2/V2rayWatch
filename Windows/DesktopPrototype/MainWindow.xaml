@@ -88,7 +88,7 @@
           <Button x:Name="AddLinksButton" Content="افزودن لینک" Click="AddLinks_Click"/>
           <Button x:Name="AddSubscriptionButton" Content="افزودن Subscription" Click="AddSubscription_Click"/>
           <Button x:Name="TestAllButton" Style="{StaticResource PrimaryButton}" Content="تست همه لینک‌ها" Click="TestAll_Click"/>
-          <Button x:Name="MonitorButton" Content="شروع پایش خودکار" Click="Monitor_Click"/>
+          <Button x:Name="MonitorButton" Content="شروع پایش" Click="Monitor_Click"/>
         </StackPanel>
       </DockPanel>
     </Border>
