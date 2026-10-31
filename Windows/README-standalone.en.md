@@ -30,8 +30,8 @@ On update:
 - The complete subscription response is fetched and parsed before changes are applied.
 - Duplicate links are skipped.
 - New entries are assigned to that subscription source.
-- Entries previously owned by that source but missing from the new response are removed.
-- Manually imported profiles and profiles owned by other sources are preserved.
+- Previously saved entries missing from the latest response are kept; the user can remove stale profiles manually.
+- Manually imported profiles and profiles owned by other sources are preserved as well.
 
 ## Current limitations
 
