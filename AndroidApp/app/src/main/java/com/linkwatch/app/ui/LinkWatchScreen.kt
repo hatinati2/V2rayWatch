@@ -614,7 +614,7 @@ private fun BackupDialog(
                 }
                 OutlinedTextField(
                     value = passphrase,
-                    onValueChange = { passphrase = it },
+                    onValueChange = { passphrase = it.take(EncryptedBackupCodec.MAX_PASSPHRASE_LENGTH) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
@@ -623,7 +623,7 @@ private fun BackupDialog(
                 if (exportMode) {
                     OutlinedTextField(
                         value = confirmation,
-                        onValueChange = { confirmation = it },
+                        onValueChange = { confirmation = it.take(EncryptedBackupCodec.MAX_PASSPHRASE_LENGTH) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
