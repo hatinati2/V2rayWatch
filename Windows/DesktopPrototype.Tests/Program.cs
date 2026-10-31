@@ -55,7 +55,7 @@ using (var doc = JsonDocument.Parse(hy2.ConfigJson))
     Check(stream.GetProperty("hysteriaSettings").GetProperty("version").GetInt32()==2,"Hysteria2 version");
     Check(stream.GetProperty("finalmask").GetProperty("udp")[0].GetProperty("type").GetString()=="salamander","Salamander obfuscation retained");
     Check(stream.GetProperty("finalmask").GetProperty("quicParams").GetProperty("udpHop").GetProperty("ports").GetString()=="443,5000-6000","multi-port hopping retained");
-    Check(stream.GetProperty("tlsSettings").GetProperty("pinnedPeerCertSha256").GetString()=="deadbeef","certificate pin retained");
+    Check(stream.GetProperty("tlsSettings").GetProperty("pinnedPeerCertSha256").GetString()=="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","certificate pin retained");
     Check(hy2.Port==443,"initial Hysteria2 port");
 }
 var hy2Gecko=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?obfs=gecko&obfs-password=secret#Gecko");
@@ -64,17 +64,6 @@ using(var geckoDoc=JsonDocument.Parse(hy2Gecko.ConfigJson))
  var geckoMask=geckoDoc.RootElement.GetProperty("outbounds")[0].GetProperty("streamSettings").GetProperty("finalmask").GetProperty("udp")[0];
  Check(geckoMask.GetProperty("type").GetString()=="salamander","Gecko uses Salamander base mask");
  Check(geckoMask.GetProperty("settings").GetProperty("packetSize").GetString()=="512-1200","Gecko fragmentation range mapped");
-}
-var hy2Ech=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?ech=YWJj#ECH");
-using(var echDoc=JsonDocument.Parse(hy2Ech.ConfigJson))
- Check(echDoc.RootElement.GetProperty("outbounds")[0].GetProperty("streamSettings").GetProperty("tlsSettings").GetProperty("echConfigList").GetString()=="YWJj","Hysteria2 ECH config retained");
-
-var hy2Gecko=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?obfs=gecko&obfs-password=secret#Gecko");
-using(var geckoDoc=JsonDocument.Parse(hy2Gecko.ConfigJson))
-{
- var mask=geckoDoc.RootElement.GetProperty("outbounds")[0].GetProperty("streamSettings").GetProperty("finalmask").GetProperty("udp")[0];
- Check(mask.GetProperty("type").GetString()=="salamander","Gecko uses Salamander base mask");
- Check(mask.GetProperty("settings").GetProperty("packetSize").GetString()=="512-1200","Gecko fragmentation range mapped");
 }
 var hy2Ech=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?ech=YWJj#ECH");
 using(var echDoc=JsonDocument.Parse(hy2Ech.ConfigJson))
