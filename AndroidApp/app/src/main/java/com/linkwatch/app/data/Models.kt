@@ -44,6 +44,7 @@ data class ProxyProfile(
     val lastCheckedAt: Long = 0L,
     val consecutiveFailures: Int = 0,
     val lastError: String = "",
+    val disconnectedSinceEpochMs: Long? = null,
     val uptimeHistory: List<UptimeMark> = emptyList()
 )
 
@@ -57,5 +58,7 @@ data class MonitorSettings(
     val intervalSeconds: Int = DEFAULT_CHECK_INTERVAL_SECONDS,
     val failureThreshold: Int = DEFAULT_FAILURE_THRESHOLD,
     val primaryTestUrl: String = DEFAULT_PRIMARY_TEST_URL,
-    val fallbackTestUrl: String = DEFAULT_FALLBACK_TEST_URL
+    val fallbackTestUrl: String = DEFAULT_FALLBACK_TEST_URL,
+    val notifyOnDisconnect: Boolean = true,
+    val notifyOnRecovery: Boolean = true
 )
