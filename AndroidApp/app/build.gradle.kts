@@ -88,6 +88,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Development builds can be installed beside the public app without touching its data.
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
         release {
             isMinifyEnabled = false
             if (hasAndroidReleaseSigning) {
