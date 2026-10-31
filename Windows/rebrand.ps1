@@ -76,12 +76,10 @@ Replace-TextOnce "v2rayN\v2rayN\Views\StatusBarView.xaml" 'ToolTipText="v2rayN"'
 $windowBasePath = Join-Path $SourceRoot "v2rayN\v2rayN\Base\WindowBase.cs"
 if (-not (Test-Path $windowBasePath)) { throw "WindowBase.cs not found; cannot brand secondary window icons." }
 $windowBase = [System.IO.File]::ReadAllText($windowBasePath).Replace("`r`n", "`n")
-$oldWindowBaseConstructor = @'
-    public WindowBase()
-    {
-        Loaded += OnLoaded;
-    }
-'@
+$windowBase = [System.IO.File]::ReadAllText($windowBasePath).Replace("`r`n", "`n")
+$windowConstructorPattern = '(?m)^    public WindowBase\(\)\n    \{\n        Loaded \+= OnLoaded;\n    \}'
+$windowConstructorMatches = [regex]::Matches($windowBase, $windowConstructorPattern)
+if ($windowConstructorMatches.Count -ne 1) { throw "Expected exactly one WindowBase constructor marker; found $($windowConstructorMatches.Count)." }
 $newWindowBaseConstructor = @'
     public WindowBase()
     {
@@ -95,8 +93,8 @@ $newWindowBaseConstructor = @'
         Loaded += OnLoaded;
     }
 '@
-if (-not $windowBase.Contains($oldWindowBaseConstructor)) { throw "WindowBase constructor marker not found; refusing to patch secondary window icons." }
-$windowBase = $windowBase.Replace($oldWindowBaseConstructor, $newWindowBaseConstructor)
+$windowConstructorMatch = $windowConstructorMatches[0]
+$windowBase = $windowBase.Substring(0, $windowConstructorMatch.Index) + $newWindowBaseConstructor + $windowBase.Substring($windowConstructorMatch.Index + $windowConstructorMatch.Length)
 Write-Utf8NoBom $windowBasePath $windowBase
 
 # Remove the upstream promotional menu and its click handler.
