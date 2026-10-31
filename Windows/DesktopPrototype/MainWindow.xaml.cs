@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Controls;
 using Forms = System.Windows.Forms;
 using Drawing = System.Drawing;
-using Microsoft.Win32;
 
 namespace V2rayWatch.DesktopPrototype;
 
@@ -33,7 +32,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _storageUnavailable = true;
-            MessageBox.Show(ex.Message + Environment.NewLine + "فایل قبلی بازنویسی نمی‌شود تا اطلاعاتت از بین نرود.", "V2rayWatch", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(ex.Message + Environment.NewLine + "فایل قبلی بازنویسی نمی‌شود تا اطلاعاتت از بین نرود.", "V2rayWatch", MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             _data = new AppData();
         }
         _data.Settings ??= new MonitorSettings();
@@ -249,7 +248,7 @@ public partial class MainWindow : Window
         if (SubscriptionsGrid.SelectedItem is not SubscriptionSource source) return;
         var answer = MessageBox.Show(
             _english ? $"Remove subscription '{source.Name}' and the profiles imported from it?" : $"اشتراک «{source.Name}» و پروفایل‌هایی که از آن وارد شده‌اند حذف شوند؟",
-            "V2rayWatch", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            "V2rayWatch", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
         if (answer != MessageBoxResult.Yes) return;
         foreach (var profile in _profiles.Where(p => p.SourceSubscriptionId == source.Id).ToList()) _profiles.Remove(profile);
         _subscriptions.Remove(source);
@@ -430,15 +429,15 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!Clipboard.ContainsText()) { SetStatus(_english ? "Clipboard is empty." : "Clipboard خالی است.", true); return; }
-            _ = ImportLinksAsync(Clipboard.GetText());
+            if (!System.Windows.Clipboard.ContainsText()) { SetStatus(_english ? "Clipboard is empty." : "Clipboard خالی است.", true); return; }
+            _ = ImportLinksAsync(System.Windows.Clipboard.GetText());
         }
         catch (Exception ex) { SetStatus(ex.Message, true); }
     }
 
     private async void ImportFile_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = "V2rayWatch links and configs|*.txt;*.conf;*.json|All files|*.*", CheckFileExists = true };
+        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "V2rayWatch links and configs|*.txt;*.conf;*.json|All files|*.*", CheckFileExists = true };
         if (dialog.ShowDialog(this) != true) return;
         try { await ImportLinksAsync(await File.ReadAllTextAsync(dialog.FileName)); }
         catch (Exception ex) { SetStatus(ex.Message, true); }
@@ -484,7 +483,7 @@ public partial class MainWindow : Window
 
     private void ApplyLanguage()
     {
-        FlowDirection = _english ? FlowDirection.LeftToRight : FlowDirection.RightToLeft;
+        FlowDirection = _english ? System.Windows.FlowDirection.LeftToRight : System.Windows.FlowDirection.RightToLeft;
         foreach (var profile in _profiles) profile.English = _english;
         LanguageButton.Content = _english ? "EN / FA" : "FA / EN";
         HeaderSubtitle.Text = _english ? "Real proxy profile testing and monitoring" : "پایش و تست واقعی لینک‌های پروکسی";
