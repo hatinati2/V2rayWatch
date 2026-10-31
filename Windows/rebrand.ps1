@@ -91,6 +91,26 @@ if ($methodStart -ge 0) {
 }
 Write-Utf8NoBom $mainCsPath $mainCs
 
+# Give the process a distinct Windows taskbar identity before any WPF window is created.
+$appCodePath = Join-Path $SourceRoot "v2rayN\v2rayN\App.xaml.cs"
+if (-not (Test-Path $appCodePath)) { throw "App.xaml.cs not found; cannot set the Windows taskbar identity." }
+$appCode = [System.IO.File]::ReadAllText($appCodePath)
+if (-not $appCode.Contains("VwSetCurrentProcessExplicitAppUserModelID")) {
+    $fieldMarker = "    public static EventWaitHandle ProgramStarted;"
+    if (-not $appCode.Contains($fieldMarker)) { throw "Could not locate App class fields for the taskbar identity." }
+    $appIdField = @'
+    [global::System.Runtime.InteropServices.DllImport("shell32.dll", EntryPoint = "SetCurrentProcessExplicitAppUserModelID", CharSet = global::System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int VwSetCurrentProcessExplicitAppUserModelID(string appID);
+'@
+    $appCode = $appCode.Replace($fieldMarker, $appIdField + $fieldMarker)
+
+    $startupMarker = "    protected override void OnStartup(StartupEventArgs e)`r`n    {"
+    if (-not $appCode.Contains($startupMarker)) { $startupMarker = "    protected override void OnStartup(StartupEventArgs e)`n    {" }
+    if (-not $appCode.Contains($startupMarker)) { throw "Could not locate App.OnStartup for the taskbar identity call." }
+    $startupCall = '        try { VwSetCurrentProcessExplicitAppUserModelID("V2rayWatch.Windows.Desktop"); } catch { }'
+    $appCode = $appCode.Replace($startupMarker, $startupMarker + [Environment]::NewLine + $startupCall)
+    Write-Utf8NoBom $appCodePath $appCode
+}
 # Generate a distinct multi-resolution V2rayWatch stopwatch icon for the EXE, window and tray.
 $iconPath = Join-Path $SourceRoot "v2rayN\v2rayN\Resources\V2rayWatch.ico"
 New-Item -ItemType Directory -Force -Path (Split-Path $iconPath) | Out-Null
