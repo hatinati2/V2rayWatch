@@ -9,6 +9,8 @@ V2rayWatch is a multi-platform project with separate Android and Windows applica
 
 The Android component has its own `android-v0.2.3` tag and GitHub Release. It is intentionally separate from the existing Windows / multi-platform `v0.2.3` release; neither release replaces the other.
 
+**Download note:** the older Windows / multi-platform release page still contains a legacy debug-signed Android 0.2.2 preview asset. Do not use that preview for a new installation; use the official signed Android 0.2.3 APK linked above.
+
 ## Android application
 
 The Android app imports proxy profiles and checks each profile through a real Xray Core outbound connection. It is a monitoring tool, not a replacement for v2rayNG and not a full-device VPN/TUN client.
