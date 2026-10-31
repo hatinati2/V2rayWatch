@@ -15,6 +15,18 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+data class BackupPayload(
+    val formatVersion: Int = 1,
+    val createdAtEpochMs: Long = System.currentTimeMillis(),
+    val profiles: List<ProxyProfile>,
+    val settings: MonitorSettings
+)
+
+data class BackupRestoreResult(
+    val addedProfiles: Int,
+    val skippedProfiles: Int
+)
+
 class ProfileRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val prefs: SharedPreferences = appContext.getSharedPreferences("linkwatch_secure_store", Context.MODE_PRIVATE)
@@ -83,6 +95,57 @@ class ProfileRepository private constructor(context: Context) {
             .apply()
     }
 
+    fun createEncryptedBackup(passphrase: CharArray): ByteArray {
+        val payload = BackupPayload(
+            profiles = getProfiles(),
+            settings = settings()
+        )
+        val json = gson.toJson(payload).toByteArray(Charsets.UTF_8)
+        return try {
+            EncryptedBackupCodec.encrypt(json, passphrase)
+        } finally {
+            json.fill(0)
+        }
+    }
+
+    @Synchronized
+    fun restoreEncryptedBackup(backup: ByteArray, passphrase: CharArray): BackupRestoreResult {
+        val plaintext = EncryptedBackupCodec.decrypt(backup, passphrase)
+        val payload = try {
+            gson.fromJson(plaintext.toString(Charsets.UTF_8), BackupPayload::class.java)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Backup data is invalid or unsupported")
+        } finally {
+            plaintext.fill(0)
+        }
+
+        require(payload != null && payload.formatVersion == 1) { "Backup data version is not supported" }
+        require(payload.profiles.size <= 5_000) { "Backup contains too many profiles" }
+
+        val backupSettings = payload.settings
+        require(backupSettings != null) { "Backup settings are missing" }
+        require(backupSettings.intervalSeconds in 20..3600) { "Backup monitoring interval is invalid" }
+        require(backupSettings.failureThreshold in 1..5) { "Backup failure threshold is invalid" }
+        require(backupSettings.primaryTestUrl.startsWith("https://", ignoreCase = true)) { "Backup primary test URL must use HTTPS" }
+        require(backupSettings.fallbackTestUrl.isBlank() || backupSettings.fallbackTestUrl.startsWith("https://", ignoreCase = true)) {
+            "Backup fallback test URL must use HTTPS"
+        }
+
+        payload.profiles.forEach { profile ->
+            require(profile.configJson.length <= 2 * 1024 * 1024) { "A profile configuration in the backup is too large" }
+            try {
+                org.json.JSONObject(profile.configJson)
+            } catch (_: Exception) {
+                throw IllegalArgumentException("Backup contains an invalid profile configuration")
+            }
+        }
+
+        val merged = mergeBackedUpProfiles(_profiles.value, payload.profiles)
+        persist(merged.profiles)
+        saveSettings(backupSettings)
+        return BackupRestoreResult(addedProfiles = merged.addedCount, skippedProfiles = merged.skippedCount)
+    }
+
     private fun loadProfiles(): List<ProxyProfile> {
         val encrypted = prefs.getString("profiles_ciphertext", null) ?: return emptyList()
         return try {
@@ -106,13 +169,20 @@ class ProfileRepository private constructor(context: Context) {
 
     private fun persist(profiles: List<ProxyProfile>) {
         val plaintext = gson.toJson(profiles).toByteArray(Charsets.UTF_8)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
-        val iv = cipher.iv
-        val encrypted = cipher.doFinal(plaintext)
-        val combined = iv + encrypted
-        prefs.edit().putString("profiles_ciphertext", Base64.encodeToString(combined, Base64.NO_WRAP)).commit()
-        _profiles.value = profiles
+        try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+            val iv = cipher.iv
+            val encrypted = cipher.doFinal(plaintext)
+            val combined = iv + encrypted
+            val saved = prefs.edit()
+                .putString("profiles_ciphertext", Base64.encodeToString(combined, Base64.NO_WRAP))
+                .commit()
+            check(saved) { "Could not save encrypted profile data to local storage" }
+            _profiles.value = profiles
+        } finally {
+            plaintext.fill(0)
+        }
     }
 
     private fun getOrCreateKey(): SecretKey {

@@ -8,6 +8,7 @@ import com.linkwatch.app.LinkWatchApplication
 import com.linkwatch.app.uiError
 import com.linkwatch.app.core.ProxyLinkParser
 import com.linkwatch.app.core.XrayDelayTester
+import com.linkwatch.app.data.BackupRestoreResult
 import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.MonitorSettings
 import com.linkwatch.app.data.ProfileRepository
@@ -52,6 +53,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) { profiles, settings, monitoring, busy, message ->
         LinkWatchUiState(profiles, settings, monitoring, busy, message)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LinkWatchUiState())
+
+    suspend fun createEncryptedBackup(passphrase: CharArray): ByteArray =
+        withContext(Dispatchers.IO) {
+            try {
+                repository.createEncryptedBackup(passphrase)
+            } finally {
+                passphrase.fill('\u0000')
+            }
+        }
+
+    suspend fun restoreEncryptedBackup(backup: ByteArray, passphrase: CharArray): BackupRestoreResult =
+        withContext(Dispatchers.IO) {
+            try {
+                repository.restoreEncryptedBackup(backup, passphrase).also {
+                    settingsFlow.value = repository.settings()
+                    messageFlow.value = message(
+                        "پشتیبان بازیابی شد: ${it.addedProfiles} لینک اضافه، ${it.skippedProfiles} لینک تکراری",
+                        "Backup restored: ${it.addedProfiles} added, ${it.skippedProfiles} duplicates skipped"
+                    )
+                }
+            } finally {
+                passphrase.fill('\u0000')
+                backup.fill(0)
+            }
+        }
 
     fun importLinks(text: String) {
         if (busyFlow.value) return

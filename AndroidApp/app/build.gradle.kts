@@ -12,6 +12,18 @@ val xrayAarUrl = "https://github.com/2dust/AndroidLibXrayLite/releases/download/
 val xrayAarSha256 = "64fc529302dce728bde859f45d87a64f7289a5fbcca8ef962aae3d94c6e3fa82"
 val xrayAar = layout.projectDirectory.file("libs/libv2ray.aar").asFile
 
+val androidSigningStoreFile = providers.environmentVariable("ANDROID_SIGNING_STORE_FILE").orNull
+val androidSigningStorePassword = providers.environmentVariable("ANDROID_SIGNING_STORE_PASSWORD").orNull
+val androidSigningKeyAlias = providers.environmentVariable("ANDROID_SIGNING_KEY_ALIAS").orNull
+val androidSigningKeyPassword = providers.environmentVariable("ANDROID_SIGNING_KEY_PASSWORD").orNull
+val hasAndroidReleaseSigning = listOf(
+    androidSigningStoreFile,
+    androidSigningStorePassword,
+    androidSigningKeyAlias,
+    androidSigningKeyPassword
+).all { !it.isNullOrBlank() }
+
+
 val downloadXrayCore by tasks.registering {
     group = "setup"
     description = "Downloads the pinned Android Xray Core AAR and verifies its SHA-256."
@@ -52,6 +64,17 @@ tasks.matching { it.name == "preBuild" }.configureEach {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            if (hasAndroidReleaseSigning) {
+                storeFile = file(requireNotNull(androidSigningStoreFile))
+                storePassword = requireNotNull(androidSigningStorePassword)
+                keyAlias = requireNotNull(androidSigningKeyAlias)
+                keyPassword = requireNotNull(androidSigningKeyPassword)
+            }
+        }
+    }
+
     namespace = "com.linkwatch.app"
     compileSdk = 35
 
@@ -61,12 +84,22 @@ android {
         targetSdk = 35
         versionCode = 4
         versionName = "0.2.2"
+        manifestPlaceholders["appLabel"] = "V2rayWatch"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
+        debug {
+            // Development builds can be installed beside the public app without touching its data.
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            manifestPlaceholders["appLabel"] = "V2rayWatch Dev"
+        }
         release {
             isMinifyEnabled = false
+            if (hasAndroidReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -95,6 +128,37 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+val verifyAndroidReleaseSigning by tasks.registering {
+    group = "verification"
+    description = "Fails release packaging unless the persistent Android upload keystore is configured."
+
+    doLast {
+        val missing = listOf(
+            "ANDROID_SIGNING_STORE_FILE" to androidSigningStoreFile,
+            "ANDROID_SIGNING_STORE_PASSWORD" to androidSigningStorePassword,
+            "ANDROID_SIGNING_KEY_ALIAS" to androidSigningKeyAlias,
+            "ANDROID_SIGNING_KEY_PASSWORD" to androidSigningKeyPassword
+        ).filter { it.second.isNullOrBlank() }.map { it.first }
+
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Release signing is not configured. Set these environment variables: ${missing.joinToString()}. " +
+                    "Never commit the keystore or passwords to source control."
+            )
+        }
+        val keystore = file(requireNotNull(androidSigningStoreFile))
+        if (!keystore.isFile) {
+            throw GradleException("Android upload keystore file was not found at the configured path.")
+        }
+    }
+}
+
+tasks.configureEach {
+    if ((name.startsWith("package") || name.startsWith("bundle")) && name.contains("Release")) {
+        dependsOn(verifyAndroidReleaseSigning)
     }
 }
 

@@ -8,3 +8,8 @@ app/libs/libv2ray.aar.download
 *.apk
 *.aab
 .DS_Store
+
+# Never commit Android upload/release signing material.
+*.jks
+*.keystore
+**/secrets/

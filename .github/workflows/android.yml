@@ -5,17 +5,24 @@ on:
     branches:
       - main
       - "feature/**"
+      - "roadmap/**"
     paths:
       - "AndroidApp/**"
       - ".github/workflows/android.yml"
   workflow_dispatch:
+    inputs:
+      build_signed_release:
+        description: "Also build a signed release APK (requires repository signing secrets)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   debug-apk:
-    name: Build and test Android 0.2.2
+    name: Build and test Android development branch
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,6 +54,51 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: V2rayWatch-Android-0.2.2-debug-apk
+          name: V2rayWatch-Android-development-debug-apk
           path: AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Prepare persistent Android signing keystore
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in ANDROID_RELEASE_KEYSTORE_BASE64 ANDROID_SIGNING_STORE_PASSWORD ANDROID_SIGNING_KEY_ALIAS ANDROID_SIGNING_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              exit 1
+            fi
+          done
+          key_dir="$RUNNER_TEMP/v2raywatch-signing"
+          mkdir -p "$key_dir"
+          chmod 700 "$key_dir"
+          printf '%s' "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$key_dir/upload-keystore.jks"
+          chmod 600 "$key_dir/upload-keystore.jks"
+          echo "ANDROID_SIGNING_STORE_FILE=$key_dir/upload-keystore.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
+        working-directory: AndroidApp
+        env:
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: gradle --no-daemon :app:verifyAndroidReleaseSigning :app:assembleRelease
+
+      - name: Verify APK signature
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs AndroidApp/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload signed release candidate
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: V2rayWatch-Android-signed-release-candidate
+          path: AndroidApp/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
