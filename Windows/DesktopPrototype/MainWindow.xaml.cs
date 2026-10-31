@@ -32,7 +32,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _storageUnavailable = true;
-            System.Windows.MessageBox.Show(ex.Message + Environment.NewLine + "فایل قبلی بازنویسی نمی‌شود تا اطلاعاتت از بین نرود.", "V2rayWatch", MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(ex.Message + Environment.NewLine + "فایل قبلی بازنویسی نمی‌شود تا اطلاعاتت از بین نرود.", "V2rayWatch", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             _data = new AppData();
         }
         _data.Settings ??= new MonitorSettings();
@@ -243,10 +243,10 @@ public partial class MainWindow : Window
     private void RemoveSubscription_Click(object sender, RoutedEventArgs e)
     {
         if (SubscriptionsGrid.SelectedItem is not SubscriptionSource source) return;
-        var answer = MessageBox.Show(
+        var answer = System.Windows.MessageBox.Show(
             _english ? $"Remove subscription '{source.Name}' and the profiles imported from it?" : $"اشتراک «{source.Name}» و پروفایل‌هایی که از آن وارد شده‌اند حذف شوند؟",
             "V2rayWatch", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
-        if (answer != MessageBoxResult.Yes) return;
+        if (answer != System.Windows.MessageBoxResult.Yes) return;
         foreach (var profile in _profiles.Where(p => p.SourceSubscriptionId == source.Id).ToList()) _profiles.Remove(profile);
         _subscriptions.Remove(source);
         SaveData();
@@ -443,9 +443,9 @@ public partial class MainWindow : Window
     private void RemoveSelected_Click(object sender, RoutedEventArgs e)
     {
         if (ProfilesGrid.SelectedItem is not ServerProfile profile) return;
-        var answer = MessageBox.Show(_english ? $"Delete profile '{profile.Name}'?" : $"پروفایل «{profile.Name}» حذف شود؟",
-            "V2rayWatch", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-        if (answer != MessageBoxResult.Yes) return;
+        var answer = System.Windows.MessageBox.Show(_english ? $"Delete profile '{profile.Name}'?" : $"پروفایل «{profile.Name}» حذف شود؟",
+            "V2rayWatch", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+        if (answer != System.Windows.MessageBoxResult.Yes) return;
         _profiles.Remove(profile);
         SaveData();
         RefreshSummary();
