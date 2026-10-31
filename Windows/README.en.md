@@ -6,7 +6,7 @@ This is a Windows desktop client based on the upstream open-source v2rayN projec
 
 ## Persian and English
 
-Both Persian and English resources are included. On a fresh install, Persian is selected when the Windows UI culture is Persian; otherwise English is the default. You can change the language in the app settings.
+Both Persian and English resources are included. On a fresh install, Persian is selected when the Windows UI culture is Persian; otherwise English is the default. The dashboard language button saves the preference and automatically restarts the app in the selected language.
 
 ## Main features
 
@@ -24,7 +24,7 @@ Exact support depends on the selected core and the fields in each profile. Priva
 
 ## Scheduled link monitoring in the development preview
 
-The development branch adds a **Start monitoring** control. It uses v2rayN's real per-profile Real Ping path to test every testable profile independently of System Proxy and TUN. Intervals are 20, 30, 60, or 120 seconds; the failure threshold is 1–3 consecutive failures (default: 20 seconds and 2 failures). The profile table shows Connected, Unstable, Disconnected, or Not testable. Tray notifications are sent when a profile transitions to disconnected and when it recovers.
+The development branch adds a **Start monitoring** control. It uses v2rayN's real per-profile Real Ping path to test every testable profile independently of System Proxy and TUN. Enter any monitoring interval from 1 to 99,999 seconds (Persian, Arabic, or Latin digits are accepted); the failure threshold is 1–3 consecutive failures (default: 20 seconds and 2 failures). A delete-selected-profile button uses the upstream v2rayN removal command and confirmation flow. The profile table shows Connected, Unstable, Disconnected, or Not testable. Tray notifications are sent when a profile transitions to disconnected and when it recovers.
 
 Manual Real Ping results are kept separate from monitor rounds. New profiles added during a round are not treated as failures until the next round. Monitoring continues while the app remains running in the system tray, but stops when the process exits; start it again after relaunch. A round can take longer than the selected interval when probes time out, and rounds are never overlapped.
 
