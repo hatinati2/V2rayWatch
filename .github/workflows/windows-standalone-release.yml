@@ -1,0 +1,136 @@
+name: V2rayWatch Windows Standalone Release
+
+on:
+  push:
+    branches:
+      - "release/windows-standalone-v0.1.0"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-standalone-release-v0.1.0
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    if: github.event.head_commit.message == 'chore(release): publish standalone Windows 0.1.0'
+    name: Build, test, and publish Windows Portable
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build standalone WPF application
+        shell: pwsh
+        run: |
+          dotnet build Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw "Standalone WPF build failed." }
+
+      - name: Publish portable self-contained application
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          dotnet publish Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=false -o "$env:GITHUB_WORKSPACE\publish"
+          if ($LASTEXITCODE -ne 0) { throw "Standalone Windows publish failed." }
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\publish\V2rayWatch.exe")) {
+            throw "V2rayWatch.exe was not created."
+          }
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\publish\licenses" | Out-Null
+          Copy-Item "Windows\THIRD_PARTY_NOTICES_STANDALONE.md" "$env:GITHUB_WORKSPACE\publish\THIRD_PARTY_NOTICES.md" -Force
+          Copy-Item "Windows\README-standalone.fa.md" "$env:GITHUB_WORKSPACE\publish\README-fa.md" -Force
+          Copy-Item "Windows\README-standalone.en.md" "$env:GITHUB_WORKSPACE\publish\README-en.md" -Force
+
+      - name: Download and verify official Xray Core
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $coreVersion = "v26.10.31"
+          $coreName = "Xray-windows-64"
+          $coreZip = "$env:RUNNER_TEMP\$coreName.zip"
+          $expanded = "$env:RUNNER_TEMP\official-xray"
+          $releaseBase = "https://github.com/XTLS/Xray-core/releases/download/$coreVersion"
+          $expectedHash = "2e04a9995a6f2ad1b28c0bb25c708ecb2695e43a1c9c7889c4b6ac2b48cf7a6a"
+          Invoke-WebRequest -Uri "$releaseBase/$coreName.zip" -OutFile $coreZip
+          $actualHash = (Get-FileHash -LiteralPath $coreZip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw "Official Xray ZIP SHA-256 verification failed. Expected $expectedHash, got $actualHash."
+          }
+
+          Expand-Archive -LiteralPath $coreZip -DestinationPath $expanded -Force
+          $xray = Get-ChildItem -LiteralPath $expanded -Filter "xray.exe" -File -Recurse | Select-Object -First 1
+          if ($null -eq $xray) { throw "Official Xray Windows archive did not contain xray.exe." }
+          $publishCore = "$env:GITHUB_WORKSPACE\publish\core"
+          New-Item -ItemType Directory -Force -Path $publishCore | Out-Null
+          Copy-Item $xray.FullName (Join-Path $publishCore "xray.exe") -Force
+          foreach ($geo in @("geoip.dat", "geosite.dat")) {
+            $source = Get-ChildItem -LiteralPath $expanded -Filter $geo -File -Recurse | Select-Object -First 1
+            if ($null -ne $source) { Copy-Item $source.FullName (Join-Path $publishCore $geo) -Force }
+          }
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/XTLS/Xray-core/$coreVersion/LICENSE" -OutFile "$publishCore\CORE-LICENSE.txt"
+          & (Join-Path $publishCore "xray.exe") version
+          if ($LASTEXITCODE -ne 0) { throw "The official Xray Core failed its version smoke test." }
+
+      - name: Run parser tests and validate generated Xray configurations
+        shell: pwsh
+        run: |
+          $env:V2RAYWATCH_XRAY_PATH = "$env:GITHUB_WORKSPACE\publish\core\xray.exe"
+          dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw "Parser or official Xray validation failed." }
+
+      - name: Package Portable ZIP and checksum
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $asset = "V2rayWatch-Windows-Standalone-0.1.0-win-x64.zip"
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\publish\*" -DestinationPath "$env:GITHUB_WORKSPACE\$asset" -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath "$env:GITHUB_WORKSPACE\$asset" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $asset" | Set-Content -Path "$env:GITHUB_WORKSPACE\V2rayWatch-Windows-Standalone-0.1.0-SHA256SUMS.txt" -Encoding utf8
+          Write-Host "SHA-256: $hash"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: windows-standalone-v0.1.0
+          target_commitish: main
+          name: V2rayWatch Windows Standalone 0.1.0 (Portable Preview)
+          draft: false
+          prerelease: true
+          make_latest: false
+          generate_release_notes: false
+          body: |
+            ## اولین نسخه مستقل V2rayWatch برای Windows
+
+            این نسخه یک ابزار مستقل برای وارد کردن، تست و پایش پروفایل‌هاست؛ کلاینت VPN نیست و جایگزین v2rayN هم نیست.
+
+            ### امکانات
+            - وارد کردن لینک‌های تکی و چندتایی، Clipboard، فایل، Xray JSON و Subscriptionهای HTTPS
+            - تست اتصال هر پروفایل از مسیر outbound خودش با Xray Core و درخواست واقعی HTTPS
+            - پایش دوره‌ای، وضعیت و تأخیر، تاریخچه تست‌های خودکار، تشخیص قطعی و بازیابی و اعلان Tray
+            - مدیریت مستقل Subscriptionها و حفظ پروفایل‌های دستی
+            - رابط فارسی و انگلیسی
+            - محافظت از داده‌های محلی با Windows DPAPI
+
+            ### دریافت و اجرا
+            فایل ZIP را دانلود و در یک پوشه استخراج کنید؛ سپس V2rayWatch.exe را اجرا کنید. این بسته برای Windows 10/11 نسخه x64 و به‌صورت self-contained ساخته شده و نصب جداگانه .NET لازم ندارد.
+
+            ### محدودیت‌های این نسخه
+            - این برنامه System Proxy ویندوز را تغییر نمی‌دهد و TUN یا تونل سراسری ایجاد نمی‌کند.
+            - موتور تست این نسخه Xray Core است؛ sing-box و برخی پیکربندی‌های پیشرفته هنوز پشتیبانی نشده‌اند.
+            - پایش تا زمانی انجام می‌شود که برنامه باز باشد (حتی در System Tray).
+            - Backup رمزگذاری‌شده قابل‌انتقال، Windows Service، Installer و امضای کد هنوز ارائه نشده‌اند.
+            - فایل اجرایی امضای ناشر ندارد؛ ممکن است Windows SmartScreen هشدار ناشر ناشناس نشان دهد.
+
+            ### اعتبارسنجی و تمامیت فایل
+            CI ساخت WPF، انتشار self-contained، تست parser و اعتبارسنجی ساختار کانفیگ‌های تولیدشده با Xray رسمی را اجرا می‌کند. این بررسی‌ها جایگزین تست سرور زنده نیستند.
+            فایل SHA256SUMS برای کنترل صحت دانلود ضمیمه شده است.
+          files: |
+            V2rayWatch-Windows-Standalone-0.1.0-win-x64.zip
+            V2rayWatch-Windows-Standalone-0.1.0-SHA256SUMS.txt
+          fail_on_unmatched_files: true
