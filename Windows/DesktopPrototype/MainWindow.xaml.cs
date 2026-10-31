@@ -172,7 +172,8 @@ public partial class MainWindow : Window
             var source = new SubscriptionSource
             {
                 Url = url,
-                Name = Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : "Subscription"
+                Name = Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : "Subscription",
+                English = _english
             };
             var added = 0;
             foreach (var profile in parsed)
@@ -259,16 +260,53 @@ public partial class MainWindow : Window
 
     private void RemoveSubscription_Click(object sender, RoutedEventArgs e)
     {
-        if (SubscriptionsGrid.SelectedItem is not SubscriptionSource source) return;
+        if (SubscriptionsGrid.SelectedItem is SubscriptionSource source)
+            RemoveSubscriptionSource(source);
+        else
+            SetStatus(_english ? "Select a subscription first." : "ابتدا یک اشتراک را انتخاب کن.", true);
+    }
+
+    private void RemoveSubscriptionRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy)
+        {
+            SetStatus(_english ? "Please wait until the current operation finishes." : "ابتدا صبر کن عملیات فعلی تمام شود.", true);
+            return;
+        }
+
+        if (sender is FrameworkElement element && element.DataContext is SubscriptionSource source)
+            RemoveSubscriptionSource(source);
+    }
+
+    private void RemoveSubscriptionSource(SubscriptionSource source)
+    {
+        if (_busy || !_subscriptions.Contains(source)) return;
+
+        var ownedProfiles = _profiles
+            .Where(profile => string.Equals(profile.SourceSubscriptionId, source.Id, StringComparison.Ordinal))
+            .ToList();
         var answer = System.Windows.MessageBox.Show(
-            _english ? $"Remove subscription '{source.Name}' and the profiles imported from it?" : $"اشتراک «{source.Name}» و پروفایل‌هایی که از آن وارد شده‌اند حذف شوند؟",
+            _english
+                ? $"Remove subscription '{source.Name}' and its {ownedProfiles.Count} imported profile(s)? Manually added profiles will remain."
+                : $"منبع اشتراک «{source.Name}» و {ownedProfiles.Count} لینک واردشده از آن حذف شوند؟ لینک‌های دستی باقی می‌مانند؟",
             "V2rayWatch", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
         if (answer != System.Windows.MessageBoxResult.Yes) return;
-        foreach (var profile in _profiles.Where(p => p.SourceSubscriptionId == source.Id).ToList()) _profiles.Remove(profile);
+
+        foreach (var profile in ownedProfiles) _profiles.Remove(profile);
         _subscriptions.Remove(source);
+        SubscriptionsGrid.SelectedItem = null;
         SaveData();
         RefreshSummary();
-        SetStatus(_english ? "Subscription source removed." : "منبع اشتراک حذف شد.", false);
+        SetStatus(
+            _english ? $"Subscription '{source.Name}' and its imported profiles were removed." : $"اشتراک «{source.Name}» و لینک‌های واردشده از آن حذف شدند.",
+            false);
+    }
+
+    private void SubscriptionsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var selected = SubscriptionsGrid.SelectedItem is SubscriptionSource;
+        UpdateSubscriptionButton.IsEnabled = selected && !_busy;
+        RemoveSubscriptionButton.IsEnabled = selected && !_busy;
     }
 
     private async void TestSelected_Click(object sender, RoutedEventArgs e)
@@ -532,6 +570,7 @@ public partial class MainWindow : Window
     {
         FlowDirection = _english ? System.Windows.FlowDirection.LeftToRight : System.Windows.FlowDirection.RightToLeft;
         foreach (var profile in _profiles) profile.English = _english;
+        foreach (var subscription in _subscriptions) subscription.English = _english;
         LanguageButton.Content = _english ? "EN / FA" : "FA / EN";
         ThemeButton.Content = _data.LightTheme ? (_english ? "Dark theme" : "تم تیره") : (_english ? "Light theme" : "تم روشن");
         HeaderSubtitle.Text = _english ? "Real proxy profile testing and monitoring" : "پایش و تست واقعی لینک‌های پروکسی";
@@ -564,6 +603,10 @@ public partial class MainWindow : Window
         UpdateAllSubscriptionsButton.Content = _english ? "Update all subscriptions" : "به‌روزرسانی همه اشتراک‌ها";
         RemoveSubscriptionButton.Content = _english ? "Remove subscription" : "حذف منبع اشتراک";
         RemoveAllSubscriptionsButton.Content = _english ? "Remove all subscriptions and their profiles" : "حذف همه اشتراک‌ها و لینک‌هایشان";
+        SubscriptionsGrid.Columns[0].Header = _english ? "Name" : "نام";
+        SubscriptionsGrid.Columns[1].Header = _english ? "Links" : "تعداد";
+        SubscriptionsGrid.Columns[2].Header = _english ? "Last fetched" : "آخرین دریافت";
+        SubscriptionsGrid.Columns[3].Header = _english ? "Action" : "عملیات";
         ProfilesGrid.Columns[0].Header = _english ? "Profile" : "نام پروفایل";
         ProfilesGrid.Columns[1].Header = _english ? "Protocol" : "پروتکل";
         ProfilesGrid.Columns[2].Header = _english ? "Host" : "میزبان";
@@ -614,7 +657,8 @@ public partial class MainWindow : Window
         RemoveSelectedButton.IsEnabled = !busy && ProfilesGrid.SelectedItem is ServerProfile;
         DeleteAllProfilesButton.IsEnabled = !busy;
         RemoveAllSubscriptionsButton.IsEnabled = !busy;
-        UpdateSubscriptionButton.IsEnabled = !busy;
+        UpdateSubscriptionButton.IsEnabled = !busy && SubscriptionsGrid.SelectedItem is SubscriptionSource;
+        RemoveSubscriptionButton.IsEnabled = !busy && SubscriptionsGrid.SelectedItem is SubscriptionSource;
         UpdateAllSubscriptionsButton.IsEnabled = !busy;
         if (message is not null) SetStatus(message, false);
     }

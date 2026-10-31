@@ -46,7 +46,14 @@ public sealed class SubscriptionSource
     public string Url { get; set; } = "";
     public DateTimeOffset? LastUpdatedUtc { get; set; }
     public int ProfileCount { get; set; }
-    public string LastUpdatedDisplay => LastUpdatedUtc?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "هنوز دریافت نشده";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool English { get; set; }
+    public string LastUpdatedDisplay => LastUpdatedUtc is null
+        ? (English ? "Not fetched yet" : "هنوز دریافت نشده")
+        : LastUpdatedUtc.Value.ToLocalTime().ToString(
+            English ? "yyyy-MM-dd HH:mm" : "yyyy/MM/dd HH:mm",
+            English ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture);
+    public string RemoveActionDisplay => English ? "Remove" : "حذف";
 }
 
 public sealed class MonitorSettings

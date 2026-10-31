@@ -104,6 +104,13 @@ try { ServerProfileParser.ParseMany("this is not a subscription"); }
 catch (FormatException) { malformed = true; }
 Check(malformed, "invalid subscription response rejected instead of silently adding zero profiles");
 
+var subscriptionLanguage = new SubscriptionSource { English = true };
+Check(subscriptionLanguage.LastUpdatedDisplay == "Not fetched yet", "subscription empty state is English");
+Check(subscriptionLanguage.RemoveActionDisplay == "Remove", "subscription row remove action is English");
+subscriptionLanguage.English = false;
+Check(subscriptionLanguage.LastUpdatedDisplay == "هنوز دریافت نشده", "subscription empty state is Persian");
+Check(subscriptionLanguage.RemoveActionDisplay == "حذف", "subscription row remove action is Persian");
+
 Console.WriteLine("All V2rayWatch standalone profile parser smoke tests passed.");
 static void ValidateWithXray(string xrayPath,ServerProfile profile)
 {

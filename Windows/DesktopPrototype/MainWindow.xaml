@@ -208,7 +208,8 @@
               <TextBlock x:Name="SubscriptionsTitle" Text="مدیریت اشتراک‌ها" FontSize="15" FontWeight="SemiBold"/>
               <TextBlock x:Name="SubscriptionsHint" Text="منابع Subscription ذخیره می‌شوند و هرکدام را می‌توان جداگانه به‌روزرسانی کرد." Foreground="{DynamicResource ThemeMutedBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,8"/>
               <DataGrid x:Name="SubscriptionsGrid" Height="190" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
-                        SelectionMode="Single" SelectionUnit="FullRow" Background="{DynamicResource ThemeWindowBgBrush}" Foreground="{DynamicResource ThemeTextBrush}"
+                        SelectionMode="Single" SelectionUnit="FullRow" SelectionChanged="SubscriptionsGrid_SelectionChanged"
+                        Background="{DynamicResource ThemeWindowBgBrush}" Foreground="{DynamicResource ThemeTextBrush}"
                         RowBackground="{DynamicResource ThemePanelBrush}" AlternatingRowBackground="{DynamicResource ThemePanelAltBrush}" BorderBrush="{DynamicResource ThemeLineBrush}"
                         GridLinesVisibility="Horizontal" HeadersVisibility="Column" FontSize="11"
                         ColumnHeaderStyle="{StaticResource GridHeader}" CellStyle="{StaticResource GridCell}" RowStyle="{StaticResource GridRow}">
@@ -216,11 +217,19 @@
                   <DataGridTextColumn Header="نام" Binding="{Binding Name}" Width="*"/>
                   <DataGridTextColumn Header="تعداد" Binding="{Binding ProfileCount}" Width="55"/>
                   <DataGridTextColumn Header="آخرین دریافت" Binding="{Binding LastUpdatedDisplay}" Width="125"/>
+                  <DataGridTemplateColumn Header="عملیات" Width="64">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <Button Content="{Binding RemoveActionDisplay}" Tag="{Binding}" Click="RemoveSubscriptionRow_Click"
+                                Padding="5,3" Margin="1" MinWidth="52" ToolTip="{Binding RemoveActionDisplay}"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
                 </DataGrid.Columns>
               </DataGrid>
-              <Button x:Name="UpdateSubscriptionButton" Content="به‌روزرسانی اشتراک انتخاب‌شده" Click="UpdateSubscription_Click" HorizontalAlignment="Stretch" Margin="0,8,0,0"/>
+              <Button x:Name="UpdateSubscriptionButton" Content="به‌روزرسانی اشتراک انتخاب‌شده" Click="UpdateSubscription_Click" IsEnabled="False" HorizontalAlignment="Stretch" Margin="0,8,0,0"/>
               <Button x:Name="UpdateAllSubscriptionsButton" Content="به‌روزرسانی همه اشتراک‌ها" Click="UpdateAllSubscriptions_Click" HorizontalAlignment="Stretch"/>
-              <Button x:Name="RemoveSubscriptionButton" Content="حذف منبع اشتراک" Click="RemoveSubscription_Click" HorizontalAlignment="Stretch"/>
+              <Button x:Name="RemoveSubscriptionButton" Content="حذف منبع اشتراک" Click="RemoveSubscription_Click" IsEnabled="False" HorizontalAlignment="Stretch"/>
               <Button x:Name="RemoveAllSubscriptionsButton" Content="حذف همه اشتراک‌ها و لینک‌هایشان" Click="RemoveAllSubscriptions_Click" HorizontalAlignment="Stretch" Margin="0,8,0,0"/>
             </StackPanel>
           </Border>
