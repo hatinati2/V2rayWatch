@@ -112,7 +112,7 @@ $dashboardMarkup = @'
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <DockPanel>
               <TextBlock Text="{x:Static resx:ResUI.TbConnections}" Foreground="#F4F8FF" FontWeight="SemiBold" FontSize="15"/>
-              <TextBlock Text="ENGINE STATUS" Foreground="{StaticResource VW.Muted}" FontSize="9" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+              <TextBlock x:Name="vwConnectionModeLabel" Text="WINDOWS CONNECTION" Foreground="{StaticResource VW.Muted}" FontSize="9" DockPanel.Dock="Left" VerticalAlignment="Center"/>
             </DockPanel>
             <Grid Grid.Row="1" Margin="0,15">
               <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/></Grid.ColumnDefinitions>
@@ -127,7 +127,7 @@ $dashboardMarkup = @'
             </Grid>
             <StackPanel Grid.Row="2" Orientation="Horizontal">
               <Button Style="{StaticResource VW.Button}" Background="#087EBA" BorderBrush="{StaticResource VW.Cyan}" Content="{x:Static resx:ResUI.menuSetDefaultServer}" Command="{Binding ProfilesViewModel.SetDefaultServerCmd}"/>
-              <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuRealPingServer}" Command="{Binding ProfilesViewModel.FastRealPingCmd}"/>
+              <Button x:Name="vwManualProbeButton" Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuRealPingServer}" Command="{Binding ProfilesViewModel.FastRealPingCmd}"/>
             </StackPanel>
           </Grid>
         </Border>
@@ -193,7 +193,7 @@ $dashboardMarkup = @'
           <Border Style="{StaticResource VW.Card}" Margin="7,0,0,9">
             <StackPanel>
               <TextBlock Text="{x:Static resx:ResUI.menuSystemproxy}" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
-              <TextBlock Text="System Proxy" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,3,0,8"/>
+              <TextBlock x:Name="vwSystemProxyDescription" Text="Windows apps use the active profile through the local proxy." Foreground="{StaticResource VW.Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,8"/>
               <StackPanel Orientation="Horizontal">
                 <Button Style="{StaticResource VW.Button}" Background="#087EBA" Content="{x:Static resx:ResUI.menuSystemProxySet}" Command="{Binding StatusBarViewModel.SystemProxySetCmd}"/>
                 <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSystemProxyClear}" Command="{Binding StatusBarViewModel.SystemProxyClearCmd}"/>
@@ -204,7 +204,8 @@ $dashboardMarkup = @'
           <Border Style="{StaticResource VW.Card}" Margin="7,0,0,9">
             <StackPanel>
               <TextBlock Text="{x:Static resx:ResUI.TbEnableTunAs}" Foreground="#F4F8FF" FontSize="15" FontWeight="SemiBold"/>
-              <TextBlock Text="{x:Static resx:ResUI.NotRunAsAdmin}" Foreground="{StaticResource VW.Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,8"/>
+              <TextBlock Text="{x:Static resx:ResUI.NotRunAsAdmin}" Foreground="{StaticResource VW.Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,4"/>
+              <TextBlock x:Name="vwTunDescription" Text="TUN routes Windows traffic through the active profile; it is not required for link tests." Foreground="{StaticResource VW.Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
               <CheckBox Content="{x:Static resx:ResUI.TbEnableTunAs}" IsChecked="{Binding StatusBarViewModel.EnableTun, Mode=TwoWay}" Foreground="{StaticResource VW.Cyan}" FontSize="13"/>
             </StackPanel>
           </Border>
@@ -283,6 +284,27 @@ $codePath = Join-Path $SourceRoot "v2rayN\v2rayN\Views\MainWindow.xaml.cs"
 if (-not (Test-Path $codePath)) { throw "Upstream MainWindow.xaml.cs not found: $codePath" }
 $code = [System.IO.File]::ReadAllText($codePath)
 $flowStatement = '        vwDashboard.FlowDirection = global::System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("fa", global::System.StringComparison.OrdinalIgnoreCase) ? global::System.Windows.FlowDirection.RightToLeft : global::System.Windows.FlowDirection.LeftToRight;'
+if (-not $code.Contains("vwManualProbeButton.ToolTip")) {
+    $initializeMarker = "        InitializeComponent();"
+    if (-not $code.Contains($initializeMarker)) { throw "Could not locate InitializeComponent for V2rayWatch mode labels." }
+    $uiModeLabels = @'
+        var vwIsPersian = global::System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("fa", global::System.StringComparison.OrdinalIgnoreCase);
+        vwConnectionModeLabel.Text = vwIsPersian ? "اتصال ویندوز" : "WINDOWS CONNECTION";
+        vwManualProbeButton.Content = vwIsPersian ? "تست واقعی همه لینک‌ها" : "Test all links";
+        vwManualProbeButton.ToolTip = vwIsPersian
+            ? "هر پروفایل مستقل و از مسیر Core موقت خودش با درخواست HTTPS بررسی می‌شود؛ نیازی به فعال‌کردن System Proxy یا TUN نیست."
+            : "Each profile is checked independently using its own temporary core and an HTTPS request. System Proxy and TUN do not need to be enabled.";
+        vwSystemProxyDescription.Text = vwIsPersian
+            ? "ترافیک برنامه‌های ویندوز از پروفایل فعال عبور می‌کند؛ این گزینه برای تست سلامت لینک لازم نیست."
+            : "Routes Windows app traffic through the active profile. It is not required for link health checks.";
+        vwTunDescription.Text = vwIsPersian
+            ? "تونل ترافیک ویندوز از مسیر پروفایل فعال؛ برای تست مستقل لینک‌ها لازم نیست."
+            : "Routes Windows traffic through the active profile. It is not required for independent link tests.";
+'@
+    $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $uiModeLabels.TrimEnd())
+    [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
+}
+
 if (-not $code.Contains("vwDashboard.FlowDirection")) {
     $initializeMarker = "        InitializeComponent();"
     if (-not $code.Contains($initializeMarker)) { throw "Could not locate InitializeComponent in upstream MainWindow.xaml.cs." }
