@@ -21,6 +21,10 @@ function Replace-TextOnce([string]$RelativePath, [string]$Old, [string]$New) {
 Replace-TextOnce "v2rayN\ServiceLib\Global.cs" 'public const string AppName = "v2rayN";' 'public const string AppName = "V2rayWatch";'
 Replace-TextOnce "v2rayN\ServiceLib\Global.cs" 'public const string AutoRunName = "v2rayNAutoRun";' 'public const string AutoRunName = "V2rayWatchAutoRun";'
 Replace-TextOnce "v2rayN\ServiceLib\Global.cs" '{ ECoreType.v2rayN, "2dust/v2rayN" },' '{ ECoreType.v2rayN, "hatinati2/V2rayWatch" },'
+
+# Keep upstream dialogs and secondary windows on the Android app's light blue Material palette.
+Replace-TextOnce "v2rayN\v2rayN\App.xaml" 'PrimaryColor="Blue"' 'PrimaryColor="Indigo"'
+Replace-TextOnce "v2rayN\v2rayN\App.xaml" 'SecondaryColor="Lime"' 'SecondaryColor="BlueGrey"'
 Replace-TextOnce "v2rayN\ServiceLib\Global.cs" 'public const string PromotionUrl = @"aHR0cHM6Ly85LjIzNDQ1Ni54eXovYWJjLmh0bWw=";' 'public const string PromotionUrl = "";'
 
 # Prefer Persian on Persian Windows installations, otherwise English.
@@ -196,6 +200,24 @@ try {
 finally {
     $iconWriter.Dispose()
     $iconStream.Dispose()
+}
+
+# v2rayN switches among four tray/taskbar icons based on proxy mode.
+# Use the exact V2rayWatch stopwatch artwork for every state so the brand never changes.
+$iconDirectories = @(
+    (Join-Path $SourceRoot "v2rayN\v2rayN\Resources"),
+    (Join-Path $SourceRoot "v2rayN\v2rayN.Desktop\Assets")
+)
+foreach ($iconDirectory in $iconDirectories) {
+    if (Test-Path $iconDirectory) {
+        foreach ($iconIndex in 1..4) {
+            $stateIconPath = Join-Path $iconDirectory "NotifyIcon$iconIndex.ico"
+            if (-not (Test-Path $stateIconPath)) {
+                throw "Expected tray/taskbar icon slot not found: $stateIconPath"
+            }
+            Copy-Item -LiteralPath $iconPath -Destination $stateIconPath -Force
+        }
+    }
 }
 
 Write-Host "V2rayWatch branding applied to upstream v2rayN 7.25.6."
