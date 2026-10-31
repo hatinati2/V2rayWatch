@@ -135,14 +135,13 @@ $dashboardMarkup = @'
       <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
         <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuReload}" Command="{Binding ReloadCmd}"/>
         <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuAddServerViaClipboard}" Command="{Binding AddServerViaClipboardCmd}"/>
-        <ComboBox x:Name="vwMonitorIntervalCombo" Width="116" Margin="7,0,3,0" Padding="7" SelectedIndex="0"
-                  ToolTip="Monitoring interval / بازهٔ بررسی" Background="#FFFFFF" Foreground="#172B4D"
-                  BorderBrush="{StaticResource VW.Line}" ItemContainerStyle="{StaticResource VW.ComboBoxItem}" FontSize="13">
-          <ComboBoxItem Content="20 seconds" Tag="20"/>
-          <ComboBoxItem Content="30 seconds" Tag="30"/>
-          <ComboBoxItem Content="60 seconds" Tag="60"/>
-          <ComboBoxItem Content="120 seconds" Tag="120"/>
-        </ComboBox>
+        <TextBlock x:Name="vwMonitorIntervalLabel" Text="Interval (sec)" Foreground="{StaticResource VW.Muted}" FontSize="12" VerticalAlignment="Center" Margin="7,0,3,0"/>
+        <TextBox x:Name="vwMonitorIntervalInput" Text="20" Width="88" MaxLength="5" Margin="3,0,5,0" Padding="7,5"
+                 ToolTip="Enter any interval from 1 to 99999 seconds / فاصله از ۱ تا ۹۹۹۹۹ ثانیه"
+                 Background="#FFFFFF" Foreground="#172B4D" BorderBrush="{StaticResource VW.Line}"
+                 VerticalContentAlignment="Center" HorizontalContentAlignment="Center" TextAlignment="Center"
+                 FlowDirection="LeftToRight" FontSize="13"
+                 PreviewTextInput="VwIntervalInput_PreviewTextInput" DataObject.Pasting="VwIntervalInput_Pasting"/>
         <ComboBox x:Name="vwMonitorFailureCombo" Width="132" Margin="3,0" Padding="7" SelectedIndex="1"
                   ToolTip="Failures before alert / تعداد خطا تا هشدار" Background="#FFFFFF" Foreground="#172B4D"
                   BorderBrush="{StaticResource VW.Line}" ItemContainerStyle="{StaticResource VW.ComboBoxItem}" FontSize="13">
@@ -256,6 +255,7 @@ $dashboardMarkup = @'
               <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSetDefaultServer}" Command="{Binding ProfilesViewModel.SetDefaultServerCmd}"/>
               <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuMixedTestServer}" Command="{Binding ProfilesViewModel.MixedTestServerCmd}"/>
               <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuAddServerViaClipboard}" Command="{Binding AddServerViaClipboardCmd}"/>
+              <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuRemoveServer}" Command="{Binding ProfilesViewModel.RemoveServerCmd}" ToolTip="Delete the selected profile from the local list"/>
             </StackPanel>
           </Grid>
         </Border>
@@ -413,6 +413,8 @@ if (-not $code.Contains("vwManualProbeButton.ToolTip")) {
         vwTunDescription.Text = vwIsPersian
             ? "تونل ترافیک ویندوز از مسیر پروفایل فعال؛ برای تست مستقل لینک‌ها لازم نیست."
             : "Routes Windows traffic through the active profile. It is not required for independent link tests.";
+        vwMonitorIntervalLabel.Text = vwIsPersian ? "فاصله (ثانیه)" : "Interval (sec)";
+        vwMonitorIntervalInput.ToolTip = vwIsPersian ? "فاصله را از ۱ تا ۹۹۹۹۹ ثانیه وارد کن" : "Enter an interval from 1 to 99999 seconds.";
         vwMonitorToggleButton.Content = vwIsPersian ? "شروع پایش" : "Start monitoring";
         vwMonitorStatus.Text = vwIsPersian ? "پایش متوقف است" : "Monitoring stopped";
         vwMonitorToggleButton.ToolTip = vwIsPersian ? "آزمون دوره‌ای همهٔ لینک‌ها؛ مستقل از System Proxy و TUN" : "Periodically test all links independently of System Proxy and TUN.";
@@ -516,9 +518,9 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
             }
         }
         catch { }
-        _vwMonitorIntervalSeconds = new[] { 20, 30, 60, 120 }.Contains(_vwMonitorIntervalSeconds) ? _vwMonitorIntervalSeconds : 20;
+        _vwMonitorIntervalSeconds = global::System.Math.Clamp(_vwMonitorIntervalSeconds, 1, 99999);
         _vwMonitorFailureThreshold = global::System.Math.Clamp(_vwMonitorFailureThreshold, 1, 3);
-        VwSelectComboTag(vwMonitorIntervalCombo, _vwMonitorIntervalSeconds);
+        vwMonitorIntervalInput.Text = _vwMonitorIntervalSeconds.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
         VwSelectComboTag(vwMonitorFailureCombo, _vwMonitorFailureThreshold);
     }
 
@@ -537,6 +539,42 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
     private static int VwReadComboTag(global::System.Windows.Controls.ComboBox combo, int fallback)
     {
         return combo.SelectedItem is global::System.Windows.Controls.ComboBoxItem item && int.TryParse(item.Tag?.ToString(), out var value) ? value : fallback;
+    }
+
+    private static string VwNormalizeDigits(string value)
+    {
+        var chars = value.ToCharArray();
+        for (var i = 0; i < chars.Length; i++)
+        {
+            if (chars[i] >= '\\u06F0' && chars[i] <= '\\u06F9')
+                chars[i] = (char)('0' + chars[i] - '\\u06F0');
+            else if (chars[i] >= '\\u0660' && chars[i] <= '\\u0669')
+                chars[i] = (char)('0' + chars[i] - '\\u0660');
+        }
+        return new string(chars);
+    }
+
+    private void VwIntervalInput_PreviewTextInput(object sender, global::System.Windows.Input.TextCompositionEventArgs e)
+    {
+        e.Handled = !e.Text.All(char.IsDigit);
+    }
+
+    private void VwIntervalInput_Pasting(object sender, global::System.Windows.DataObjectPastingEventArgs e)
+    {
+        if (!e.DataObject.GetDataPresent(global::System.Windows.DataFormats.UnicodeText)
+            || e.DataObject.GetData(global::System.Windows.DataFormats.UnicodeText) is not string pasted
+            || !pasted.All(char.IsDigit))
+        {
+            e.CancelCommand();
+        }
+    }
+
+    private bool VwTryReadMonitorInterval(out int seconds)
+    {
+        var normalized = VwNormalizeDigits(vwMonitorIntervalInput.Text.Trim());
+        return int.TryParse(normalized, global::System.Globalization.NumberStyles.None,
+            global::System.Globalization.CultureInfo.InvariantCulture, out seconds)
+            && seconds >= 1 && seconds <= 99999;
     }
 
     private void VwSaveMonitorSettings()
@@ -560,14 +598,25 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
             return;
         }
         if (ViewModel?.ProfilesViewModel == null) return;
-        _vwMonitorIntervalSeconds = VwReadComboTag(vwMonitorIntervalCombo, 20);
+        if (!VwTryReadMonitorInterval(out var selectedInterval))
+        {
+            vwMonitorIntervalInput.BorderBrush = global::System.Windows.Media.Brushes.IndianRed;
+            vwMonitorStatus.Text = VwIsPersian()
+                ? "فاصله باید عددی بین ۱ تا ۹۹۹۹۹ ثانیه باشد."
+                : "Interval must be a whole number from 1 to 99999 seconds.";
+            vwMonitorIntervalInput.Focus();
+            vwMonitorIntervalInput.SelectAll();
+            return;
+        }
+        vwMonitorIntervalInput.BorderBrush = (global::System.Windows.Media.Brush)vwDashboard.Resources["VW.Line"];
+        _vwMonitorIntervalSeconds = selectedInterval;
         _vwMonitorFailureThreshold = VwReadComboTag(vwMonitorFailureCombo, 2);
         VwSaveMonitorSettings();
         _vwMonitorFailures.Clear();
         _vwMonitorDown.Clear();
         var monitorCts = new global::System.Threading.CancellationTokenSource();
         _vwMonitorCts = monitorCts;
-        vwMonitorIntervalCombo.IsEnabled = false;
+        vwMonitorIntervalInput.IsEnabled = false;
         vwMonitorFailureCombo.IsEnabled = false;
         vwMonitorToggleButton.Content = VwIsPersian() ? "توقف پایش" : "Stop monitoring";
         vwMonitorStatus.Text = VwIsPersian() ? "در حال شروع..." : "Starting...";
@@ -585,7 +634,7 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
 
     private void VwSetMonitorStopped()
     {
-        vwMonitorIntervalCombo.IsEnabled = true;
+        vwMonitorIntervalInput.IsEnabled = true;
         vwMonitorFailureCombo.IsEnabled = true;
         vwMonitorToggleButton.Content = VwIsPersian() ? "شروع پایش" : "Start monitoring";
         vwMonitorStatus.Text = VwIsPersian() ? "پایش متوقف است" : "Monitoring stopped";
@@ -763,9 +812,13 @@ if (-not $code.Contains("VwInitializeAppearance")) {
 
     $initializeMonitorLine = "        Loaded += (_, _) => VwInitializeMonitor();"
     if (-not $code.Contains($initializeMonitorLine)) { throw "Could not locate monitor Loaded hook for appearance initialization." }
-    $code = $code.Replace($initializeMonitorLine, $initializeMonitorLine + [Environment]::NewLine + "        Loaded += (_, _) => VwInitializeAppearance();")
+    $code = $code.Replace($initializeMonitorLine, $initializeMonitorLine + [Environment]::NewLine + "        Loaded += (_, _) => VwInitializeAppearance();
+        try { VwSetCurrentProcessExplicitAppUserModelID("V2rayWatch.Windows.Desktop"); } catch { }")
 
     $appearanceMethods = @'
+
+    [global::System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = global::System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int VwSetCurrentProcessExplicitAppUserModelID(string appID);
 
     private static string VwAppearanceSettingsPath()
     {
@@ -900,13 +953,11 @@ if (-not $code.Contains("VwInitializeAppearance")) {
         vwFontColorLabel.Text = persian ? "رنگ نوشته" : "Text color";
         vwFontSizeLabel.Text = persian ? "اندازه نوشته" : "Text size";
         vwApplyAppearanceButton.Content = persian ? "اعمال و ذخیره" : "Apply and save";
-        vwLanguageToggleButton.Content = persian ? "تغییر زبان به English" : "Switch language to فارسی";
-        vwMonitorIntervalCombo.ToolTip = persian ? "فاصلهٔ بررسی خودکار لینک‌ها" : "Automatic link check interval";
+        vwLanguageToggleButton.Content = persian ? "Switch to English" : "تغییر به فارسی";
+        vwLanguageToggleButton.ToolTip = persian ? "Restart the app in English" : "برنامه را با زبان فارسی دوباره اجرا می‌کند";
+        vwMonitorIntervalLabel.Text = persian ? "فاصله (ثانیه)" : "Interval (sec)";
+        vwMonitorIntervalInput.ToolTip = persian ? "فاصله را از ۱ تا ۹۹۹۹۹ ثانیه وارد کن" : "Enter an interval from 1 to 99999 seconds.";
         vwMonitorFailureCombo.ToolTip = persian ? "تعداد خطاهای پیاپی تا ارسال هشدار" : "Consecutive failures before an alert";
-        foreach (var item in vwMonitorIntervalCombo.Items.OfType<global::System.Windows.Controls.ComboBoxItem>())
-        {
-            if (int.TryParse(item.Tag?.ToString(), out var seconds)) item.Content = persian ? $"هر {seconds} ثانیه" : $"{seconds} seconds";
-        }
         foreach (var item in vwMonitorFailureCombo.Items.OfType<global::System.Windows.Controls.ComboBoxItem>())
         {
             if (int.TryParse(item.Tag?.ToString(), out var failures)) item.Content = persian ? $"{failures} خطای متوالی" : $"{failures} consecutive failures";
@@ -927,24 +978,32 @@ if (-not $code.Contains("VwInitializeAppearance")) {
             var current = config.UiItem.CurrentLanguage;
             var next = string.Equals(current, "fa", global::System.StringComparison.OrdinalIgnoreCase) ? "en" : "fa";
             config.UiItem.CurrentLanguage = next;
-            var culture = new global::System.Globalization.CultureInfo(next);
-            global::System.Threading.Thread.CurrentThread.CurrentUICulture = culture;
-            global::System.Threading.Thread.CurrentThread.CurrentCulture = culture;
-            global::System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
-            global::System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
             await ConfigHandler.SaveConfig(config);
-            VwUpdateDashboardLanguage();
+
+            var executablePath = global::System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(executablePath))
+                throw new global::System.InvalidOperationException("Could not locate the running executable.");
+
+            var restart = global::System.Diagnostics.Process.Start(new global::System.Diagnostics.ProcessStartInfo
+            {
+                FileName = executablePath,
+                Arguments = "rebootas",
+                WorkingDirectory = global::System.AppContext.BaseDirectory,
+                UseShellExecute = false
+            });
+            if (restart == null)
+                throw new global::System.InvalidOperationException("Could not start the application again.");
+
             vwAppearanceStatus.Text = next == "fa"
-                ? "زبان فارسی ذخیره شد؛ برای ترجمهٔ کامل منوها برنامه را ببند و دوباره اجرا کن."
-                : "English saved. Restart the app to translate all upstream menus.";
-            NoticeManager.Instance.Enqueue(ResUI.NeedRebootTips);
+                ? "زبان فارسی ذخیره شد؛ برنامه در حال راه‌اندازی دوباره است."
+                : "English saved. Restarting the application...";
+            await AppManager.Instance.AppExitAsync(true);
         }
         catch (Exception ex)
         {
-            vwAppearanceStatus.Text = (VwIsPersian() ? "ذخیره زبان ناموفق بود: " : "Could not save language: ") + ex.Message;
+            vwAppearanceStatus.Text = (VwIsPersian() ? "تغییر زبان ناموفق بود: " : "Language change failed: ") + ex.Message;
         }
     }
-
 '@
     $methodMarker = "    private void AddHelpMenuItem()"
     if (-not $code.Contains($methodMarker)) { throw "Could not locate MainWindow method insertion point for appearance controls." }
