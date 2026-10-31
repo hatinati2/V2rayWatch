@@ -1,6 +1,6 @@
 # V2rayWatch — Real proxy profile monitoring
 
-**Experimental version: 0.2.1**
+**Experimental version: 0.2.2**
 
 V2rayWatch is an independent Android app for importing proxy profiles and checking each profile through a real Xray Core outbound connection. It is a monitoring tool, not a replacement for v2rayNG or a full-device VPN client.
 
@@ -26,8 +26,14 @@ The app uses `CoreController.measureDelay(url)` from AndroidLibXrayLite. The def
 - Import full Xray JSON containing `outbounds`
 - Encrypted local profile storage using AES-GCM and Android Keystore
 - Manual real-delay tests and continuous foreground monitoring
+- A 20-result uptime strip under each profile: green for successful checks, red for failed checks, and gray for empty history; oldest on the left and newest on the right
+- History is persisted with each encrypted profile (AES-GCM); it survives app restarts and is updated only by scheduled monitoring checks, not manual tests
 - Configurable check intervals: 20, 30, 60, or 120 seconds
 - Alerts when a profile goes down or recovers
+
+## Uptime history
+
+Each profile retains its 20 most recent automatic monitoring results. When upgrading from 0.2.1, existing profiles and settings are preserved; the new history starts filling from monitoring rounds performed after the upgrade.
 
 ## Current limitations
 
