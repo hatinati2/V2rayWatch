@@ -84,6 +84,19 @@ $dashboardMarkup = @'
       <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
         <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuReload}" Command="{Binding ReloadCmd}"/>
         <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuAddServerViaClipboard}" Command="{Binding AddServerViaClipboardCmd}"/>
+        <ComboBox x:Name="vwMonitorIntervalCombo" Width="72" Margin="7,0,3,0" Padding="5" SelectedIndex="0" Background="#142746" Foreground="#EAF2FF" BorderBrush="{StaticResource VW.Line}">
+          <ComboBoxItem Content="20 s" Tag="20"/>
+          <ComboBoxItem Content="30 s" Tag="30"/>
+          <ComboBoxItem Content="60 s" Tag="60"/>
+          <ComboBoxItem Content="120 s" Tag="120"/>
+        </ComboBox>
+        <ComboBox x:Name="vwMonitorFailureCombo" Width="82" Margin="3,0" Padding="5" SelectedIndex="1" Background="#142746" Foreground="#EAF2FF" BorderBrush="{StaticResource VW.Line}">
+          <ComboBoxItem Content="1 fail" Tag="1"/>
+          <ComboBoxItem Content="2 fails" Tag="2"/>
+          <ComboBoxItem Content="3 fails" Tag="3"/>
+        </ComboBox>
+        <Button x:Name="vwMonitorToggleButton" Style="{StaticResource VW.Button}" Content="Start monitor" Click="VwMonitorToggle_Click"/>
+        <TextBlock x:Name="vwMonitorStatus" Text="Monitoring stopped" Foreground="{StaticResource VW.Muted}" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0"/>
       </StackPanel>
       <TextBlock Text="کلاینت دسکتاپ فارسی / English" Foreground="{StaticResource VW.Muted}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
     </DockPanel>
@@ -179,6 +192,8 @@ $dashboardMarkup = @'
                 <DataGridTextColumn Header="{x:Static resx:ResUI.LvPort}" Binding="{Binding Port}" Width="65"/>
                 <DataGridTextColumn Header="{x:Static resx:ResUI.LvTestDelay}" Binding="{Binding DelayVal}" Width="75"/>
                 <DataGridTextColumn Header="{x:Static resx:ResUI.LvTestSpeed}" Binding="{Binding SpeedVal}" Width="75"/>
+                <DataGridTextColumn Header="Link health" Binding="{Binding VwHealth}" Width="115"/>
+                <DataGridTextColumn Header="Checked" Binding="{Binding VwLastChecked}" Width="75"/>
               </DataGrid.Columns>
             </DataGrid>
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,10,0,0">
@@ -372,4 +387,88 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
     [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
 }
 
+# Add V2rayWatch-specific per-profile health fields to the upstream profile row model.
+$profileModelPath = Join-Path $SourceRoot "v2rayN\ServiceLib\Models\Dto\ProfileItemModel.cs"
+if (-not (Test-Path $profileModelPath)) { throw "ProfileItemModel.cs not found; cannot add link health columns." }
+$profileModel = [System.IO.File]::ReadAllText($profileModelPath)
+if (-not $profileModel.Contains("VwHealth")) {
+    $delayValMarker = "    public partial string DelayVal { get; set; }"
+    if (-not $profileModel.Contains($delayValMarker)) { throw "Could not locate DelayVal in ProfileItemModel." }
+    $healthFields = @'
+    [Reactive]
+    public partial string VwHealth { get; set; } = "Unknown";
+
+    [Reactive]
+    public partial string VwLastChecked { get; set; } = "—";
+'@
+    $profileModel = $profileModel.Replace($delayValMarker, $delayValMarker + [Environment]::NewLine + $healthFields.TrimEnd())
+    [System.IO.File]::WriteAllText($profileModelPath, $profileModel, [System.Text.UTF8Encoding]::new($false))
+}
+
+# Make upstream real-ping runs awaitable and publish each real result to the dashboard monitor.
+$profilesVmPath = Join-Path $SourceRoot "v2rayN\ServiceLib\ViewModels\ProfilesViewModel.cs"
+if (-not (Test-Path $profilesVmPath)) { throw "ProfilesViewModel.cs not found; cannot wire link monitor." }
+$profilesVm = [System.IO.File]::ReadAllText($profilesVmPath)
+if (-not $profilesVm.Contains("VwSpeedTestResultReceived")) {
+    $fieldMarker = "    private string _serverFilter = string.Empty;"
+    if (-not $profilesVm.Contains($fieldMarker)) { throw "Could not locate ProfilesViewModel fields." }
+    $monitorFields = @'
+    private readonly global::System.Threading.SemaphoreSlim _vwSpeedtestSemaphore = new(1, 1);
+    public event Action<SpeedTestResult>? VwSpeedTestResultReceived;
+'@
+    $profilesVm = $profilesVm.Replace($fieldMarker, $fieldMarker + [Environment]::NewLine + $monitorFields.TrimEnd())
+
+    $oldCallback = @'
+        _speedtestService ??= new SpeedtestService(_config, async (SpeedTestResult result) =>
+        {
+            RxSchedulers.MainThreadScheduler.Schedule(() =>
+            {
+                _ = SetSpeedTestResult(result);
+            });
+            await Task.CompletedTask;
+        });
+        _speedtestService?.RunLoop(actionType, lstSelected);
+'@
+    $newCallback = @'
+        await _vwSpeedtestSemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            _speedtestService ??= new SpeedtestService(_config, async (SpeedTestResult result) =>
+            {
+                var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                RxSchedulers.MainThreadScheduler.Schedule(() =>
+                {
+                    try
+                    {
+                        SetSpeedTestResult(result).GetAwaiter().GetResult();
+                        VwSpeedTestResultReceived?.Invoke(result);
+                        completion.TrySetResult(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        completion.TrySetException(ex);
+                    }
+                });
+                await completion.Task.ConfigureAwait(false);
+            });
+            await _speedtestService.RunLoop(actionType, lstSelected, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _vwSpeedtestSemaphore.Release();
+        }
+'@
+    $nl = [Environment]::NewLine
+    $profilesVm = $profilesVm.Replace($nl, "`n")
+    $oldCallback = $oldCallback.Replace($nl, "`n")
+    $newCallback = $newCallback.Replace($nl, "`n")
+    if (-not $profilesVm.Contains($oldCallback)) { throw "Could not locate existing SpeedtestService callback block." }
+    $profilesVm = $profilesVm.Replace($oldCallback, $newCallback)
+
+    $signatureOld = "public async Task ServerSpeedtest(ESpeedActionType actionType)"
+    $signatureNew = "public async Task ServerSpeedtest(ESpeedActionType actionType, CancellationToken cancellationToken = default)"
+    if (-not $profilesVm.Contains($signatureOld)) { throw "Could not locate ServerSpeedtest method signature." }
+    $profilesVm = $profilesVm.Replace($signatureOld, $signatureNew)
+    [System.IO.File]::WriteAllText($profilesVmPath, $profilesVm, [System.Text.UTF8Encoding]::new($false))
+}
 Write-Host "V2rayWatch dashboard inserted into the upstream WPF main window."
