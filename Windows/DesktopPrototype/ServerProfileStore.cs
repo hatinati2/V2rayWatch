@@ -65,6 +65,11 @@ public sealed class ServerProfileStore
         File.WriteAllBytes(tempPath, envelope);
         if (File.Exists(_filePath)) File.Replace(tempPath, _filePath, null);
         else File.Move(tempPath, _filePath);
+        // Remove the early prototype's plaintext profile file only after the encrypted replacement is safely written.
+        if (File.Exists(_legacyPath))
+        {
+            try { File.Delete(_legacyPath); } catch { }
+        }
         CryptographicOperations.ZeroMemory(clear);
         CryptographicOperations.ZeroMemory(protectedBytes);
     }
