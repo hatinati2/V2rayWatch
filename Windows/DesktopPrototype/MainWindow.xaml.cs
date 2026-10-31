@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private bool _english;
     private bool _busy;
     private bool _closeCompleted;
+    private bool _storageUnavailable;
 
     public MainWindow()
     {
@@ -31,9 +32,13 @@ public partial class MainWindow : Window
         try { _data = _store.Load(); }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "V2rayWatch", MessageBoxButton.OK, MessageBoxImage.Error);
+            _storageUnavailable = true;
+            MessageBox.Show(ex.Message + Environment.NewLine + "فایل قبلی بازنویسی نمی‌شود تا اطلاعاتت از بین نرود.", "V2rayWatch", MessageBoxButton.OK, MessageBoxImage.Error);
             _data = new AppData();
         }
+        _data.Settings ??= new MonitorSettings();
+        _data.Profiles ??= [];
+        _data.Subscriptions ??= [];
 
         foreach (var profile in _data.Profiles.ToList())
         {
@@ -113,6 +118,7 @@ public partial class MainWindow : Window
         try
         {
             var parsed = await Task.Run(() => ServerProfileParser.ParseMany(text));
+            SearchInput.Clear();
             var existing = _profiles.Select(p => p.RawUri).ToHashSet(StringComparer.Ordinal);
             var added = 0;
             foreach (var profile in parsed)
@@ -136,6 +142,7 @@ public partial class MainWindow : Window
         try
         {
             var parsed = await _subscriptionClient.FetchProfilesAsync(url, _lifetime.Token);
+            SearchInput.Clear();
             var existing = _profiles.Select(p => p.RawUri).ToHashSet(StringComparer.Ordinal);
             var source = new SubscriptionSource
             {
@@ -278,9 +285,8 @@ public partial class MainWindow : Window
         });
     }
 
-    private void ApplyTestResult(ServerProfile profile, DelayTestResult result, bool fromMonitor)
+    private void ApplyTestResult(ServerProfile profile, DelayTestResult result, bool fromMonitor, string previousStatus)
     {
-        var previousStatus = profile.Status;
         profile.LastCheckedUtc = DateTimeOffset.UtcNow;
         if (result.Success)
         {
@@ -290,6 +296,7 @@ public partial class MainWindow : Window
         }
         else
         {
+            profile.DelayMs = null;
             profile.ConsecutiveFailures++;
             profile.Status = fromMonitor && profile.ConsecutiveFailures < _data.Settings.ConsecutiveFailureThreshold
                 ? "Unstable" : "Disconnected";
@@ -541,6 +548,7 @@ public partial class MainWindow : Window
 
     private void SaveData()
     {
+        if (_storageUnavailable) return;
         _data.Profiles = _profiles.ToList();
         _data.Subscriptions = _subscriptions.ToList();
         _data.English = _english;
