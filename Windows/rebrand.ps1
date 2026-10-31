@@ -72,6 +72,33 @@ Replace-TextOnce "v2rayN\v2rayN\Views\MainWindow.xaml" 'Icon="/Resources/v2rayN.
 Replace-TextOnce "v2rayN\v2rayN\Views\StatusBarView.xaml" 'IconSource="/Resources/v2rayN.ico"' 'IconSource="/Resources/V2rayWatch.ico"'
 Replace-TextOnce "v2rayN\v2rayN\Views\StatusBarView.xaml" 'ToolTipText="v2rayN"' 'ToolTipText="V2rayWatch"'
 
+# Give every secondary WPF window the same V2rayWatch title-bar icon.
+$windowBasePath = Join-Path $SourceRoot "v2rayN\v2rayN\Base\WindowBase.cs"
+if (-not (Test-Path $windowBasePath)) { throw "WindowBase.cs not found; cannot brand secondary window icons." }
+$windowBase = [System.IO.File]::ReadAllText($windowBasePath).Replace("`r`n", "`n")
+$oldWindowBaseConstructor = @'
+    public WindowBase()
+    {
+        Loaded += OnLoaded;
+    }
+'@
+$newWindowBaseConstructor = @'
+    public WindowBase()
+    {
+        try
+        {
+            Icon = new global::System.Windows.Media.Imaging.BitmapImage(
+                new global::System.Uri("pack://application:,,,/Resources/V2rayWatch.ico", global::System.UriKind.Absolute));
+        }
+        catch { }
+
+        Loaded += OnLoaded;
+    }
+'@
+if (-not $windowBase.Contains($oldWindowBaseConstructor)) { throw "WindowBase constructor marker not found; refusing to patch secondary window icons." }
+$windowBase = $windowBase.Replace($oldWindowBaseConstructor, $newWindowBaseConstructor)
+Write-Utf8NoBom $windowBasePath $windowBase
+
 # Remove the upstream promotional menu and its click handler.
 $mainXamlPath = Join-Path $SourceRoot "v2rayN\v2rayN\Views\MainWindow.xaml"
 $mainXaml = [System.IO.File]::ReadAllText($mainXamlPath)
