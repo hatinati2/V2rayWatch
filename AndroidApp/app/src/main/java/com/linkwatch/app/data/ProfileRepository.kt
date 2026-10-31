@@ -7,7 +7,6 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.security.KeyStore
@@ -132,48 +131,19 @@ class ProfileRepository private constructor(context: Context) {
             "Backup fallback test URL must use HTTPS"
         }
 
-        val next = _profiles.value.toMutableList()
-        val knownLinks = next.map { it.rawLink }.toHashSet()
-        var added = 0
-        var skipped = 0
-
         payload.profiles.forEach { profile ->
-            require(profile.id.isNotBlank() && profile.name.isNotBlank() && profile.protocol.isNotBlank()) {
-                "Backup contains an incomplete profile"
-            }
-            require(profile.rawLink.isNotBlank() && profile.configJson.isNotBlank()) {
-                "Backup contains a profile without configuration data"
-            }
-            require(profile.port in 0..65535) { "Backup contains an invalid profile port" }
             require(profile.configJson.length <= 2 * 1024 * 1024) { "A profile configuration in the backup is too large" }
             try {
                 org.json.JSONObject(profile.configJson)
             } catch (_: Exception) {
                 throw IllegalArgumentException("Backup contains an invalid profile configuration")
             }
-
-            if (!knownLinks.add(profile.rawLink)) {
-                skipped++
-            } else {
-                val safeId = if (next.any { it.id == profile.id }) UUID.randomUUID().toString() else profile.id
-                next.add(
-                    profile.copy(
-                        id = safeId,
-                        state = LinkState.UNKNOWN,
-                        delayMs = -1L,
-                        lastCheckedAt = 0L,
-                        consecutiveFailures = 0,
-                        lastError = "",
-                        uptimeHistory = profile.uptimeHistory.orEmpty().takeLast(UPTIME_HISTORY_LIMIT)
-                    )
-                )
-                added++
-            }
         }
 
-        persist(next)
+        val merged = mergeBackedUpProfiles(_profiles.value, payload.profiles)
+        persist(merged.profiles)
         saveSettings(backupSettings)
-        return BackupRestoreResult(addedProfiles = added, skippedProfiles = skipped)
+        return BackupRestoreResult(addedProfiles = merged.addedCount, skippedProfiles = merged.skippedCount)
     }
 
     private fun loadProfiles(): List<ProxyProfile> {
