@@ -1,0 +1,10 @@
+.gradle/
+.idea/
+*.iml
+local.properties
+**/build/
+app/libs/libv2ray.aar
+app/libs/libv2ray.aar.download
+*.apk
+*.aab
+.DS_Store
