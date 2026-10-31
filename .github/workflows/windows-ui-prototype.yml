@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-link-monitor-\${{ github.event.pull_request.number || github.ref }}
+  group: windows-link-monitor-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -40,6 +40,20 @@ jobs:
           dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
           if ($LASTEXITCODE -ne 0) { throw "Profile parser smoke tests failed." }
 
+      - name: Publish portable self-contained application
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          dotnet publish Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=false -o "$env:GITHUB_WORKSPACE\publish"
+          if ($LASTEXITCODE -ne 0) { throw "Standalone Windows publish failed." }
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\publish\V2rayWatch.exe")) {
+            throw "V2rayWatch.exe was not created."
+          }
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\publish\licenses" | Out-Null
+          Copy-Item "Windows\THIRD_PARTY_NOTICES_STANDALONE.md" "$env:GITHUB_WORKSPACE\publish\THIRD_PARTY_NOTICES.md" -Force
+          Copy-Item "Windows\README-standalone.fa.md" "$env:GITHUB_WORKSPACE\publish\README-fa.md" -Force
+          Copy-Item "Windows\README-standalone.en.md" "$env:GITHUB_WORKSPACE\publish\README-en.md" -Force
+
       - name: Download pinned Xray Core package
         shell: pwsh
         run: |
@@ -63,20 +77,6 @@ jobs:
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/2dust/v2rayN-core-bin/$coreCommit/LICENSE" -OutFile "$publishCore\CORE-LICENSE.txt"
           & (Join-Path $publishCore "xray.exe") version
           if ($LASTEXITCODE -ne 0) { throw "The packaged Xray Core failed its version smoke test." }
-
-      - name: Publish portable self-contained application
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          dotnet publish Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=false -o "$env:GITHUB_WORKSPACE\publish"
-          if ($LASTEXITCODE -ne 0) { throw "Standalone Windows publish failed." }
-          if (-not (Test-Path "$env:GITHUB_WORKSPACE\publish\V2rayWatch.exe")) {
-            throw "V2rayWatch.exe was not created."
-          }
-          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\publish\licenses" | Out-Null
-          Copy-Item "Windows\THIRD_PARTY_NOTICES.md" "$env:GITHUB_WORKSPACE\publish\THIRD_PARTY_NOTICES.md" -Force
-          Copy-Item "Windows\README.fa.md" "$env:GITHUB_WORKSPACE\publish\README-fa.md" -Force
-          Copy-Item "Windows\README.en.md" "$env:GITHUB_WORKSPACE\publish\README-en.md" -Force
 
       - name: Package standalone Windows preview
         shell: pwsh
