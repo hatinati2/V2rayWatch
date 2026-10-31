@@ -255,7 +255,7 @@ $dashboardMarkup = @'
                 <DataTemplate>
                   <Grid Margin="9,1,9,5">
                     <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="88"/>
+                      <ColumnDefinition Width="128"/>
                       <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="۲۰ نتیجهٔ اخیر / Last 20" Foreground="#64748B" FontSize="10" VerticalAlignment="Center"
@@ -268,7 +268,7 @@ $dashboardMarkup = @'
                       </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                          <Border Height="9" Margin="1,2" CornerRadius="2" Background="#CBD5E1">
+                          <Border Height="9" Margin="1,2" CornerRadius="2">
                             <Border.Style>
                               <Style TargetType="{x:Type Border}">
                                 <Setter Property="Background" Value="#CBD5E1"/>
