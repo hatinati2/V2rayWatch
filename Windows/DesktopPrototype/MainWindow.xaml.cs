@@ -321,6 +321,154 @@ public partial class MainWindow : Window
         RemoveSubscriptionButton.IsEnabled = selected && !_busy;
     }
 
+    private async void ExportBackup_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        var passphrase = PassphrasePrompt.Show(this, confirm: true, english: _english);
+        if (passphrase is null) return;
+
+        try
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "V2rayWatch encrypted backup|*.v2vwbak",
+                FileName = $"V2rayWatch-Backup-{DateTime.Now:yyyyMMdd}.v2vwbak",
+                DefaultExt = ".v2vwbak",
+                AddExtension = true
+            };
+            if (dialog.ShowDialog(this) != true) return;
+
+            var encrypted = PortableBackupService.CreateBackup(_profiles.ToList(), _data.Settings, passphrase);
+            try { await File.WriteAllBytesAsync(dialog.FileName, encrypted); }
+            finally { Array.Clear(encrypted, 0, encrypted.Length); }
+
+            SetStatus(
+                _english
+                    ? $"Encrypted portable backup saved ({_profiles.Count} profile(s)). Use the same passphrase on Android."
+                    : $"پشتیبان رمزگذاری‌شده ذخیره شد ({_profiles.Count} پروفایل). برای بازیابی در اندروید همین عبارت عبور را وارد کن.",
+                false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus((_english ? "Backup export failed: " : "ساخت پشتیبان ناموفق بود: ") + ex.Message, true);
+        }
+        finally
+        {
+            Array.Clear(passphrase, 0, passphrase.Length);
+        }
+    }
+
+    private async void ImportBackup_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "V2rayWatch encrypted backup|*.v2vwbak|All files|*.*",
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        char[]? passphrase = null;
+        byte[]? encrypted = null;
+        try
+        {
+            var info = new FileInfo(dialog.FileName);
+            if (!info.Exists || info.Length is <= 0 or > PortableBackupCodec.MaximumBackupBytes)
+                throw new InvalidDataException("Backup file is empty or larger than 25 MB.");
+
+            passphrase = PassphrasePrompt.Show(this, confirm: false, english: _english);
+            if (passphrase is null) return;
+
+            SetBusy(true, _english ? "Verifying and reading backup…" : "در حال بررسی و خواندن پشتیبان…");
+            encrypted = await File.ReadAllBytesAsync(dialog.FileName);
+
+            // Decrypt and validate the entire file before touching current profiles or settings.
+            var restored = PortableBackupService.RestoreBackup(encrypted, passphrase, _profiles.ToList());
+            var wasMonitoring = _monitorCancellation is not null;
+            if (wasMonitoring) await StopMonitoringAsync();
+
+            _profiles.Clear();
+            foreach (var profile in restored.Profiles)
+            {
+                NormalizeHistory(profile);
+                profile.English = _english;
+                _profiles.Add(profile);
+            }
+
+            _data.Settings.IntervalSeconds = restored.Settings.IntervalSeconds;
+            _data.Settings.ConsecutiveFailureThreshold = restored.Settings.ConsecutiveFailureThreshold;
+            _data.Settings.PrimaryTestUrl = restored.Settings.PrimaryTestUrl;
+            _data.Settings.FallbackTestUrl = restored.Settings.FallbackTestUrl;
+            _data.Settings.NotifyOnDisconnect = restored.Settings.NotifyOnDisconnect;
+            _data.Settings.NotifyOnRecovery = restored.Settings.NotifyOnRecovery;
+
+            LoadSettingsToControls();
+            SaveData();
+            RefreshSummary();
+
+            if (wasMonitoring && _profiles.Count > 0) StartMonitoring();
+            SetStatus(
+                _english
+                    ? $"Backup restored: {restored.AddedProfiles} added, {restored.SkippedProfiles} duplicate(s) skipped. Existing profiles were preserved."
+                    : $"بازیابی انجام شد: {restored.AddedProfiles} پروفایل اضافه و {restored.SkippedProfiles} مورد تکراری رد شد. لینک‌های قبلی حفظ شدند.",
+                false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus((_english ? "Backup restore failed: " : "بازیابی پشتیبان ناموفق بود: ") + ex.Message, true);
+        }
+        finally
+        {
+            if (encrypted is not null) Array.Clear(encrypted, 0, encrypted.Length);
+            if (passphrase is not null) Array.Clear(passphrase, 0, passphrase.Length);
+            SetBusy(false);
+        }
+    }
+
+    private void ShowSelectedQr_Click(object sender, RoutedEventArgs e)
+    {
+        if (ProfilesGrid.SelectedItem is not ServerProfile profile)
+        {
+            SetStatus(_english ? "Select a profile first." : "ابتدا یک پروفایل را انتخاب کن.", true);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(profile.RawUri))
+        {
+            SetStatus(_english ? "This profile has no shareable link." : "برای این پروفایل لینک قابل اشتراک وجود ندارد.", true);
+            return;
+        }
+
+        try
+        {
+            new QrCodeWindow(profile.Name, profile.RawUri, _english) { Owner = this }.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            SetStatus((_english ? "Could not create QR code: " : "ساخت QR ناموفق بود: ") + ex.Message, true);
+        }
+    }
+
+    private async void ScanQrImage_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "QR images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff|All files|*.*",
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            var content = await Task.Run(() => QrCodeService.DecodeImageFile(dialog.FileName));
+            await ImportLinksAsync(content);
+        }
+        catch (Exception ex)
+        {
+            SetStatus((_english ? "QR image scan failed: " : "خواندن QR از تصویر ناموفق بود: ") + ex.Message, true);
+        }
+    }
+
     private async void TestSelected_Click(object sender, RoutedEventArgs e)
     {
         if (ProfilesGrid.SelectedItem is not ServerProfile profile)
@@ -402,9 +550,9 @@ public partial class MainWindow : Window
             profile.UptimeHistory ??= [];
             profile.UptimeHistory.Add(result.Success ? "G" : "R");
             while (profile.UptimeHistory.Count > 20) profile.UptimeHistory.RemoveAt(0);
-            if (profile.Status == "Disconnected" && previousStatus != "Disconnected")
+            if (profile.Status == "Disconnected" && previousStatus != "Disconnected" && _data.Settings.NotifyOnDisconnect)
                 Notify(profile.Name, _english ? "Profile disconnected" : "قطع اتصال پروفایل", true);
-            else if (result.Success && previousStatus == "Disconnected")
+            else if (result.Success && previousStatus == "Disconnected" && _data.Settings.NotifyOnRecovery)
                 Notify(profile.Name, _english ? "Connection recovered" : "اتصال بازیابی شد", false);
         }
         ProfilesGrid.Items.Refresh();
@@ -481,6 +629,8 @@ public partial class MainWindow : Window
         _data.Settings.TimeoutSeconds = timeout;
         _data.Settings.PrimaryTestUrl = primary;
         _data.Settings.FallbackTestUrl = fallback;
+        _data.Settings.NotifyOnDisconnect = NotifyDisconnectInput.IsChecked == true;
+        _data.Settings.NotifyOnRecovery = NotifyRecoveryInput.IsChecked == true;
         SaveData();
         SetStatus(_english ? "Monitoring settings saved." : "تنظیمات پایش ذخیره شد.", false);
         if (_monitorCancellation is not null)
@@ -550,6 +700,7 @@ public partial class MainWindow : Window
         var selected = ProfilesGrid.SelectedItem is ServerProfile;
         TestSelectedButton.IsEnabled = selected && !_busy;
         RemoveSelectedButton.IsEnabled = selected && !_busy;
+        ShowQrButton.IsEnabled = selected && !_busy;
     }
 
     private void SearchInput_TextChanged(object sender, TextChangedEventArgs e)
@@ -601,6 +752,12 @@ public partial class MainWindow : Window
         GridFooter.Text = _english ? "Manual tests do not change automatic monitoring history." : "تست دستی، تاریخچهٔ پایش خودکار را تغییر نمی‌دهد.";
         ImportClipboardButton.Content = _english ? "Paste from clipboard" : "چسباندن از Clipboard";
         ImportFileButton.Content = _english ? "Import file" : "ورود از فایل";
+        ExportBackupButton.Content = _english ? "Export backup" : "پشتیبان‌گیری";
+        ImportBackupButton.Content = _english ? "Restore backup" : "بازیابی پشتیبان";
+        ShowQrButton.Content = _english ? "Show QR" : "نمایش QR";
+        ScanQrImageButton.Content = _english ? "Read QR image" : "خواندن QR از تصویر";
+        NotifyDisconnectInput.Content = _english ? "Notify when a profile disconnects" : "هشدار هنگام قطع لینک";
+        NotifyRecoveryInput.Content = _english ? "Notify when a profile recovers" : "هشدار هنگام بازیابی لینک";
         MonitorSettingsTitle.Text = _english ? "Monitoring settings" : "تنظیمات پایش";
         IntervalLabel.Text = _english ? "Time between tests (seconds)" : "فاصله بین هر تست (ثانیه)";
         ThresholdLabel.Text = _english ? "Consecutive failed checks before alert" : "تعداد شکست متوالی پیش از هشدار";
@@ -649,6 +806,8 @@ public partial class MainWindow : Window
     {
         IntervalInput.Text=_data.Settings.IntervalSeconds.ToString(CultureInfo.InvariantCulture);
         ThresholdInput.Text=_data.Settings.ConsecutiveFailureThreshold.ToString(CultureInfo.InvariantCulture);
+        NotifyDisconnectInput.IsChecked = _data.Settings.NotifyOnDisconnect;
+        NotifyRecoveryInput.IsChecked = _data.Settings.NotifyOnRecovery;
         TimeoutInput.Text=_data.Settings.TimeoutSeconds.ToString(CultureInfo.InvariantCulture);
         PrimaryUrlInput.Text=_data.Settings.PrimaryTestUrl;FallbackUrlInput.Text=_data.Settings.FallbackTestUrl;
     }
@@ -681,6 +840,10 @@ public partial class MainWindow : Window
         MonitorButton.IsEnabled = !busy || _monitorCancellation is not null;
         TestSelectedButton.IsEnabled = !busy && ProfilesGrid.SelectedItem is ServerProfile;
         RemoveSelectedButton.IsEnabled = !busy && ProfilesGrid.SelectedItem is ServerProfile;
+        ShowQrButton.IsEnabled = !busy && ProfilesGrid.SelectedItem is ServerProfile;
+        ExportBackupButton.IsEnabled = !busy;
+        ImportBackupButton.IsEnabled = !busy;
+        ScanQrImageButton.IsEnabled = !busy;
         DeleteAllProfilesButton.IsEnabled = !busy;
         RemoveAllSubscriptionsButton.IsEnabled = !busy;
         UpdateSubscriptionButton.IsEnabled = !busy && SubscriptionsGrid.SelectedItem is SubscriptionSource;
