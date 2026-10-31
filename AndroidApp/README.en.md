@@ -1,6 +1,6 @@
 # V2rayWatch — Real proxy profile monitoring
 
-**Current release: 0.2.3** · [Download the signed Android APK](https://github.com/hatinati2/V2rayWatch/releases/download/android-v0.2.3/V2rayWatch-Android-0.2.3-release.apk) · [SHA-256 checksum](https://github.com/hatinati2/V2rayWatch/releases/download/android-v0.2.3/V2rayWatch-Android-0.2.3-SHA256SUMS.txt) · [Release notes](https://github.com/hatinati2/V2rayWatch/releases/tag/android-v0.2.3)
+**Current release: 0.3.1** · [Download the signed Android APK](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.1/V2rayWatch-Android-0.3.1-release.apk) · [SHA-256 checksum](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.1/V2rayWatch-Android-0.3.1-SHA256SUMS.txt) · [Combined Android + Windows release](https://github.com/hatinati2/V2rayWatch/releases/tag/v0.3.1)
 
 V2rayWatch is an independent Android app for importing proxy profiles and checking each profile through a real Xray Core outbound connection. It is a monitoring tool, not a replacement for v2rayNG and not a full-device VPN/TUN client. The APK is a signed sideload build; it is not distributed through Google Play.
 
@@ -45,9 +45,11 @@ Use the **Backup** button in the top app bar to create a `.v2vwbackup` file. The
 
 Restore merges new profiles, skips duplicates, never deletes existing profiles, restores monitoring and alert settings, and preserves uptime history. Monitoring does not start automatically after restore. Live connection states reset to **Unknown** until the profiles are checked again.
 
-## Upgrade compatibility
+## Cross-platform backup and upgrade compatibility
 
-The official 0.2.3 APK is signed with the project's persistent Android release key. Future Android releases must use the same keystore and alias to support in-place updates.
+The `.v2vwbackup` file uses the shared Android/Windows `V2VWBAK1` format. Export on either platform and restore on the other with the same passphrase. Windows-only subscription source URLs and UI preferences are not included in the shared payload.
+
+The official 0.3.1 APK is signed with the project's persistent Android release key. Future Android releases must use the same keystore and alias to support in-place updates.
 
 Older 0.2.2 preview APKs produced by the development workflow used a temporary GitHub Actions debug key. Android does not allow an APK signed by a different key to update that installation in place. If you still have one of those old previews installed, create and verify an encrypted in-app backup first, uninstall the old preview, install the official signed APK, and restore the backup. Do not uninstall before confirming that the backup file and its passphrase are safe. Once the official persistent-key release is installed, later releases signed with the same key can be installed as updates.
 

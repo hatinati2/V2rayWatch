@@ -1,3 +1,23 @@
+# V2rayWatch 0.3.1
+
+## Unified Android + Windows release
+- Android and Windows now share one release tag and one GitHub Release.
+- Android release APK remains signed by the project's persistent upload key and uses versionCode 7.
+- Windows standalone WPF/.NET 10 Portable package includes encrypted cross-platform backup/restore using the Android-compatible `V2VWBAK1` envelope.
+- Windows can generate/save profile QR images and import links by decoding QR image files.
+- Restores preserve existing profiles, skip duplicate raw links, and reset transient connection state.
+- Windows keeps its device-local DPAPI store; portable backups use a separate passphrase.
+- The Windows app does not modify System Proxy, TUN, or system routing.
+
+## Security and compatibility notes
+- Use the same 12+ character passphrase on both platforms; keep it separate from the backup file.
+- Backup files and QR images contain proxy credentials; share them privately.
+- The shared backup contains profiles, monitoring settings, alert preferences, and uptime history. Windows-only subscription source URLs and UI preferences are not part of the Android-compatible payload.
+- Windows QR import currently reads image files; live webcam scanning is not included.
+- Windows portable binaries are not publisher-code-signed.
+
+---
+
 # V2rayWatch 0.2.3
 
 ## Windows 0.2.3

@@ -19,6 +19,16 @@ class EncryptedBackupCodecTest {
     }
 
     @Test
+    fun decryptsSharedAndroidWindowsInteroperabilityFixture() {
+        val encrypted = java.util.Base64.getDecoder().decode("VjJWV0JBSzEBAAST4AABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhvMKv8G4VPN6nt9iBhr6otlXa4yXzwQuhfxh7yZrH5XRKwbJQ1bG/pqQWwxhtEiuARLuQvejw==")
+        val plaintext = EncryptedBackupCodec.decrypt(
+            encrypted,
+            "V2rayWatch-fixture-passphrase".toCharArray()
+        )
+        assertArrayEquals("v2raywatch-cross-platform-test-vector".toByteArray(), plaintext)
+    }
+
+    @Test
     fun wrongPassphraseCannotDecryptBackup() {
         val encrypted = EncryptedBackupCodec.encrypt(
             "sensitive profile data".toByteArray(),

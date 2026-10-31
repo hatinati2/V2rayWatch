@@ -128,6 +128,22 @@ Check(profilesForRemoval.Contains(manuallyAdded) && profilesForRemoval.Contains(
 Check(SubscriptionProfileOperations.RemoveOwnedProfiles(profilesForRemoval, "") == 0, "empty subscription ID cannot remove profiles");
 
 
+// Shared cross-platform fixture: independently fixed salt/nonce and PBKDF2-HMAC-SHA256 vector.
+var sharedBackupFixture = Convert.FromBase64String("VjJWV0JBSzEBAAST4AABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhvMKv8G4VPN6nt9iBhr6otlXa4yXzwQuhfxh7yZrH5XRKwbJQ1bG/pqQWwxhtEiuARLuQvejw==");
+var sharedFixturePlaintext = PortableBackupCodec.Decrypt(
+    sharedBackupFixture,
+    "V2rayWatch-fixture-passphrase".ToCharArray());
+try
+{
+    Check(Encoding.UTF8.GetString(sharedFixturePlaintext) == "v2raywatch-cross-platform-test-vector",
+        "Windows decrypts the shared Android-compatible interoperability fixture");
+}
+finally
+{
+    System.Security.Cryptography.CryptographicOperations.ZeroMemory(sharedFixturePlaintext);
+    System.Security.Cryptography.CryptographicOperations.ZeroMemory(sharedBackupFixture);
+}
+
 // Portable backup interoperability contract (Android V2VWBAK1 format).
 var portableSettings = new MonitorSettings
 {
