@@ -10,7 +10,7 @@ Current Android source package: `V2rayWatch-project-0.2.1.zip`.
 
 ## Windows
 
-The Windows desktop client is based on upstream [v2rayN](https://github.com/2dust/v2rayN) 7.25.6, with V2rayWatch branding and Persian/English UI. It is intended to include the upstream Xray and sing-box engines and the corresponding profile management, QR import, subscriptions, routing, Windows System Proxy, and TUN features.
+The Windows desktop client is based on upstream [v2rayN](https://github.com/2dust/v2rayN) 7.25.6, with V2rayWatch branding and Persian/English UI. It includes manual real-outbound delay checks for imported profiles as well as actual Windows connection features (System Proxy/TUN). Periodic background monitoring with down/recovery alerts is not implemented in the current Windows build yet.
 
 The Windows component is derived from GPL-3.0 software. See [Windows/THIRD_PARTY_NOTICES.md](Windows/THIRD_PARTY_NOTICES.md). The corresponding modified source is supplied with the Windows release.
 
