@@ -6,8 +6,6 @@ on:
       - main
     tags:
       - "v*"
-    paths:
-      - ".github/workflows/cross-platform-release.yml"
 
 permissions:
   contents: write
