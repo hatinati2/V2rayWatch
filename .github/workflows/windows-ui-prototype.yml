@@ -54,29 +54,44 @@ jobs:
           Copy-Item "Windows\README-standalone.fa.md" "$env:GITHUB_WORKSPACE\publish\README-fa.md" -Force
           Copy-Item "Windows\README-standalone.en.md" "$env:GITHUB_WORKSPACE\publish\README-en.md" -Force
 
-      - name: Download pinned Xray Core package
+      - name: Download official pinned Xray Core
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $coreCommit = "43271eebef5772c94eccc56746261e5193e7a65c"
-          $coreZip = "$env:RUNNER_TEMP\v2rayN-windows-64-core-bin.zip"
-          $expanded = "$env:RUNNER_TEMP\core-bin"
-          $coreUrl = "https://raw.githubusercontent.com/2dust/v2rayN-core-bin/$coreCommit/v2rayN-windows-64.zip"
-          Invoke-WebRequest -Uri $coreUrl -OutFile $coreZip
+          $coreVersion = "v26.10.31"
+          $coreName = "Xray-windows-64"
+          $coreZip = "$env:RUNNER_TEMP\$coreName.zip"
+          $digestFile = "$env:RUNNER_TEMP\$coreName.zip.dgst"
+          $expanded = "$env:RUNNER_TEMP\official-xray"
+          $releaseBase = "https://github.com/XTLS/Xray-core/releases/download/$coreVersion"
+          Invoke-WebRequest -Uri "$releaseBase/$coreName.zip" -OutFile $coreZip
+          Invoke-WebRequest -Uri "$releaseBase/$coreName.zip.dgst" -OutFile $digestFile
+
+          $digestText = Get-Content -LiteralPath $digestFile -Raw
+          $digestMatch = [regex]::Match($digestText, '(?im)^\s*(?:SHA2?-256|SHA256)\s*[=:]\s*([0-9a-f]{64})\s*$')
+          if (-not $digestMatch.Success) {
+            $digestMatch = [regex]::Match($digestText, '(?im)^\s*([0-9a-f]{64})\s*$')
+          }
+          if (-not $digestMatch.Success) { throw "Could not read the official Xray SHA-256 digest file." }
+          $expectedHash = $digestMatch.Groups[1].Value.ToLowerInvariant()
+          $actualHash = (Get-FileHash -LiteralPath $coreZip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw "Official Xray ZIP SHA-256 verification failed. Expected $expectedHash, got $actualHash."
+          }
+
           Expand-Archive -LiteralPath $coreZip -DestinationPath $expanded -Force
-          $bin = Join-Path $expanded "v2rayN-windows-64\bin"
-          $xray = Join-Path $bin "xray\xray.exe"
-          if (-not (Test-Path $xray)) { throw "Pinned Xray Core executable was not found in the archive." }
+          $xray = Get-ChildItem -LiteralPath $expanded -Filter "xray.exe" -File -Recurse | Select-Object -First 1
+          if ($null -eq $xray) { throw "Official Xray Windows archive did not contain xray.exe." }
           $publishCore = "$env:GITHUB_WORKSPACE\publish\core"
           New-Item -ItemType Directory -Force -Path $publishCore | Out-Null
-          Copy-Item $xray (Join-Path $publishCore "xray.exe") -Force
+          Copy-Item $xray.FullName (Join-Path $publishCore "xray.exe") -Force
           foreach ($geo in @("geoip.dat", "geosite.dat")) {
-            $source = Join-Path $bin $geo
-            if (Test-Path $source) { Copy-Item $source (Join-Path $publishCore $geo) -Force }
+            $source = Get-ChildItem -LiteralPath $expanded -Filter $geo -File -Recurse | Select-Object -First 1
+            if ($null -ne $source) { Copy-Item $source.FullName (Join-Path $publishCore $geo) -Force }
           }
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/2dust/v2rayN-core-bin/$coreCommit/LICENSE" -OutFile "$publishCore\CORE-LICENSE.txt"
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/XTLS/Xray-core/$coreVersion/LICENSE" -OutFile "$publishCore\CORE-LICENSE.txt"
           & (Join-Path $publishCore "xray.exe") version
-          if ($LASTEXITCODE -ne 0) { throw "The packaged Xray Core failed its version smoke test." }
+          if ($LASTEXITCODE -ne 0) { throw "The official Xray Core failed its version smoke test." }
 
       - name: Package standalone Windows preview
         shell: pwsh
