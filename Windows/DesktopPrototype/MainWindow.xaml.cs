@@ -269,11 +269,22 @@ public partial class MainWindow : Window
 
     private async Task TestProfileAsync(ServerProfile profile, bool fromMonitor, CancellationToken cancellationToken)
     {
+        var previousStatus = profile.Status;
         await Dispatcher.InvokeAsync(() => { profile.Status = "Checking"; ProfilesGrid.Items.Refresh(); });
-        var result = await _tester.TestAsync(profile, _data.Settings, cancellationToken);
+        DelayTestResult result;
+        try
+        {
+            result = await _tester.TestAsync(profile, _data.Settings, cancellationToken);
+        }
+        catch
+        {
+            await Dispatcher.InvokeAsync(() => { profile.Status = previousStatus; ProfilesGrid.Items.Refresh(); });
+            throw;
+        }
         await Dispatcher.InvokeAsync(() =>
         {
-            ApplyTestResult(profile, result, fromMonitor);
+            if (!_profiles.Contains(profile)) return;
+            ApplyTestResult(profile, result, fromMonitor, previousStatus);
             RefreshSummary();
             if (!fromMonitor)
             {
