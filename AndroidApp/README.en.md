@@ -30,7 +30,9 @@ The app uses `CoreController.measureDelay(url)` from AndroidLibXrayLite. The def
 - History is persisted with each encrypted profile (AES-GCM); it survives app restarts and is updated only by scheduled monitoring checks, not manual tests
 - Portable encrypted backup/restore using a user passphrase; the file uses PBKDF2-HMAC-SHA256 and AES-256-GCM and includes profiles, monitoring settings, and uptime history
 - Configurable check intervals: 20, 30, 60, or 120 seconds
-- Alerts when a profile goes down or recovers
+- Independent controls for disconnect and recovery alerts; preferences are stored on-device and included in encrypted backups.
+- An original ~5.6-second disconnect warning motif with an extended vibration pattern, plus a mellow ~4.9-second recovery melody with a gentler, separate vibration pattern.
+- An Android launcher icon matching the Windows stopwatch artwork and color palette, including a themed monochrome layer on Android 13+.
 
 ## Uptime history
 
@@ -41,6 +43,10 @@ Each profile retains its 20 most recent automatic monitoring results. When upgra
 Use the Backup button in the top app bar to create a `.v2vwbackup` file. The passphrase must be at least 12 characters and must be stored separately from the backup file. Restore merges new profiles, skips duplicates, never deletes existing profiles, restores monitoring settings, and does not automatically start monitoring. Live connection states reset to Unknown while uptime history is preserved.
 
 See [ANDROID_RELEASE_SIGNING.md](ANDROID_RELEASE_SIGNING.md) for persistent Android upload-key setup and signed candidate builds. Never commit or share the signing keystore.
+
+## Disconnect and recovery notification channels
+
+Disconnect and recovery alerts use separate Android notification channels. Both audio motifs are bundled with the app, and each event has its own vibration pattern. On Android 8 and later, channel preferences changed by the user in system settings (for example, muting a channel or overriding its behavior) take precedence over the app's defaults.
 
 ## Current limitations
 
