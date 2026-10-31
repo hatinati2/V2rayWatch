@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -71,12 +72,14 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.linkwatch.app.AppLanguage
 import com.linkwatch.app.uiText
 import com.linkwatch.app.uiError
+import com.linkwatch.app.data.EncryptedBackupCodec
 import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.MonitorSettings
 import com.linkwatch.app.data.ProxyProfile
@@ -85,7 +88,11 @@ import com.linkwatch.app.data.uptimeHistorySlots
 import com.linkwatch.app.data.UptimeMark
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.text.DateFormat
 import java.util.Date
 
@@ -109,7 +116,68 @@ fun LinkWatchScreen(
     }
     var showImport by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showBackup by remember { mutableStateOf(false) }
+    var pendingExportPassphrase by remember { mutableStateOf("") }
+    var pendingImportPassphrase by remember { mutableStateOf("") }
     var importText by remember { mutableStateOf("") }
+    val exportBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/vnd.v2raywatch.backup")
+    ) { uri ->
+        val passphrase = pendingExportPassphrase
+        pendingExportPassphrase = ""
+        if (uri != null) {
+            scope.launch {
+                try {
+                    val encrypted = viewModel.createEncryptedBackup(passphrase.toCharArray())
+                    withContext(Dispatchers.IO) {
+                        val output = context.contentResolver.openOutputStream(uri, "w")
+                            ?: throw IOException("Could not open the selected backup file")
+                        output.use { it.write(encrypted) }
+                    }
+                    encrypted.fill(0)
+                    snackbarHost.showSnackbar(uiText(language, "پشتیبان رمزگذاری‌شده ذخیره شد", "Encrypted backup saved"))
+                } catch (error: Exception) {
+                    snackbarHost.showSnackbar(
+                        uiText(language, "ساخت پشتیبان ناموفق بود: ${error.message ?: "خطا"}", "Backup failed: ${error.message ?: "Error"}")
+                    )
+                }
+            }
+        }
+    }
+    val importBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val passphrase = pendingImportPassphrase
+        pendingImportPassphrase = ""
+        if (uri != null) {
+            scope.launch {
+                try {
+                    val encrypted = withContext(Dispatchers.IO) {
+                        val input = context.contentResolver.openInputStream(uri)
+                            ?: throw IOException("Could not open the selected backup file")
+                        input.use { stream ->
+                            val output = ByteArrayOutputStream()
+                            val buffer = ByteArray(8192)
+                            while (true) {
+                                val count = stream.read(buffer)
+                                if (count < 0) break
+                                if (output.size() + count > EncryptedBackupCodec.MAX_BACKUP_BYTES) {
+                                    throw IOException("Backup file is too large")
+                                }
+                                output.write(buffer, 0, count)
+                            }
+                            output.toByteArray()
+                        }
+                    }
+                    viewModel.restoreEncryptedBackup(encrypted, passphrase.toCharArray())
+                    snackbarHost.showSnackbar(uiText(language, "بازیابی پشتیبان انجام شد", "Backup restored"))
+                } catch (error: Exception) {
+                    snackbarHost.showSnackbar(
+                        uiText(language, "بازیابی ناموفق بود: ${error.message ?: "خطا"}", "Restore failed: ${error.message ?: "Error"}")
+                    )
+                }
+            }
+        }
+    }
+
     val qrScanner = rememberLauncherForActivityResult(ScanContract()) { result ->
         val scanned = result.contents?.trim().orEmpty()
         if (scanned.isNotBlank()) {
@@ -147,6 +215,10 @@ fun LinkWatchScreen(
                     IconButton(onClick = { showSettings = true }) {
                         Icon(Icons.Outlined.Settings, contentDescription = uiText(language, "تنظیمات", "Settings"))
                     }
+                    IconButton(onClick = { showBackup = true }) {
+                        Icon(Icons.Outlined.Backup, contentDescription = uiText(language, "پشتیبان‌گیری و بازیابی", "Backup and restore"))
+                    }
+
                     IconButton(onClick = { showImport = true }) {
                         Icon(Icons.Outlined.Add, contentDescription = uiText(language, "افزودن لینک", "Add link"))
                     }
@@ -286,6 +358,23 @@ fun LinkWatchScreen(
                 }, enabled = importText.isNotBlank() && !state.busy) { Text(uiText(language, "افزودن", "Add")) }
             },
             dismissButton = { TextButton(onClick = { showImport = false }) { Text(uiText(language, "انصراف", "Cancel")) } }
+        )
+    }
+
+    if (showBackup) {
+        BackupDialog(
+            language = language,
+            onDismiss = { showBackup = false },
+            onExport = { passphrase ->
+                pendingExportPassphrase = passphrase
+                showBackup = false
+                exportBackupLauncher.launch("V2rayWatch-backup.v2vwbackup")
+            },
+            onImport = { passphrase ->
+                pendingImportPassphrase = passphrase
+                showBackup = false
+                importBackupLauncher.launch(arrayOf("application/vnd.v2raywatch.backup", "application/octet-stream", "*/*"))
+            }
         )
     }
 
@@ -477,6 +566,109 @@ private fun EmptyState(language: AppLanguage, onImport: () -> Unit, onPaste: () 
             OutlinedButton(onClick = onPaste) { Text(uiText(language, "چسباندن از کلیپ‌بورد", "Paste from Clipboard")) }
         }
     }
+}
+
+private enum class BackupMode { EXPORT, IMPORT }
+
+@Composable
+private fun BackupDialog(
+    language: AppLanguage,
+    onDismiss: () -> Unit,
+    onExport: (String) -> Unit,
+    onImport: (String) -> Unit
+) {
+    var mode by remember { mutableStateOf(BackupMode.EXPORT) }
+    var passphrase by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
+    val exportMode = mode == BackupMode.EXPORT
+    val validPassword = passphrase.length >= EncryptedBackupCodec.MIN_PASSPHRASE_LENGTH
+    val valid = validPassword && (!exportMode || passphrase == confirmation)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(uiText(language, "پشتیبان امن", "Secure backup")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    uiText(
+                        language,
+                        "فایل پشتیبان شامل کانفیگ‌ها، تنظیمات و تاریخچهٔ ۲۰تایی است و با رمز عبور خودت رمزگذاری می‌شود. این رمز را فراموش نکن؛ بازیابی بدون آن ممکن نیست.",
+                        "The backup contains profiles, settings, and 20-check history. It is encrypted with your own passphrase. Keep that passphrase safe; the backup cannot be restored without it."
+                    ),
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = exportMode,
+                        onClick = { mode = BackupMode.EXPORT; confirmation = "" },
+                        label = { Text(uiText(language, "ساخت پشتیبان", "Create backup")) }
+                    )
+                    FilterChip(
+                        selected = !exportMode,
+                        onClick = { mode = BackupMode.IMPORT; confirmation = "" },
+                        label = { Text(uiText(language, "بازیابی", "Restore")) }
+                    )
+                }
+                OutlinedTextField(
+                    value = passphrase,
+                    onValueChange = { passphrase = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    label = { Text(uiText(language, "رمز پشتیبان (حداقل ۱۲ کاراکتر)", "Backup passphrase (12+ characters)")) }
+                )
+                if (exportMode) {
+                    OutlinedTextField(
+                        value = confirmation,
+                        onValueChange = { confirmation = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        label = { Text(uiText(language, "تکرار رمز پشتیبان", "Confirm passphrase")) }
+                    )
+                } else {
+                    Text(
+                        uiText(
+                            language,
+                            "بازیابی، لینک‌های جدید را اضافه می‌کند و موارد تکراری را رد می‌کند؛ لینک‌های فعلی حذف نمی‌شوند. پایش خودکار روشن نخواهد شد.",
+                            "Restore merges new profiles and skips duplicates. Existing profiles are never deleted, and monitoring is not started automatically."
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (passphrase.isNotEmpty() && !validPassword) {
+                    Text(
+                        uiText(language, "رمز باید حداقل ۱۲ کاراکتر باشد.", "Use at least 12 characters."),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+                if (exportMode && confirmation.isNotEmpty() && passphrase != confirmation) {
+                    Text(
+                        uiText(language, "دو رمز یکسان نیستند.", "The passphrases do not match."),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = valid,
+                onClick = {
+                    if (exportMode) onExport(passphrase) else onImport(passphrase)
+                    passphrase = ""
+                    confirmation = ""
+                }
+            ) {
+                Text(uiText(language, if (exportMode) "ذخیره فایل" else "انتخاب فایل", if (exportMode) "Save file" else "Choose file"))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(uiText(language, "انصراف", "Cancel")) }
+        }
+    )
 }
 
 @Composable
