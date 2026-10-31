@@ -61,14 +61,16 @@ Workflow ویندوز دو کار انجام می‌دهد:
 1. Build پیش‌نمایش WPF و اجرای smoke testهای parser.
 2. دریافت سورس pin‌شدهٔ v2rayN 7.25.6، اعمال branding و داشبورد، سپس Build برنامهٔ یکپارچه.
 
-CI آخرین اصلاحات رابط، حذف پروفایل، راه‌اندازی مجدد زبان، ورودی عددی ۱ تا ۹۹۹۹۹ ثانیه و آیکون اختصاصی با موفقیت کامل شده است: هر دو Job سبز هستند؛ Build نمونهٔ WPF و Parser smoke testها، Build و Publish کلاینت یکپارچه، افزودن Coreهای Xray/sing-box، بسته‌بندی و آپلود Artifact همگی موفق بوده‌اند. Build موفق، خطای کامپایل را رد می‌کند اما جای تست اجرای برنامه روی Windows 10/11 واقعی، بررسی rendering فونت فارسی، ورود کانفیگ، تغییر وضعیت لینک، اعلان tray، System Proxy و TUN را نمی‌گیرد.
+CI آخرین اصلاحات رابط، حذف پروفایل، راه‌اندازی مجدد زبان، ورودی عددی ۱ تا ۹۹۹۹۹ ثانیه، آیکون اختصاصی و نوار تاریخچهٔ ۲۰تایی با موفقیت کامل شده است: هر دو Job سبز هستند؛ Build نمونهٔ WPF و Parser smoke testها، Build و Publish کلاینت یکپارچه، افزودن Coreهای Xray/sing-box، بسته‌بندی و آپلود Artifact همگی موفق بوده‌اند. Build موفق، خطای کامپایل را رد می‌کند اما جای تست اجرای برنامه روی Windows 10/11 واقعی، بررسی rendering فونت فارسی، ورود کانفیگ، تغییر وضعیت لینک، اعلان tray، System Proxy و TUN را نمی‌گیرد.
 
 ## پیش‌نمایش قابل دریافت
 
-آخرین بستهٔ یکپارچهٔ Portable از commit `8578a65dca557efaa06a93cb409cdcf4dbecde63` ساخته شده است:
-https://github.com/hatinati2/V2rayWatch/actions/runs/41181463339#artifacts
+آخرین بستهٔ یکپارچهٔ Portable از commit `0b72f725ecad49b463964da982851104d59d6b3e` ساخته شده است:
+https://github.com/hatinati2/V2rayWatch/actions/runs/41183369610#artifacts
 
-Artifact: `V2rayWatch-Windows-integrated-preview` (حدود ۱۶۲ MiB، id: `13034917709`)؛ SHA-256: `4177179e1b480564bcbb4384d00b94cf3a82dda6c758062033b4a5e38adb10aa`.
+Artifact: `V2rayWatch-Windows-integrated-preview` (حدود ۱۶۲ MiB، id: `13035549560`)؛ SHA-256: `c3a58d4cded20aee234e397ce0acbb302319ae029d3778fc4c180e3845a94adc`.
+
+این Build شامل نوار پایدار ۲۰ نتیجه‌ای هر پروفایل، رنگ‌های سبز/قرمز/خاکستری و تنظیم AppUserModelID در ابتدای App.OnStartup است.
 
 این Artifact پیش‌نمایش شاخهٔ توسعه است و Release پایدار نیست؛ فایل موقت GitHub Actions است و در ۲۹ ژانویهٔ ۲۰۲۷ منقضی می‌شود.
 
