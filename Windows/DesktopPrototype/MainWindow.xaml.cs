@@ -276,7 +276,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (sender is not Button button)
+        if (sender is not System.Windows.Controls.Button button)
             return;
 
         // Use the explicit row binding first; DataContext is kept as a defensive fallback.
