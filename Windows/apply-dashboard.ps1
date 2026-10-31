@@ -315,6 +315,9 @@ if (-not $code.Contains("vwManualProbeButton.ToolTip")) {
         vwTunDescription.Text = vwIsPersian
             ? "تونل ترافیک ویندوز از مسیر پروفایل فعال؛ برای تست مستقل لینک‌ها لازم نیست."
             : "Routes Windows traffic through the active profile. It is not required for independent link tests.";
+        vwMonitorToggleButton.Content = vwIsPersian ? "شروع پایش" : "Start monitoring";
+        vwMonitorStatus.Text = vwIsPersian ? "پایش متوقف است" : "Monitoring stopped";
+        vwMonitorToggleButton.ToolTip = vwIsPersian ? "آزمون دوره‌ای همهٔ لینک‌ها؛ مستقل از System Proxy و TUN" : "Periodically test all links independently of System Proxy and TUN.";
 '@
     $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $uiModeLabels.TrimEnd())
     [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
@@ -334,6 +337,13 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
     $fields = @'
     private readonly Queue<(double Up, double Down)> _vwTrafficSamples = new();
     private IDisposable? _vwTrafficSubscription;
+    private global::System.Threading.CancellationTokenSource? _vwMonitorCts;
+    private readonly global::System.Collections.Generic.Dictionary<string, int> _vwMonitorFailures = new();
+    private readonly global::System.Collections.Generic.HashSet<string> _vwMonitorDown = new();
+    private readonly global::System.Collections.Generic.Dictionary<string, int> _vwMonitorResults = new();
+    private bool _vwMonitorRoundRunning;
+    private int _vwMonitorIntervalSeconds = 20;
+    private int _vwMonitorFailureThreshold = 2;
 '@
     $code = $code.Replace($fieldMarker, $fieldMarker + [Environment]::NewLine + $fields.TrimEnd())
 
@@ -343,6 +353,8 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
         _vwTrafficSubscription = AppEvents.DispatcherStatisticsRequested.AsObservable()
             .Subscribe(update => Dispatcher.BeginInvoke(new Action(() => UpdateVwTrafficChart(update))));
         Closed += (_, _) => _vwTrafficSubscription?.Dispose();
+        Loaded += (_, _) => VwInitializeMonitor();
+        Closed += (_, _) => VwStopMonitoring();
 '@
     $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $chartInit.TrimEnd())
 
@@ -382,6 +394,240 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
     }
 
 '@
+    $monitorMethods = @'
+
+    private bool VwIsPersian() => global::System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("fa", global::System.StringComparison.OrdinalIgnoreCase);
+
+    private void VwInitializeMonitor()
+    {
+        if (ViewModel?.ProfilesViewModel is not { } profilesViewModel) return;
+        profilesViewModel.VwSpeedTestResultReceived -= VwOnSpeedTestResultReceived;
+        profilesViewModel.VwSpeedTestResultReceived += VwOnSpeedTestResultReceived;
+        try
+        {
+            var path = global::System.IO.Path.Combine(global::System.Environment.GetFolderPath(global::System.Environment.SpecialFolder.LocalApplicationData), "V2rayWatch", "monitor-settings.json");
+            if (global::System.IO.File.Exists(path))
+            {
+                var saved = global::System.Text.Json.JsonSerializer.Deserialize<global::System.Collections.Generic.Dictionary<string, int>>(global::System.IO.File.ReadAllText(path));
+                if (saved != null)
+                {
+                    if (saved.TryGetValue("intervalSeconds", out var interval)) _vwMonitorIntervalSeconds = interval;
+                    if (saved.TryGetValue("failureThreshold", out var threshold)) _vwMonitorFailureThreshold = threshold;
+                }
+            }
+        }
+        catch { }
+        _vwMonitorIntervalSeconds = new[] { 20, 30, 60, 120 }.Contains(_vwMonitorIntervalSeconds) ? _vwMonitorIntervalSeconds : 20;
+        _vwMonitorFailureThreshold = global::System.Math.Clamp(_vwMonitorFailureThreshold, 1, 3);
+        VwSelectComboTag(vwMonitorIntervalCombo, _vwMonitorIntervalSeconds);
+        VwSelectComboTag(vwMonitorFailureCombo, _vwMonitorFailureThreshold);
+    }
+
+    private static void VwSelectComboTag(global::System.Windows.Controls.ComboBox combo, int value)
+    {
+        foreach (var item in combo.Items.OfType<global::System.Windows.Controls.ComboBoxItem>())
+        {
+            if (int.TryParse(item.Tag?.ToString(), out var tag) && tag == value)
+            {
+                combo.SelectedItem = item;
+                return;
+            }
+        }
+    }
+
+    private static int VwReadComboTag(global::System.Windows.Controls.ComboBox combo, int fallback)
+    {
+        return combo.SelectedItem is global::System.Windows.Controls.ComboBoxItem item && int.TryParse(item.Tag?.ToString(), out var value) ? value : fallback;
+    }
+
+    private void VwSaveMonitorSettings()
+    {
+        try
+        {
+            var folder = global::System.IO.Path.Combine(global::System.Environment.GetFolderPath(global::System.Environment.SpecialFolder.LocalApplicationData), "V2rayWatch");
+            global::System.IO.Directory.CreateDirectory(folder);
+            var path = global::System.IO.Path.Combine(folder, "monitor-settings.json");
+            var json = global::System.Text.Json.JsonSerializer.Serialize(new { intervalSeconds = _vwMonitorIntervalSeconds, failureThreshold = _vwMonitorFailureThreshold });
+            global::System.IO.File.WriteAllText(path, json);
+        }
+        catch { }
+    }
+
+    private void VwMonitorToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vwMonitorCts != null)
+        {
+            VwStopMonitoring();
+            return;
+        }
+        if (ViewModel?.ProfilesViewModel == null) return;
+        _vwMonitorIntervalSeconds = VwReadComboTag(vwMonitorIntervalCombo, 20);
+        _vwMonitorFailureThreshold = VwReadComboTag(vwMonitorFailureCombo, 2);
+        VwSaveMonitorSettings();
+        _vwMonitorFailures.Clear();
+        _vwMonitorDown.Clear();
+        var monitorCts = new global::System.Threading.CancellationTokenSource();
+        _vwMonitorCts = monitorCts;
+        vwMonitorIntervalCombo.IsEnabled = false;
+        vwMonitorFailureCombo.IsEnabled = false;
+        vwMonitorToggleButton.Content = VwIsPersian() ? "توقف پایش" : "Stop monitoring";
+        vwMonitorStatus.Text = VwIsPersian() ? "در حال شروع..." : "Starting...";
+        _ = VwMonitorLoopAsync(monitorCts);
+    }
+
+    private void VwStopMonitoring()
+    {
+        var monitorCts = _vwMonitorCts;
+        if (monitorCts == null) return;
+        _vwMonitorCts = null;
+        monitorCts.Cancel();
+        VwSetMonitorStopped();
+    }
+
+    private void VwSetMonitorStopped()
+    {
+        vwMonitorIntervalCombo.IsEnabled = true;
+        vwMonitorFailureCombo.IsEnabled = true;
+        vwMonitorToggleButton.Content = VwIsPersian() ? "شروع پایش" : "Start monitoring";
+        vwMonitorStatus.Text = VwIsPersian() ? "پایش متوقف است" : "Monitoring stopped";
+    }
+
+    private async Task VwMonitorLoopAsync(global::System.Threading.CancellationTokenSource monitorCts)
+    {
+        var cancellationToken = monitorCts.Token;
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var roundTimer = global::System.Diagnostics.Stopwatch.StartNew();
+                var profilesViewModel = ViewModel?.ProfilesViewModel;
+                if (profilesViewModel == null) break;
+                var profileCount = profilesViewModel.ProfileItems.Count;
+                if (profileCount == 0)
+                {
+                    await Dispatcher.InvokeAsync(() => vwMonitorStatus.Text = VwIsPersian() ? "ابتدا لینک وارد کن" : "Import links first");
+                    await Task.Delay(global::System.TimeSpan.FromSeconds(3), cancellationToken);
+                    continue;
+                }
+                _vwMonitorResults.Clear();
+                _vwMonitorRoundRunning = true;
+                await Dispatcher.InvokeAsync(() => vwMonitorStatus.Text = VwIsPersian() ? $"در حال بررسی {profileCount} لینک..." : $"Checking {profileCount} links...");
+                try
+                {
+                    await profilesViewModel.ServerSpeedtest(ESpeedActionType.FastRealping, cancellationToken);
+                    await Dispatcher.InvokeAsync(VwCompleteMonitorRound, DispatcherPriority.Background);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    await Dispatcher.InvokeAsync(() => vwMonitorStatus.Text = VwIsPersian() ? "خطا در اجرای دور پایش: " + ex.Message : "Monitor cycle failed: " + ex.Message);
+                }
+                finally
+                {
+                    _vwMonitorRoundRunning = false;
+                }
+                var remaining = global::System.TimeSpan.FromSeconds(_vwMonitorIntervalSeconds) - roundTimer.Elapsed;
+                await Task.Delay(remaining > global::System.TimeSpan.Zero ? remaining : global::System.TimeSpan.FromSeconds(1), cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            await Dispatcher.InvokeAsync(() => vwMonitorStatus.Text = VwIsPersian() ? "خطای پایش: " + ex.Message : "Monitoring error: " + ex.Message);
+        }
+        finally
+        {
+            if (global::System.Object.ReferenceEquals(_vwMonitorCts, monitorCts))
+            {
+                _vwMonitorCts = null;
+                await Dispatcher.InvokeAsync(VwSetMonitorStopped);
+            }
+            monitorCts.Dispose();
+        }
+    }
+
+    private void VwOnSpeedTestResultReceived(SpeedTestResult result)
+    {
+        if (!_vwMonitorRoundRunning || string.IsNullOrWhiteSpace(result.IndexId)) return;
+        if (int.TryParse(result.Delay, out var delay)) _vwMonitorResults[result.IndexId] = delay;
+    }
+
+    private void VwCompleteMonitorRound()
+    {
+        var profiles = ViewModel?.ProfilesViewModel?.ProfileItems;
+        if (profiles == null) return;
+        var tested = 0;
+        var down = 0;
+        foreach (var profile in profiles)
+        {
+            if (!_vwMonitorResults.TryGetValue(profile.IndexId, out var delay))
+            {
+                if (profile.VwHealth == "Unknown") profile.VwHealth = VwIsPersian() ? "تست‌نشده" : "Not tested";
+                continue;
+            }
+            tested++;
+            profile.VwLastChecked = global::System.DateTime.Now.ToString("HH:mm:ss");
+            if (delay > 0)
+            {
+                profile.VwHealth = VwIsPersian() ? $"متصل · {delay} ms" : $"Connected · {delay} ms";
+                _vwMonitorFailures[profile.IndexId] = 0;
+                if (_vwMonitorDown.Remove(profile.IndexId)) VwShowMonitorNotification(profile.Remarks, false, delay);
+            }
+            else
+            {
+                var failures = _vwMonitorFailures.GetValueOrDefault(profile.IndexId) + 1;
+                _vwMonitorFailures[profile.IndexId] = failures;
+                var isDown = failures >= _vwMonitorFailureThreshold;
+                profile.VwHealth = isDown
+                    ? (VwIsPersian() ? "قطع" : "Disconnected")
+                    : (VwIsPersian() ? $"ناپایدار · {failures}/{_vwMonitorFailureThreshold}" : $"Unstable · {failures}/{_vwMonitorFailureThreshold}");
+                if (isDown)
+                {
+                    down++;
+                    if (_vwMonitorDown.Add(profile.IndexId)) VwShowMonitorNotification(profile.Remarks, true, -1);
+                }
+            }
+        }
+        vwMonitorStatus.Text = VwIsPersian()
+            ? $"آخرین دور: {tested} لینک تست شد، {down} لینک قطع"
+            : $"Last round: {tested} tested, {down} down";
+    }
+
+    private void VwShowMonitorNotification(string profileName, bool disconnected, int delay)
+    {
+        var title = disconnected
+            ? (VwIsPersian() ? "لینک قطع شد" : "Proxy link disconnected")
+            : (VwIsPersian() ? "اتصال بازیابی شد" : "Proxy link recovered");
+        var message = disconnected
+            ? (VwIsPersian() ? $"{profileName}: پس از {_vwMonitorFailureThreshold} خطای متوالی اتصال برقرار نشد." : $"{profileName}: unavailable after {_vwMonitorFailureThreshold} consecutive failures.")
+            : (VwIsPersian() ? $"{profileName}: اتصال برقرار شد؛ تأخیر {delay} ms." : $"{profileName}: connection restored; delay {delay} ms.");
+        try
+        {
+            var tray = VwFindVisualChild<global::H.NotifyIcon.TaskbarIcon>(this);
+            tray?.ShowNotification(title, message, disconnected ? global::H.NotifyIcon.Core.NotificationIcon.Error : global::H.NotifyIcon.Core.NotificationIcon.Info, sound: true);
+        }
+        catch { }
+    }
+
+    private static T? VwFindVisualChild<T>(global::System.Windows.DependencyObject parent) where T : global::System.Windows.DependencyObject
+    {
+        for (var i = 0; i < global::System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = global::System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) return match;
+            var nested = VwFindVisualChild<T>(child);
+            if (nested != null) return nested;
+        }
+        return null;
+    }
+
+
+'@
+    $chartMethods += $monitorMethods
+
     if (-not $code.Contains($methodMarker)) { throw "Could not find insertion point for live traffic chart method." }
     $code = $code.Replace($methodMarker, $chartMethods + $methodMarker)
     [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
