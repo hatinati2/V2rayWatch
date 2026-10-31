@@ -84,6 +84,7 @@ android {
         targetSdk = 35
         versionCode = 4
         versionName = "0.2.2"
+        manifestPlaceholders["appLabel"] = "V2rayWatch"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -92,6 +93,7 @@ android {
             // Development builds can be installed beside the public app without touching its data.
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
+            manifestPlaceholders["appLabel"] = "V2rayWatch Dev"
         }
         release {
             isMinifyEnabled = false
