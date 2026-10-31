@@ -775,6 +775,11 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
 
     private void VwLoadMonitorHistory(global::System.Collections.Generic.IEnumerable<global::ServiceLib.Models.Dto.ProfileItemModel> profiles)
     {
+        var profileList = profiles.ToList();
+        // The first window Loaded event can arrive before the server list is populated.
+        // Do not mark history loaded or prune saved IDs until at least one real profile exists.
+        if (profileList.Count == 0) return;
+
         if (!_vwMonitorHistoryLoaded)
         {
             try
@@ -800,7 +805,7 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
         }
 
         var liveIds = new global::System.Collections.Generic.HashSet<string>();
-        foreach (var profile in profiles)
+        foreach (var profile in profileList)
         {
             liveIds.Add(profile.IndexId);
             VwEnsureProfileHistory(profile);
