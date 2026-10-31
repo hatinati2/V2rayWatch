@@ -331,9 +331,9 @@ public partial class MainWindow : Window
         {
             var dialog = new Microsoft.Win32.SaveFileDialog
             {
-                Filter = "V2rayWatch encrypted backup|*.v2vwbak",
-                FileName = $"V2rayWatch-Backup-{DateTime.Now:yyyyMMdd}.v2vwbak",
-                DefaultExt = ".v2vwbak",
+                Filter = "V2rayWatch encrypted backup|*.v2vwbackup",
+                FileName = $"V2rayWatch-Backup-{DateTime.Now:yyyyMMdd}.v2vwbackup",
+                DefaultExt = ".v2vwbackup",
                 AddExtension = true
             };
             if (dialog.ShowDialog(this) != true) return;
@@ -363,7 +363,7 @@ public partial class MainWindow : Window
         if (_busy) return;
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Filter = "V2rayWatch encrypted backup|*.v2vwbak|All files|*.*",
+            Filter = "V2rayWatch encrypted backup|*.v2vwbackup|All files|*.*",
             CheckFileExists = true
         };
         if (dialog.ShowDialog(this) != true) return;
