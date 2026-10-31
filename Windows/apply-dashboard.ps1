@@ -455,7 +455,6 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
             .Subscribe(update => Dispatcher.BeginInvoke(new Action(() => UpdateVwTrafficChart(update))));
         Closed += (_, _) => _vwTrafficSubscription?.Dispose();
         Loaded += (_, _) => VwInitializeMonitor();
-        Loaded += (_, _) => VwInitializeAppearance();
         try { VwSetCurrentProcessExplicitAppUserModelID("V2rayWatch.Windows.Desktop"); } catch { }
         Closed += (_, _) => VwStopMonitoring();
 '@
