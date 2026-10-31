@@ -53,6 +53,7 @@ class LinkCheckReducerTest {
         assertEquals(2, second.profile.consecutiveFailures)
         assertTrue(second.becameDisconnected)
         assertFalse(second.recovered)
+        assertEquals(100L, second.profile.disconnectedSinceEpochMs)
     }
 
     @Test
@@ -77,7 +78,8 @@ class LinkCheckReducerTest {
         val disconnected = profile.copy(
             state = LinkState.DISCONNECTED,
             consecutiveFailures = 4,
-            lastError = "timeout"
+            lastError = "timeout",
+            disconnectedSinceEpochMs = 250L
         )
         val transition = reduceLinkCheck(
             disconnected,
@@ -93,6 +95,8 @@ class LinkCheckReducerTest {
         assertEquals(listOf(UptimeMark.CONNECTED), transition.profile.uptimeHistory)
         assertFalse(transition.becameDisconnected)
         assertTrue(transition.recovered)
+        assertEquals(150L, transition.outageDurationMs)
+        assertEquals(null, transition.profile.disconnectedSinceEpochMs)
     }
 
     @Test
