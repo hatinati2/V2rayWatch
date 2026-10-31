@@ -20,7 +20,7 @@ class EncryptedBackupCodecTest {
 
     @Test
     fun decryptsSharedAndroidWindowsInteroperabilityFixture() {
-        val encrypted = java.util.Base64.getDecoder().decode("$fixture")
+        val encrypted = java.util.Base64.getDecoder().decode("VjJWV0JBSzEBAAST4AABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhvMKv8G4VPN6nt9iBhr6otlXa4yXzwQuhfxh7yZrH5XRKwbJQ1bG/pqQWwxhtEiuARLuQvejw==")
         val plaintext = EncryptedBackupCodec.decrypt(
             encrypted,
             "V2rayWatch-fixture-passphrase".toCharArray()
