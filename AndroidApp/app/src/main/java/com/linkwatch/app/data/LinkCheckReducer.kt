@@ -35,7 +35,7 @@ fun reduceLinkCheck(
     val becameDisconnected = !result.success && nextState == LinkState.DISCONNECTED && previous.state != LinkState.DISCONNECTED
     val recovered = result.success && previous.state == LinkState.DISCONNECTED
     val disconnectedSince = when {
-        nextState == LinkState.DISCONNECTED -> previous.disconnectedSinceEpochMs ?: checkedAtEpochMs
+        nextState == LinkState.DISCONNECTED -> previous.disconnectedSinceEpochMs ?: previous.lastCheckedAt.takeIf { it > 0L } ?: checkedAtEpochMs
         result.success -> null
         else -> previous.disconnectedSinceEpochMs
     }
