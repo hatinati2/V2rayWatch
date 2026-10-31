@@ -2,8 +2,13 @@ name: Android build
 
 on:
   push:
+    branches:
+      - main
+      - "feature/**"
+      - "release/**"
     paths:
-      - "V2rayWatch-project-0.2.1.zip"
+      - "AndroidApp/**"
+      - ".github/workflows/android.yml"
   workflow_dispatch:
 
 permissions:
@@ -11,15 +16,11 @@ permissions:
 
 jobs:
   debug-apk:
+    name: Build and test Android 0.2.2
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Unpack Android project
-        run: |
-          unzip V2rayWatch-project-0.2.1.zip
-          rsync -a --exclude='.git/' --exclude='.github/' LinkWatchAndroid/ ./
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -40,12 +41,13 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
+      - name: Run unit tests and build debug APK
+        working-directory: AndroidApp
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: V2rayWatch-0.2.1-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: V2rayWatch-Android-0.2.2-debug-apk
+          path: AndroidApp/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
