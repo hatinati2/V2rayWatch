@@ -217,11 +217,12 @@
                   <DataGridTextColumn Header="نام" Binding="{Binding Name}" Width="*"/>
                   <DataGridTextColumn Header="تعداد" Binding="{Binding ProfileCount}" Width="55"/>
                   <DataGridTextColumn Header="آخرین دریافت" Binding="{Binding LastUpdatedDisplay}" Width="125"/>
-                  <DataGridTemplateColumn Header="عملیات" Width="64">
+                  <DataGridTemplateColumn Header="عملیات" Width="84">
                     <DataGridTemplateColumn.CellTemplate>
                       <DataTemplate>
                         <Button Content="{Binding RemoveActionDisplay}" Tag="{Binding}" Click="RemoveSubscriptionRow_Click"
-                                Padding="5,3" Margin="1" MinWidth="52" ToolTip="{Binding RemoveActionDisplay}"/>
+                                Padding="4,3" Margin="1" MinWidth="70" HorizontalAlignment="Stretch"
+                                VerticalAlignment="Center" Focusable="True" ToolTip="{Binding RemoveActionDisplay}"/>
                       </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                   </DataGridTemplateColumn>
