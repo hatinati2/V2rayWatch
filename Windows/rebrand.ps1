@@ -53,7 +53,7 @@ if (-not $languageText.Contains($oldLanguage)) { throw "Language default block n
 Write-Utf8NoBom $languagePath $languageText.Replace($oldLanguage, $newLanguage)
 
 # Point the in-app V2rayWatch updater to this repository.
-Replace-TextOnce "v2rayN\Directory.Build.props" '<Version>7.25.6</Version>' '<Version>0.1.0</Version>'
+Replace-TextOnce "v2rayN\Directory.Build.props" '<Version>7.25.6</Version>' '<Version>0.2.3</Version>'
 
 # Give the executable and Windows resources V2rayWatch names.
 $projectPath = Join-Path $SourceRoot "v2rayN\v2rayN\v2rayN.csproj"
