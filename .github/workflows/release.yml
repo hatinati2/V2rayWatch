@@ -9,6 +9,7 @@ on:
       - "Windows/**"
       - ".github/workflows/release.yml"
       - "V2rayWatch-project-0.2.1.zip"
+      - "AndroidApp/**"
 
 permissions:
   contents: write
@@ -31,6 +32,11 @@ jobs:
         shell: pwsh
         run: |
           & "$env:GITHUB_WORKSPACE\Windows\rebrand.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
+
+      - name: Apply integrated V2rayWatch dashboard and monitoring
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE\Windows\apply-dashboard.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
@@ -94,10 +100,18 @@ jobs:
           $global:LASTEXITCODE = 0
           New-Item -ItemType Directory -Force -Path "$sourcePackage\V2rayWatch-branding" | Out-Null
           Copy-Item "$env:GITHUB_WORKSPACE\Windows\rebrand.ps1" "$sourcePackage\V2rayWatch-branding\rebrand.ps1"
+          Copy-Item "$env:GITHUB_WORKSPACE\Windows\apply-dashboard.ps1" "$sourcePackage\V2rayWatch-branding\apply-dashboard.ps1"
+          Copy-Item "$env:GITHUB_WORKSPACE\Windows\DASHBOARD_IMPLEMENTATION.fa.md" "$sourcePackage\V2rayWatch-branding\DASHBOARD_IMPLEMENTATION.fa.md"
           Copy-Item "$env:GITHUB_WORKSPACE\Windows\README.fa.md" "$sourcePackage\V2rayWatch-branding\README.fa.md"
           Copy-Item "$env:GITHUB_WORKSPACE\Windows\README.en.md" "$sourcePackage\V2rayWatch-branding\README.en.md"
           Copy-Item "$env:GITHUB_WORKSPACE\Windows\THIRD_PARTY_NOTICES.md" "$sourcePackage\V2rayWatch-branding\THIRD_PARTY_NOTICES.md"
           Compress-Archive -Path "$sourcePackage\*" -DestinationPath "$env:GITHUB_WORKSPACE\V2rayWatch-Windows-source-GPL-3.0.zip" -CompressionLevel Optimal
+          $hashLines = @()
+          foreach ($assetName in @("V2rayWatch-Windows-x64.zip", "v2rayN-windows-64.zip", "V2rayWatch-Windows-source-GPL-3.0.zip")) {
+            $hash = (Get-FileHash (Join-Path $env:GITHUB_WORKSPACE $assetName) -Algorithm SHA256).Hash.ToLowerInvariant()
+            $hashLines += "$hash  $assetName"
+          }
+          $hashLines | Set-Content -Path "$env:GITHUB_WORKSPACE\V2rayWatch-Windows-SHA256SUMS.txt" -Encoding utf8
 
       - name: Upload Windows package and source
         uses: actions/upload-artifact@v4
@@ -107,6 +121,7 @@ jobs:
             V2rayWatch-Windows-x64.zip
             v2rayN-windows-64.zip
             V2rayWatch-Windows-source-GPL-3.0.zip
+            V2rayWatch-Windows-SHA256SUMS.txt
           if-no-files-found: error
 
   build-android:
@@ -144,12 +159,16 @@ jobs:
         run: |
           mkdir -p release
           cp AndroidApp/app/build/outputs/apk/debug/app-debug.apk release/V2rayWatch-Android-0.2.2-debug-preview.apk
+          cd release
+          sha256sum V2rayWatch-Android-0.2.2-debug-preview.apk > V2rayWatch-Android-0.2.2-debug-preview.apk.sha256
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: V2rayWatch-Android-preview
-          path: release/V2rayWatch-Android-0.2.2-debug-preview.apk
+          path: |
+            release/V2rayWatch-Android-0.2.2-debug-preview.apk
+            release/V2rayWatch-Android-0.2.2-debug-preview.apk.sha256
           if-no-files-found: error
 
   publish-release:
@@ -178,29 +197,32 @@ jobs:
       - name: Publish V2rayWatch release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.0
-          name: V2rayWatch 0.1.0
+          tag_name: v0.2.3
+          name: V2rayWatch 0.2.3
           draft: false
-          prerelease: true
-          generate_release_notes: true
+          prerelease: false
+          generate_release_notes: false
           body: |
-            ## V2rayWatch Windows 0.1.0
+            ## V2rayWatch Windows 0.2.3
 
             - Bilingual Persian / English interface.
             - Windows x64 portable client based on upstream v2rayN 7.25.6 (GPL-3.0), with V2rayWatch branding.
-            - Includes Xray and sing-box core binaries, profile management, subscriptions, QR import, routing, system proxy and TUN features available in the upstream client.
+            - Integrated V2rayWatch monitoring dashboard with independently scheduled per-profile outbound checks (1–99,999 seconds), failure thresholds, tray down/recovery alerts, and persistent 20-check uptime history.
+            - Profile import and management, subscriptions and QR import, System Proxy, TUN, routing, Xray and sing-box cores.
+            - The project owner confirmed this Windows build works on their Windows device. The binary is unsigned; SmartScreen may show an unknown-publisher warning.
 
-            ## Android 0.2.2 preview
+            ## Android 0.2.2 preview (separate component version)
 
-            The Android APK is a debug preview of the monitoring app, not a full Android VPN client. Install and test before relying on it.
+            The Android APK is a debug-signed preview of the monitoring app, not a full Android VPN/TUN client. It includes the per-profile 20-check uptime strip. Test on a physical device; this APK is not a Google Play build.
 
             ## Licensing
 
-            The Windows application is derived from 2dust/v2rayN and distributed under GPL-3.0. The corresponding modified source is included as V2rayWatch-Windows-source-GPL-3.0.zip. Third-party core and license notices are included in the Windows package.
+            The Windows application is derived from 2dust/v2rayN 7.25.6 and distributed under GPL-3.0. The corresponding modified upstream source and V2rayWatch rebrand/dashboard scripts are included as V2rayWatch-Windows-source-GPL-3.0.zip. Third-party notices and SHA-256 checksums are attached.
           files: |
             release-assets/V2rayWatch-Windows-x64.zip
             release-assets/v2rayN-windows-64.zip
             release-assets/V2rayWatch-Windows-source-GPL-3.0.zip
             release-assets/V2rayWatch-Android-0.2.2-debug-preview.apk
+            release-assets/V2rayWatch-Android-0.2.2-debug-preview.apk.sha256
           fail_on_unmatched_files: true
-          make_latest: false
+          make_latest: true

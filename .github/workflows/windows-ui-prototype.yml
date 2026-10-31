@@ -1,0 +1,105 @@
+name: Windows UI prototype build
+
+on:
+  pull_request:
+    paths:
+      - "Windows/DesktopPrototype/**"
+      - "Windows/DesktopPrototype.Tests/**"
+      - "Windows/apply-dashboard.ps1"
+      - "Windows/rebrand.ps1"
+      - ".github/workflows/windows-ui-prototype.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-wpf-prototype:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build WPF prototype
+        run: dotnet build Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release
+      - name: Run profile parser smoke tests
+        run: dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
+
+  build-upstream-dashboard:
+    name: Build branded upstream WPF dashboard
+    runs-on: windows-latest
+    steps:
+      - name: Checkout V2rayWatch
+        uses: actions/checkout@v4
+      - name: Checkout pinned v2rayN source
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch 7.25.6 --recurse-submodules https://github.com/2dust/v2rayN.git upstream
+          if ($LASTEXITCODE -ne 0) { throw "Could not fetch upstream v2rayN 7.25.6." }
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Apply V2rayWatch branding and dashboard
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE\Windows\rebrand.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
+          & "$env:GITHUB_WORKSPACE\Windows\apply-dashboard.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
+      - name: Build integrated Windows client
+        shell: pwsh
+        run: |
+          dotnet build "./upstream/v2rayN/v2rayN/v2rayN.csproj" -c Release -r win-x64 -p:EnableWindowsTargeting=true
+          if ($LASTEXITCODE -ne 0) { throw "Integrated V2rayWatch WPF build failed." }
+
+      - name: Publish portable integrated client
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $output = "$env:GITHUB_WORKSPACE\integrated-publish"
+          dotnet publish "./upstream/v2rayN/v2rayN/v2rayN.csproj" -c Release -r win-x64 -p:SelfContained=true -p:EnableWindowsTargeting=true -o $output
+          if ($LASTEXITCODE -ne 0) { throw "Could not publish integrated V2rayWatch client." }
+          dotnet publish "./upstream/v2rayN/AmazTool/AmazTool.csproj" -c Release -r win-x64 -p:SelfContained=true -p:PublishTrimmed=true -p:EnableWindowsTargeting=true -o $output
+          if ($LASTEXITCODE -ne 0) { throw "Could not publish V2rayWatch helper tool." }
+
+      - name: Add pinned Xray and sing-box cores
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $coreZip = "$env:RUNNER_TEMP\v2rayN-windows-64-core-bin.zip"
+          $expanded = "$env:RUNNER_TEMP\core-bin"
+          $coreUrl = "https://raw.githubusercontent.com/2dust/v2rayN-core-bin/43271eebef5772c94eccc56746261e5193e7a65c/v2rayN-windows-64.zip"
+          Invoke-WebRequest -Uri $coreUrl -OutFile $coreZip
+          Expand-Archive -LiteralPath $coreZip -DestinationPath $expanded -Force
+          $binSource = Join-Path $expanded "v2rayN-windows-64\bin"
+          if (-not (Test-Path $binSource)) { throw "Pinned core package has no expected bin directory." }
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\integrated-publish\bin" | Out-Null
+          Copy-Item -Path "$binSource\*" -Destination "$env:GITHUB_WORKSPACE\integrated-publish\bin" -Recurse -Force
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\integrated-publish\licenses" | Out-Null
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/2dust/v2rayN-core-bin/43271eebef5772c94eccc56746261e5193e7a65c/LICENSE" -OutFile "$env:GITHUB_WORKSPACE\integrated-publish\licenses\CORE-BIN-GPL-3.0.txt"
+          Copy-Item "$env:GITHUB_WORKSPACE\upstream\LICENSE" "$env:GITHUB_WORKSPACE\integrated-publish\licenses\V2RAYN-GPL-3.0.txt" -Force
+          Copy-Item "$env:GITHUB_WORKSPACE\Windows\THIRD_PARTY_NOTICES.md" "$env:GITHUB_WORKSPACE\integrated-publish\THIRD_PARTY_NOTICES.md" -Force
+          Copy-Item "$env:GITHUB_WORKSPACE\Windows\README.fa.md" "$env:GITHUB_WORKSPACE\integrated-publish\README-fa.md" -Force
+          Copy-Item "$env:GITHUB_WORKSPACE\Windows\README.en.md" "$env:GITHUB_WORKSPACE\integrated-publish\README-en.md" -Force
+
+      - name: Package and upload integrated Windows preview
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\integrated-publish\V2rayWatch.exe")) {
+            throw "V2rayWatch.exe is missing from the portable publish directory."
+          }
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\integrated-publish\*" -DestinationPath "$env:GITHUB_WORKSPACE\V2rayWatch-Windows-integrated-preview.zip" -CompressionLevel Optimal
+
+      - name: Upload integrated Windows preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: V2rayWatch-Windows-integrated-preview
+          path: V2rayWatch-Windows-integrated-preview.zip
+          if-no-files-found: error

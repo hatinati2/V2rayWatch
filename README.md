@@ -2,23 +2,23 @@
 
 V2rayWatch is a multi-platform project with separate Android and Windows applications.
 
-## Android 0.2.2
+## Latest release — V2rayWatch 0.2.3
 
-The Android application is a bilingual Persian/English proxy-link monitoring tool. It imports supported links and subscriptions, scans QR codes, and tests each profile through its own Xray outbound. It is not a full-device VPN/TUN client.
+The current multi-platform release includes:
+- **Windows 0.2.3:** portable desktop client based on v2rayN 7.25.6, with an integrated V2rayWatch dashboard, independent per-profile monitoring, 20-check uptime history, System Proxy and TUN support.
+- **Android 0.2.2:** bilingual proxy-link monitoring app with the same 20-check per-profile uptime history. The APK is a debug-signed sideload preview, not a full-device VPN/TUN client or Google Play build.
 
-Each profile now displays a **20-check uptime history strip** beneath its card: green for successful checks, red for failed checks, and gray for slots with no recorded result. The newest 20 automatic monitoring results are stored with the encrypted profile data and survive app restarts. Manual one-off tests do not alter this history.
+## Uptime history
 
-Android source is maintained in [`AndroidApp/`](AndroidApp/). The older `V2rayWatch-project-0.2.1.zip` remains in the repository as a historical source snapshot.
+Both platform UIs show a 20-cell strip under each profile: green for successful automatic checks, red for failed checks, gray for no recorded result. The newest 20 automatic monitoring results persist across app restarts. Manual one-off tests do not change the history.
 
-## Windows
+## Source and licensing
 
-The Windows desktop client is based on upstream [v2rayN](https://github.com/2dust/v2rayN) 7.25.6, with V2rayWatch branding and Persian/English UI. It is intended to include upstream Xray and sing-box engines and corresponding profile management, QR import, subscriptions, routing, Windows System Proxy, and TUN features.
-
-The Windows component is derived from GPL-3.0 software. See [Windows/THIRD_PARTY_NOTICES.md](Windows/THIRD_PARTY_NOTICES.md). The corresponding modified source is supplied with Windows releases.
+- Android source: [AndroidApp/](AndroidApp/) (app component version 0.2.2).
+- Windows source modifications and branding/dashboard scripts are distributed with the Windows release under the applicable GPL-3.0 obligations.
+- Windows upstream: [2dust/v2rayN 7.25.6](https://github.com/2dust/v2rayN).
 
 ## Build and releases
 
-- [GitHub Actions](https://github.com/hatinati2/V2rayWatch/actions)
 - [GitHub Releases](https://github.com/hatinati2/V2rayWatch/releases)
-
-Android 0.2.2 is an experimental debug-signed sideload preview and is not a Google Play release. Windows builds are experimental until validated on a real Windows 10/11 device.
+- [GitHub Actions](https://github.com/hatinati2/V2rayWatch/actions)

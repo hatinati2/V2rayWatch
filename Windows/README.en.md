@@ -1,12 +1,12 @@
 # V2rayWatch for Windows
 
-**Desktop version 0.1.0 — Windows x64**
+**Desktop version 0.2.3 — Windows x64**
 
 This is a Windows desktop client based on the upstream open-source v2rayN project, version 7.25.6, with V2rayWatch branding. It is not an independently reimplemented proxy engine; the upstream origin and GPL license are disclosed in the package.
 
 ## Persian and English
 
-Both Persian and English resources are included. On a fresh install, Persian is selected when the Windows UI culture is Persian; otherwise English is the default. You can change the language in the app settings.
+Both Persian and English resources are included. On a fresh install, Persian is selected when the Windows UI culture is Persian; otherwise English is the default. The process sets a dedicated Windows AppUserModelID at startup to separate its taskbar group from v2rayN. Remove any old pinned v2rayN shortcut, launch the new V2rayWatch.exe once, then pin V2rayWatch. The dashboard language button saves the preference and automatically restarts the app in the selected language.
 
 ## Main features
 
@@ -22,6 +22,14 @@ Both Persian and English resources are included. On a fresh install, Persian is 
 
 Exact support depends on the selected core and the fields in each profile. Private or vendor-specific options may still require validation.
 
+## Scheduled link monitoring and uptime history
+
+The development branch adds a **Start monitoring** control. It uses v2rayN's real per-profile Real Ping path to test every testable profile independently of System Proxy and TUN. Enter any monitoring interval from 1 to 99,999 seconds (Persian, Arabic, or Latin digits are accepted); the failure threshold is 1–3 consecutive failures (default: 20 seconds and 2 failures). A delete-selected-profile button uses the upstream v2rayN removal command and confirmation flow. The profile table shows Connected, Unstable, Disconnected, or Not testable. Under each profile, a 20-cell history strip shows successful checks in green, failed checks in red, and unknown/not-testable results in gray. History is saved locally and remains available after restarting the app; cells run oldest-to-newest from left to right. Tray notifications are sent when a profile transitions to disconnected and when it recovers.
+
+Manual Real Ping results are kept separate from monitor rounds. New profiles added during a round are not treated as failures until the next round. Monitoring continues while the app remains running in the system tray, but stops when the process exits; start it again after relaunch. A round can take longer than the selected interval when probes time out, and rounds are never overlapped.
+
+The project owner has installed and confirmed this Windows 0.2.3 build on a real Windows device. Monitoring runs while the app remains open in the system tray; after fully exiting, start it again on the next launch.
+
 ## Install and run
 
 1. Download V2rayWatch-Windows-x64.zip from GitHub Releases.
@@ -34,7 +42,7 @@ This is a portable ZIP package; no separate installer is included.
 
 ## Important
 
-This is an experimental Windows x64 build based on v2rayN 7.25.6. It has been compiled on a Windows runner, but it still needs real-device validation on Windows 10/11, including System Proxy, TUN, and representative profiles. It is not Authenticode-signed, so Windows SmartScreen may display an unknown-publisher warning.
+This portable Windows 0.2.3 package is based on v2rayN 7.25.6 and has been tested by the project owner on a real Windows device. It is not Authenticode-signed, so Windows SmartScreen may display an unknown-publisher warning. Behavior can vary with Windows version, network policy, and selected core.
 
 ## License and source
 
