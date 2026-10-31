@@ -530,7 +530,7 @@ if (-not $code.Contains("vwManualProbeButton.ToolTip")) {
     if (-not $code.Contains($initializeMarker)) { throw "Could not locate InitializeComponent for V2rayWatch mode labels." }
     $uiModeLabels = @'
         var vwIsPersian = global::System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("fa", global::System.StringComparison.OrdinalIgnoreCase);
-        vwConnectionModeLabel.Text = vwIsPersian ? "اتصال ویندوز" : "WINDOWS CONNECTION";
+        vwConnectionModeLabel.Text = vwIsPersian ? "پروفایل فعلی" : "CURRENT PROFILE";
         vwManualProbeButton.Content = vwIsPersian ? "تست واقعی همه لینک‌ها" : "Test all links";
         vwManualProbeButton.ToolTip = vwIsPersian
             ? "هر پروفایل مستقل و از مسیر Core موقت خودش با درخواست HTTPS بررسی می‌شود؛ نیازی به فعال‌کردن System Proxy یا TUN نیست."
