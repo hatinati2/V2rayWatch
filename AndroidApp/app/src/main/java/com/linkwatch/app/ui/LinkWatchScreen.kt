@@ -129,12 +129,15 @@ fun LinkWatchScreen(
             scope.launch {
                 try {
                     val encrypted = viewModel.createEncryptedBackup(passphrase.toCharArray())
-                    withContext(Dispatchers.IO) {
-                        val output = context.contentResolver.openOutputStream(uri, "w")
-                            ?: throw IOException("Could not open the selected backup file")
-                        output.use { it.write(encrypted) }
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val output = context.contentResolver.openOutputStream(uri, "w")
+                                ?: throw IOException("Could not open the selected backup file")
+                            output.use { it.write(encrypted) }
+                        }
+                    } finally {
+                        encrypted.fill(0)
                     }
-                    encrypted.fill(0)
                     snackbarHost.showSnackbar(uiText(language, "پشتیبان رمزگذاری‌شده ذخیره شد", "Encrypted backup saved"))
                 } catch (error: Exception) {
                     snackbarHost.showSnackbar(
