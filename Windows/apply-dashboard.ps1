@@ -505,6 +505,11 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
             .Subscribe(update => Dispatcher.BeginInvoke(new Action(() => UpdateVwTrafficChart(update))));
         Closed += (_, _) => _vwTrafficSubscription?.Dispose();
         Loaded += (_, _) => VwInitializeMonitor();
+        Closed += (_, _) =>
+        {
+            if (ViewModel?.ProfilesViewModel is { } profilesVm)
+                profilesVm.ProfileItems.CollectionChanged -= VwOnProfilesCollectionChanged;
+        };
         Closed += (_, _) => VwStopMonitoring();
 '@
     $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $chartInit.TrimEnd())
@@ -554,6 +559,8 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
         if (ViewModel?.ProfilesViewModel is not { } profilesViewModel) return;
         profilesViewModel.VwSpeedTestResultReceived -= VwOnSpeedTestResultReceived;
         profilesViewModel.VwSpeedTestResultReceived += VwOnSpeedTestResultReceived;
+        profilesViewModel.ProfileItems.CollectionChanged -= VwOnProfilesCollectionChanged;
+        profilesViewModel.ProfileItems.CollectionChanged += VwOnProfilesCollectionChanged;
         try
         {
             var path = global::System.IO.Path.Combine(global::System.Environment.GetFolderPath(global::System.Environment.SpecialFolder.LocalApplicationData), "V2rayWatch", "monitor-settings.json");
@@ -764,6 +771,22 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
             // that path reports the failure text in Speed instead of Delay.
             _vwMonitorResults[result.IndexId] = -1;
         }
+    }
+
+    private void VwOnProfilesCollectionChanged(object? sender, global::System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        void RefreshHistory()
+        {
+            var profiles = ViewModel?.ProfilesViewModel?.ProfileItems;
+            if (profiles == null || profiles.Count == 0) return;
+            VwLoadMonitorHistory(profiles);
+            VwSaveMonitorHistory();
+        }
+
+        if (Dispatcher.CheckAccess())
+            RefreshHistory();
+        else
+            _ = Dispatcher.BeginInvoke(new Action(RefreshHistory));
     }
 
     private static string VwMonitorHistoryPath()
