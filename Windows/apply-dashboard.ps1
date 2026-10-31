@@ -455,6 +455,8 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
             .Subscribe(update => Dispatcher.BeginInvoke(new Action(() => UpdateVwTrafficChart(update))));
         Closed += (_, _) => _vwTrafficSubscription?.Dispose();
         Loaded += (_, _) => VwInitializeMonitor();
+        Loaded += (_, _) => VwInitializeAppearance();
+        try { VwSetCurrentProcessExplicitAppUserModelID("V2rayWatch.Windows.Desktop"); } catch { }
         Closed += (_, _) => VwStopMonitoring();
 '@
     $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $chartInit.TrimEnd())
@@ -812,8 +814,7 @@ if (-not $code.Contains("VwInitializeAppearance")) {
 
     $initializeMonitorLine = "        Loaded += (_, _) => VwInitializeMonitor();"
     if (-not $code.Contains($initializeMonitorLine)) { throw "Could not locate monitor Loaded hook for appearance initialization." }
-    $code = $code.Replace($initializeMonitorLine, $initializeMonitorLine + [Environment]::NewLine + "        Loaded += (_, _) => VwInitializeAppearance();
-        try { VwSetCurrentProcessExplicitAppUserModelID("V2rayWatch.Windows.Desktop"); } catch { }")
+    $code = $code.Replace($initializeMonitorLine, $initializeMonitorLine + [Environment]::NewLine + "        Loaded += (_, _) => VwInitializeAppearance();")
 
     $appearanceMethods = @'
 
