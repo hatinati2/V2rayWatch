@@ -272,8 +272,8 @@ jobs:
           target_commitish: main
           name: V2rayWatch ${{ steps.release.outputs.tag }} — Android + Windows
           draft: false
-          prerelease: true
-          make_latest: false
+          prerelease: false
+          make_latest: true
           generate_release_notes: false
           fail_on_unmatched_files: true
           body: |
@@ -289,14 +289,20 @@ jobs:
             - Android versionName مطابق تگ مشترک و versionCode افزایش‌یافته است.
             - Windows نسخه مستقل WPF است و به v2rayN وابسته نیست.
 
+            ### قابلیت‌های این نسخه
+            - پشتیبان رمزگذاری‌شده بین Android و Windows با فرمت مشترک V2VWBAK1؛ فایل پشتیبان با همان عبارت عبور در هر دو برنامه قابل بازیابی است.
+            - بازیابی غیرمخرب: پروفایل‌های موجود حفظ و لینک‌های تکراری رد می‌شوند.
+            - نمایش و ذخیره QR پروفایل در Windows و واردکردن لینک با خواندن QR از فایل تصویر.
+            - تنظیمات هشدار قطع و بازیابی در Windows قابل ذخیره و انتقال‌اند.
+
             ### نکات
-            - نسخه Windows در این انتشار همچنان Preview است؛ به همین دلیل این Release به‌صورت Pre-release علامت‌گذاری شده است.
             - Windows System Proxy و TUN را تغییر نمی‌دهد.
             - امضای APK با کلید دائمی Android انجام می‌شود؛ فایل اجرایی Windows هنوز امضای کد ناشر ندارد.
             - پایش Windows فقط تا زمان باز بودن برنامه (از جمله System Tray) اجرا می‌شود.
+            - QR شامل اطلاعات ورود پروکسی است؛ فایل/تصویر آن را خصوصی به اشتراک بگذارید.
             - فایل manifest شامل SHA-256 هر دو بسته است.
 
-            ### روند انتشار بعدی
-            برای انتشار نسخه بعدی، versionName و versionCode اندروید و Version ویندوز را هماهنگ افزایش دهید و یک تگ مانند v0.3.1 بسازید. همین workflow هر دو بسته را تست و در یک Release منتشر می‌کند.
+            ### روند انتشار
+            برای انتشار بعدی، versionName و versionCode اندروید و Version ویندوز را هماهنگ افزایش دهید و یک تگ نسخهٔ مشترک بسازید. همین workflow هر دو بسته را تست و در یک Release پایدار منتشر می‌کند.
           files: |
             release-assets/*
