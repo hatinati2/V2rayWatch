@@ -3,6 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
   <Application.Resources>
+    <SolidColorBrush x:Key="ThemeWindowBgBrush" Color="#071426"/><SolidColorBrush x:Key="ThemeHeaderBgBrush" Color="#0C1A2E"/>
+    <SolidColorBrush x:Key="ThemePanelBrush" Color="#0D2038"/><SolidColorBrush x:Key="ThemePanelAltBrush" Color="#102844"/>
+    <SolidColorBrush x:Key="ThemeLineBrush" Color="#1D3A5C"/><SolidColorBrush x:Key="ThemeMutedBrush" Color="#93A9C5"/>
+    <SolidColorBrush x:Key="ThemeAccentBrush" Color="#12B8C5"/><SolidColorBrush x:Key="ThemeGoodBrush" Color="#45D483"/>
+    <SolidColorBrush x:Key="ThemeBadBrush" Color="#F16B75"/><SolidColorBrush x:Key="ThemeButtonBrush" Color="#193B5D"/>
+    <SolidColorBrush x:Key="ThemeButtonBorderBrush" Color="#315273"/><SolidColorBrush x:Key="ThemeButtonHoverBrush" Color="#245178"/>
+    <SolidColorBrush x:Key="ThemePrimaryButtonBrush" Color="#087EBA"/><SolidColorBrush x:Key="ThemeGridHeaderBrush" Color="#173451"/>
+    <SolidColorBrush x:Key="ThemeGridHeaderTextBrush" Color="#C6D7EA"/><SolidColorBrush x:Key="ThemeGridSelectedBrush" Color="#155176"/>
+    <SolidColorBrush x:Key="ThemeGridHoverBrush" Color="#12304B"/><SolidColorBrush x:Key="ThemeLogoBgBrush" Color="#123D59"/>
+    <SolidColorBrush x:Key="ThemeAccentTextBrush" Color="#69E6DF"/><SolidColorBrush x:Key="ThemeTextBrush" Color="#EAF2FF"/>
+    <SolidColorBrush x:Key="ThemeTextStrongBrush" Color="#F4F8FF"/><SolidColorBrush x:Key="ThemeGridBgBrush" Color="#0A1729"/>
+    <SolidColorBrush x:Key="ThemeHistoryNeutralBrush" Color="#718096"/><SolidColorBrush x:Key="ThemeDialogPanelBrush" Color="#102440"/>
+    <SolidColorBrush x:Key="ThemeInputBorderBrush" Color="#29466E"/>
     <Color x:Key="Bg">#081426</Color>
     <Color x:Key="Panel">#101F38</Color>
     <Color x:Key="Panel2">#142746</Color>
@@ -16,9 +29,9 @@
     <SolidColorBrush x:Key="GreenBrush" Color="{StaticResource Green}"/>
     <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource Muted}"/>
     <Style TargetType="Button">
-      <Setter Property="Foreground" Value="#F4F8FF"/>
-      <Setter Property="Background" Value="#1B3152"/>
-      <Setter Property="BorderBrush" Value="#29466E"/>
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextStrongBrush}"/>
+      <Setter Property="Background" Value="{DynamicResource ThemeButtonBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource ThemeInputBorderBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="Padding" Value="14,9"/>
       <Setter Property="FontSize" Value="14"/>
@@ -30,7 +43,7 @@
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#24436B"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource ThemeButtonHoverBrush}"/></Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.48"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>

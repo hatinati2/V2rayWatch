@@ -34,12 +34,6 @@ jobs:
           dotnet build Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release
           if ($LASTEXITCODE -ne 0) { throw "Standalone WPF build failed." }
 
-      - name: Run profile parser and Xray config smoke tests
-        shell: pwsh
-        run: |
-          dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
-          if ($LASTEXITCODE -ne 0) { throw "Profile parser smoke tests failed." }
-
       - name: Publish portable self-contained application
         shell: pwsh
         run: |
@@ -83,6 +77,13 @@ jobs:
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/XTLS/Xray-core/$coreVersion/LICENSE" -OutFile "$publishCore\CORE-LICENSE.txt"
           & (Join-Path $publishCore "xray.exe") version
           if ($LASTEXITCODE -ne 0) { throw "The official Xray Core failed its version smoke test." }
+
+      - name: Run parser smoke tests and validate Hysteria2 with official Xray
+        shell: pwsh
+        run: |
+          $env:V2RAYWATCH_XRAY_PATH = "$env:GITHUB_WORKSPACE\publish\core\xray.exe"
+          dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw "Parser or official Xray validation failed." }
 
       - name: Package standalone Windows preview
         shell: pwsh

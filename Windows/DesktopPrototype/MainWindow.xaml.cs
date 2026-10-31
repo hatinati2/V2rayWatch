@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using Forms = System.Windows.Forms;
@@ -36,6 +37,18 @@ public partial class MainWindow : Window
             _data = new AppData();
         }
         _data.Settings ??= new MonitorSettings();
+        AppTheme.Apply(_data.LightTheme);
+        var appIconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "V2rayWatch.ico");
+        if (File.Exists(appIconPath))
+        {
+            try
+            {
+                var image = new System.Windows.Media.Imaging.BitmapImage();
+                image.BeginInit(); image.UriSource = new Uri(appIconPath); image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad; image.EndInit(); image.Freeze();
+                Icon = image; LogoImage.Source = image;
+            }
+            catch { }
+        }
         _data.Profiles ??= [];
         _data.Subscriptions ??= [];
 
@@ -71,7 +84,11 @@ public partial class MainWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        _tray = new Forms.NotifyIcon { Icon = Drawing.SystemIcons.Application, Visible = true, Text = "V2rayWatch — Link Monitor" };
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "V2rayWatch.ico");
+        Drawing.Icon trayIcon;
+        try { trayIcon = File.Exists(iconPath) ? new Drawing.Icon(iconPath) : (Drawing.Icon)Drawing.SystemIcons.Application.Clone(); }
+        catch { trayIcon = (Drawing.Icon)Drawing.SystemIcons.Application.Clone(); }
+        _tray = new Forms.NotifyIcon { Icon = trayIcon, Visible = true, Text = "V2rayWatch — Link Monitor" };
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add(_english ? "Open V2rayWatch" : "بازکردن V2rayWatch", null, (_, _) =>
             Dispatcher.Invoke(() => { Show(); WindowState = WindowState.Normal; Activate(); }));
@@ -396,11 +413,12 @@ public partial class MainWindow : Window
 
     private async void SaveSettings_Click(object sender, RoutedEventArgs e)
     {
-        if (!int.TryParse(TimeoutInput.Text.Trim(), out var timeout) || timeout is < 3 or > 60)
-        {
-            SetStatus(_english ? "Timeout must be between 3 and 60 seconds." : "مهلت تست باید بین ۳ تا ۶۰ ثانیه باشد.", true);
-            return;
-        }
+        if(!int.TryParse(IntervalInput.Text.Trim(),NumberStyles.None,CultureInfo.InvariantCulture,out var interval)||interval is <1 or >9999)
+        {SetStatus(_english?"Check interval must be between 1 and 9999 seconds.":"فاصلهٔ تست باید بین ۱ تا ۹۹۹۹ ثانیه باشد.",true);return;}
+        if(!int.TryParse(ThresholdInput.Text.Trim(),NumberStyles.None,CultureInfo.InvariantCulture,out var failureThreshold)||failureThreshold is <1 or >9999)
+        {SetStatus(_english?"Alert threshold must be between 1 and 9999 failures.":"تعداد شکست پیش از هشدار باید بین ۱ تا ۹۹۹۹ باشد.",true);return;}
+        if(!int.TryParse(TimeoutInput.Text.Trim(),NumberStyles.None,CultureInfo.InvariantCulture,out var timeout)||timeout is <3 or >60)
+        {SetStatus(_english?"Timeout must be between 3 and 60 seconds.":"مهلت تست باید بین ۳ تا ۶۰ ثانیه باشد.",true);return;}
         var primary = PrimaryUrlInput.Text.Trim();
         var fallback = FallbackUrlInput.Text.Trim();
         if (!IsHttps(primary) || (fallback.Length > 0 && !IsHttps(fallback)))
@@ -408,8 +426,8 @@ public partial class MainWindow : Window
             SetStatus(_english ? "Test URLs must use HTTPS." : "آدرس‌های تست باید HTTPS باشند.", true);
             return;
         }
-        _data.Settings.IntervalSeconds = GetComboValue(IntervalCombo, 20);
-        _data.Settings.ConsecutiveFailureThreshold = GetComboValue(ThresholdCombo, 2);
+        _data.Settings.IntervalSeconds=interval;
+        _data.Settings.ConsecutiveFailureThreshold=failureThreshold;
         _data.Settings.TimeoutSeconds = timeout;
         _data.Settings.PrimaryTestUrl = primary;
         _data.Settings.FallbackTestUrl = fallback;
@@ -438,6 +456,31 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) != true) return;
         try { await ImportLinksAsync(await File.ReadAllTextAsync(dialog.FileName)); }
         catch (Exception ex) { SetStatus(ex.Message, true); }
+    }
+
+    private async void RemoveAllProfiles_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profiles.Count == 0) { SetStatus(_english ? "There are no profiles to remove." : "لینکی برای حذف وجود ندارد.", false); return; }
+        var answer=System.Windows.MessageBox.Show(_english ? $"Delete all {_profiles.Count} profiles? Saved subscription URLs will remain." : $"همهٔ {_profiles.Count} لینک حذف شوند؟ آدرس اشتراک‌ها باقی می‌مانند.",
+            "V2rayWatch",System.Windows.MessageBoxButton.YesNo,System.Windows.MessageBoxImage.Warning);
+        if(answer!=System.Windows.MessageBoxResult.Yes)return;
+        if(_monitorCancellation is not null)await StopMonitoringAsync();
+        SearchInput.Clear();_profiles.Clear();SaveData();RefreshSummary();
+        SetStatus(_english?"All profiles removed; subscription URLs were kept.":"همهٔ لینک‌ها حذف شدند؛ آدرس اشتراک‌ها باقی ماندند.",false);
+    }
+
+    private async void RemoveAllSubscriptions_Click(object sender, RoutedEventArgs e)
+    {
+        if(_subscriptions.Count==0){SetStatus(_english?"There are no subscription sources to remove.":"اشتراکی برای حذف وجود ندارد.",false);return;}
+        var owned=_profiles.Count(p=>p.SourceSubscriptionId is not null);
+        var answer=System.Windows.MessageBox.Show(
+            _english?$"Remove all {_subscriptions.Count} subscription URLs and their {owned} imported profiles? Manual profiles will remain.":$"همهٔ {_subscriptions.Count} آدرس اشتراک و {owned} پروفایل واردشده از آن‌ها حذف شوند؟ لینک‌های دستی باقی می‌مانند؟",
+            "V2rayWatch",System.Windows.MessageBoxButton.YesNo,System.Windows.MessageBoxImage.Warning);
+        if(answer!=System.Windows.MessageBoxResult.Yes)return;
+        if(_monitorCancellation is not null)await StopMonitoringAsync();
+        foreach(var profile in _profiles.Where(p=>p.SourceSubscriptionId is not null).ToList())_profiles.Remove(profile);
+        _subscriptions.Clear();SearchInput.Clear();SaveData();RefreshSummary();
+        SetStatus(_english?"All subscription URLs and their profiles were removed.":"همهٔ اشتراک‌ها و لینک‌های متعلق به آن‌ها حذف شدند.",false);
     }
 
     private void RemoveSelected_Click(object sender, RoutedEventArgs e)
@@ -469,6 +512,13 @@ public partial class MainWindow : Window
             p.Protocol.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
+    private void ThemeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _data.LightTheme=!_data.LightTheme;AppTheme.Apply(_data.LightTheme);
+        ThemeButton.Content=_data.LightTheme?(_english?"Dark theme":"تم تیره"):(_english?"Light theme":"تم روشن");
+        SaveData();
+    }
+
     private void LanguageButton_Click(object sender, RoutedEventArgs e)
     {
         _english = !_english;
@@ -483,6 +533,7 @@ public partial class MainWindow : Window
         FlowDirection = _english ? System.Windows.FlowDirection.LeftToRight : System.Windows.FlowDirection.RightToLeft;
         foreach (var profile in _profiles) profile.English = _english;
         LanguageButton.Content = _english ? "EN / FA" : "FA / EN";
+        ThemeButton.Content = _data.LightTheme ? (_english ? "Dark theme" : "تم تیره") : (_english ? "Light theme" : "تم روشن");
         HeaderSubtitle.Text = _english ? "Real proxy profile testing and monitoring" : "پایش و تست واقعی لینک‌های پروکسی";
         AddLinksButton.Content = _english ? "Add links" : "افزودن لینک";
         AddSubscriptionButton.Content = _english ? "Add subscription" : "افزودن Subscription";
@@ -496,12 +547,13 @@ public partial class MainWindow : Window
         ProfilesHint.Text = _english ? "Each profile is tested independently of Windows proxy and VPN settings." : "هر پروفایل مستقل از پراکسی و تنظیمات شبکهٔ ویندوز تست می‌شود.";
         TestSelectedButton.Content = _english ? "Test selected" : "تست انتخاب‌شده";
         RemoveSelectedButton.Content = _english ? "Remove" : "حذف";
+        DeleteAllProfilesButton.Content = _english ? "Remove all links" : "حذف همه لینک‌ها";
         GridFooter.Text = _english ? "Manual tests do not change automatic monitoring history." : "تست دستی، تاریخچهٔ پایش خودکار را تغییر نمی‌دهد.";
         ImportClipboardButton.Content = _english ? "Paste from clipboard" : "چسباندن از Clipboard";
         ImportFileButton.Content = _english ? "Import file" : "ورود از فایل";
         MonitorSettingsTitle.Text = _english ? "Monitoring settings" : "تنظیمات پایش";
-        IntervalLabel.Text = _english ? "Check interval" : "فاصلهٔ بررسی";
-        ThresholdLabel.Text = _english ? "Consecutive failures before disconnect" : "تعداد خطای متوالی تا قطع";
+        IntervalLabel.Text = _english ? "Time between tests (seconds)" : "فاصله بین هر تست (ثانیه)";
+        ThresholdLabel.Text = _english ? "Consecutive failed checks before alert" : "تعداد شکست متوالی پیش از هشدار";
         TimeoutLabel.Text = _english ? "Test timeout (seconds)" : "مهلت هر تست (ثانیه)";
         PrimaryUrlLabel.Text = _english ? "Primary test URL" : "آدرس تست اصلی";
         FallbackUrlLabel.Text = _english ? "Fallback URL" : "آدرس جایگزین";
@@ -511,6 +563,7 @@ public partial class MainWindow : Window
         UpdateSubscriptionButton.Content = _english ? "Update selected" : "به‌روزرسانی اشتراک انتخاب‌شده";
         UpdateAllSubscriptionsButton.Content = _english ? "Update all subscriptions" : "به‌روزرسانی همه اشتراک‌ها";
         RemoveSubscriptionButton.Content = _english ? "Remove subscription" : "حذف منبع اشتراک";
+        RemoveAllSubscriptionsButton.Content = _english ? "Remove all subscriptions and their profiles" : "حذف همه اشتراک‌ها و لینک‌هایشان";
         ProfilesGrid.Columns[0].Header = _english ? "Profile" : "نام پروفایل";
         ProfilesGrid.Columns[1].Header = _english ? "Protocol" : "پروتکل";
         ProfilesGrid.Columns[2].Header = _english ? "Host" : "میزبان";
@@ -525,21 +578,15 @@ public partial class MainWindow : Window
 
     private void LoadSettingsToControls()
     {
-        SetComboValue(IntervalCombo, _data.Settings.IntervalSeconds);
-        SetComboValue(ThresholdCombo, _data.Settings.ConsecutiveFailureThreshold);
-        TimeoutInput.Text = _data.Settings.TimeoutSeconds.ToString();
-        PrimaryUrlInput.Text = _data.Settings.PrimaryTestUrl;
-        FallbackUrlInput.Text = _data.Settings.FallbackTestUrl;
+        IntervalInput.Text=_data.Settings.IntervalSeconds.ToString(CultureInfo.InvariantCulture);
+        ThresholdInput.Text=_data.Settings.ConsecutiveFailureThreshold.ToString(CultureInfo.InvariantCulture);
+        TimeoutInput.Text=_data.Settings.TimeoutSeconds.ToString(CultureInfo.InvariantCulture);
+        PrimaryUrlInput.Text=_data.Settings.PrimaryTestUrl;FallbackUrlInput.Text=_data.Settings.FallbackTestUrl;
     }
 
-    private static int GetComboValue(System.Windows.Controls.ComboBox combo, int fallback) =>
-        combo.SelectedValue is object value && int.TryParse(value.ToString(), out var number) ? number : fallback;
-
-    private static void SetComboValue(System.Windows.Controls.ComboBox combo, int value)
+    private void NumericOnly_PreviewTextInput(object sender,System.Windows.Input.TextCompositionEventArgs e)
     {
-        foreach (ComboBoxItem item in combo.Items)
-            if (int.TryParse(item.Tag?.ToString(), out var parsed) && parsed == value) { combo.SelectedItem = item; return; }
-        combo.SelectedIndex = 0;
+        e.Handled=!e.Text.All(char.IsDigit);
     }
 
     private static bool IsHttps(string value) =>
@@ -554,6 +601,8 @@ public partial class MainWindow : Window
         MonitorButton.IsEnabled = !busy || _monitorCancellation is not null;
         TestSelectedButton.IsEnabled = !busy && ProfilesGrid.SelectedItem is ServerProfile;
         RemoveSelectedButton.IsEnabled = !busy && ProfilesGrid.SelectedItem is ServerProfile;
+        DeleteAllProfilesButton.IsEnabled = !busy;
+        RemoveAllSubscriptionsButton.IsEnabled = !busy;
         UpdateSubscriptionButton.IsEnabled = !busy;
         UpdateAllSubscriptionsButton.IsEnabled = !busy;
         if (message is not null) SetStatus(message, false);
@@ -581,7 +630,7 @@ public partial class MainWindow : Window
     private void SetStatus(string message, bool error)
     {
         StatusText.Text = message;
-        StatusText.Foreground = error ? System.Windows.Media.Brushes.OrangeRed : System.Windows.Media.Brushes.LightGreen;
+        StatusText.Foreground = _data.LightTheme ? (error ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(180,35,48)) : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(20,120,75))) : (error ? System.Windows.Media.Brushes.OrangeRed : System.Windows.Media.Brushes.LightGreen);
     }
 
     private void SaveData()

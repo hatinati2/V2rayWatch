@@ -63,6 +63,7 @@ public sealed class AppData
     public List<SubscriptionSource> Subscriptions { get; set; } = [];
     public MonitorSettings Settings { get; set; } = new();
     public bool English { get; set; }
+    public bool LightTheme { get; set; }
     public bool MonitorEnabled { get; set; }
 }
 
@@ -292,52 +293,43 @@ public static class ServerProfileParser
 
     private static ServerProfile ParseHysteria2(string raw)
     {
-        var normalized = raw.StartsWith("hy2://", StringComparison.OrdinalIgnoreCase)
-            ? "hysteria2://" + raw[(raw.IndexOf("://", StringComparison.Ordinal) + 3)..]
-            : raw;
-        var uri = ParseUri(normalized);
-        var host = RequireHost(uri);
-        var port = uri.Port is -1 or 0 ? 443 : RequirePort(uri);
-        var auth = Decode(uri.UserInfo);
-        if (string.IsNullOrWhiteSpace(auth)) throw new FormatException("رمز Hysteria2 خالی است.");
-        var q = Query(uri.Query);
-        var tls = new JsonObject
-        {
-            ["serverName"] = Get(q, "sni", Get(q, "peer", host)),
-            ["alpn"] = ToJsonArray(Get(q, "alpn", "h3").Split(',').Select(x => x.Trim()))
-        };
-        var fp = Get(q, "fp");
-        if (fp.Length > 0) tls["fingerprint"] = fp;
-        if (IsTrue(Get(q, "insecure", Get(q, "allowInsecure", "false")))) tls["allowInsecure"] = true;
-        var stream = new JsonObject
-        {
-            ["network"] = "hysteria",
-            ["security"] = "tls",
-            ["tlsSettings"] = tls,
-            ["hysteriaSettings"] = new JsonObject { ["version"] = 2, ["auth"] = auth }
-        };
-        var outbound = new JsonObject
-        {
-            ["tag"] = "proxy",
-            ["protocol"] = "hysteria",
-            ["settings"] = new JsonObject { ["version"] = 2, ["address"] = host, ["port"] = port },
-            ["streamSettings"] = stream
-        };
-        var mask = new JsonObject();
-        var obfs = Get(q, "obfs").ToLowerInvariant();
-        var obfsPassword = Get(q, "obfs-password");
-        if (obfs == "salamander" && obfsPassword.Length > 0)
-            mask["udp"] = new JsonArray(new JsonObject
-            {
-                ["type"] = "salamander", ["settings"] = new JsonObject { ["password"] = obfsPassword }
-            });
-        var mport = Get(q, "mport");
-        if (mport.Length > 0)
-            mask["quicParams"] = new JsonObject { ["udpHop"] = new JsonObject { ["ports"] = mport, ["interval"] = Get(q, "mportInterval", "30") } };
-        if (mask.Count > 0) stream["finalmask"] = mask;
-        var pin = Get(q, "pinSHA256");
-        if (pin.Length > 0) tls["pinnedPeerCertSha256"] = pin;
-        return CreateProfile(raw, uri.Fragment, "Hysteria2", host, port, outbound);
+        // Hysteria2 URI authorities may contain multi-port ranges, which System.Uri cannot parse.
+        var schemeEnd=raw.IndexOf("://",StringComparison.Ordinal);
+        if(schemeEnd<=0)throw new FormatException("قالب لینک Hysteria2 معتبر نیست.");
+        var rest=raw[(schemeEnd+3)..];var fi=rest.IndexOf('#');var fragment=fi>=0?rest[(fi+1)..]:"";if(fi>=0)rest=rest[..fi];
+        var qi=rest.IndexOf('?');var query=qi>=0?rest[qi..]:"";var address=qi>=0?rest[..qi]:rest;
+        var si=address.IndexOf('/');var authority=si>=0?address[..si]:address;
+        var at=authority.LastIndexOf('@');if(at<0)throw new FormatException("رمز Hysteria2 در لینک وجود ندارد.");
+        var auth=Decode(authority[..at]);var hp=authority[(at+1)..];if(string.IsNullOrWhiteSpace(auth))throw new FormatException("رمز Hysteria2 خالی است.");
+        string host,portSpec;
+        if(hp.StartsWith("[",StringComparison.Ordinal)){
+            var close=hp.IndexOf(']');if(close<=1)throw new FormatException("آدرس IPv6 در لینک Hysteria2 معتبر نیست.");
+            host=hp[1..close];var suffix=hp[(close+1)..];portSpec=suffix.StartsWith(':')?suffix[1..]:suffix.Length==0?"443":throw new FormatException("پورت Hysteria2 معتبر نیست.");
+        }else{var colon=hp.LastIndexOf(':');if(colon<0){host=hp;portSpec="443";}else{host=hp[..colon];portSpec=hp[(colon+1)..];}}
+        host=Decode(host);if(string.IsNullOrWhiteSpace(host))throw new FormatException("میزبان Hysteria2 خالی است.");if(string.IsNullOrWhiteSpace(portSpec))portSpec="443";
+        var ports=portSpec.Split(',',StringSplitOptions.TrimEntries|StringSplitOptions.RemoveEmptyEntries);if(ports.Length==0)throw new FormatException("پورت Hysteria2 معتبر نیست.");
+        foreach(var segment in ports){var range=segment.Split('-',2,StringSplitOptions.TrimEntries);
+            if(!int.TryParse(range[0],NumberStyles.None,CultureInfo.InvariantCulture,out var low)||low is <1 or >65535)throw new FormatException("بازهٔ پورت Hysteria2 معتبر نیست.");
+            if(range.Length==2&&(!int.TryParse(range[1],NumberStyles.None,CultureInfo.InvariantCulture,out var high)||high<low||high>65535))throw new FormatException("بازهٔ پورت Hysteria2 معتبر نیست.");
+        }
+        var first=ports[0].Split('-',2,StringSplitOptions.TrimEntries)[0];int.TryParse(first,NumberStyles.None,CultureInfo.InvariantCulture,out var port);
+        var q=Query(query);var tls=new JsonObject{["serverName"]=Get(q,"sni",Get(q,"peer",host)),["alpn"]=ToJsonArray(Get(q,"alpn","h3").Split(',').Select(v=>v.Trim()))};
+        var fp=Get(q,"fp");if(fp.Length>0)tls["fingerprint"]=fp;if(IsTrue(Get(q,"insecure",Get(q,"allowInsecure","false"))))tls["allowInsecure"]=true;
+        var pin=Get(q,"pinSHA256");if(pin.Length>0)tls["pinnedPeerCertSha256"]=pin;
+        var stream=new JsonObject{["method"]="hysteria",["security"]="tls",["tlsSettings"]=tls,["hysteriaSettings"]=new JsonObject{["version"]=2,["auth"]=auth}};
+        var outbound=new JsonObject{["tag"]="proxy",["protocol"]="hysteria",["settings"]=new JsonObject{["version"]=2,["address"]=host,["port"]=port},["streamSettings"]=stream};
+        var masks=new JsonObject();var obfs=Get(q,"obfs").ToLowerInvariant();var obfsPassword=Get(q,"obfs-password");
+        if(obfs.Length>0){if(obfs!="salamander")throw new FormatException("این نسخه از Xray برای Hysteria2 فقط obfs از نوع salamander را پشتیبانی می‌کند.");
+            if(obfsPassword.Length==0)throw new FormatException("پارامتر obfs-password برای salamander اجباری است.");
+            masks["udp"]=new JsonArray(new JsonObject{["type"]="salamander",["settings"]=new JsonObject{["password"]=obfsPassword}});
+        }
+        var hopping=ports.Length>1||ports[0].Contains('-',StringComparison.Ordinal)?string.Join(',',ports):"";var legacy=Get(q,"mport");if(legacy.Length>0)hopping=legacy;
+        if(hopping.Length>0){var iv=Get(q,"interval",Get(q,"mportInterval","30"));
+            if(!int.TryParse(iv,NumberStyles.None,CultureInfo.InvariantCulture,out var sec)||sec<5||sec>3600)throw new FormatException("فاصلهٔ تغییر پورت Hysteria2 باید بین ۵ تا ۳۶۰۰ ثانیه باشد.");
+            masks["quicParams"]=new JsonObject{["udpHop"]=new JsonObject{["ports"]=hopping,["interval"]=sec}};
+        }
+        if(masks.Count>0)stream["finalmask"]=masks;
+        return CreateProfile(raw,fragment,"Hysteria2",host,port,outbound);
     }
 
     private static ServerProfile ParseXrayJson(string raw)

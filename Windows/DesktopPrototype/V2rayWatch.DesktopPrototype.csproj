@@ -7,6 +7,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>V2rayWatch</AssemblyName>
+    <ApplicationIcon>Assets\V2rayWatch.ico</ApplicationIcon>
     <RootNamespace>V2rayWatch.DesktopPrototype</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Assets\V2rayWatch.ico"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+  </ItemGroup>
 </Project>
