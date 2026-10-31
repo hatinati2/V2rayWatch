@@ -1,4 +1,4 @@
-using System.Drawing;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
@@ -44,7 +44,7 @@ public static class QrCodeService
         if (info.Length is <= 0 or > 16 * 1024 * 1024)
             throw new InvalidDataException("QR image must be smaller than 16 MB.");
 
-        using var bitmap = new Bitmap(path);
+        using var bitmap = new System.Drawing.Bitmap(path);
         if (bitmap.Width <= 0 || bitmap.Height <= 0 ||
             (long)bitmap.Width * bitmap.Height > 50_000_000)
             throw new InvalidDataException("QR image dimensions are too large.");
@@ -83,7 +83,7 @@ public static class PassphrasePrompt
             SizeToContent = SizeToContent.Height,
             ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            FlowDirection = english ? FlowDirection.LeftToRight : FlowDirection.RightToLeft,
+            FlowDirection = english ? System.Windows.FlowDirection.LeftToRight : System.Windows.FlowDirection.RightToLeft,
             Background = System.Windows.Media.Brushes.White,
             ShowInTaskbar = false
         };
@@ -123,11 +123,11 @@ public static class PassphrasePrompt
 
         var buttons = new StackPanel
         {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
             Margin = new Thickness(0, 18, 0, 0)
         };
-        var cancel = new Button
+        var cancel = new System.Windows.Controls.Button
         {
             Content = english ? "Cancel" : "انصراف",
             MinWidth = 88,
@@ -135,7 +135,7 @@ public static class PassphrasePrompt
             Margin = new Thickness(0, 0, 8, 0),
             IsCancel = true
         };
-        var accept = new Button
+        var accept = new System.Windows.Controls.Button
         {
             Content = english ? "Continue" : "ادامه",
             MinWidth = 88,
@@ -159,7 +159,7 @@ public static class PassphrasePrompt
             var value = first.Password;
             if (value.Length is < PortableBackupCodec.MinimumPassphraseLength or > PortableBackupCodec.MaximumPassphraseLength)
             {
-                MessageBox.Show(
+                System.Windows.MessageBox.Show(
                     window,
                     english
                         ? $"Passphrase must contain {PortableBackupCodec.MinimumPassphraseLength} to {PortableBackupCodec.MaximumPassphraseLength} characters."
@@ -222,12 +222,12 @@ public sealed class QrCodeWindow : Window
             Margin = new Thickness(0, 0, 0, 10)
         });
 
-        var image = new Image
+        var image = new System.Windows.Controls.Image
         {
             Width = 330,
             Height = 330,
             Stretch = System.Windows.Media.Stretch.Uniform,
-            HorizontalAlignment = HorizontalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
             Source = LoadImage(_png)
         };
         panel.Children.Add(image);
@@ -244,10 +244,10 @@ public sealed class QrCodeWindow : Window
 
         var buttons = new StackPanel
         {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center
         };
-        var save = new Button
+        var save = new System.Windows.Controls.Button
         {
             Content = english ? "Save QR image" : "ذخیره تصویر QR",
             MinWidth = 130,
@@ -255,7 +255,7 @@ public sealed class QrCodeWindow : Window
             Margin = new Thickness(0, 0, 8, 0)
         };
         save.Click += Save_Click;
-        var close = new Button
+        var close = new System.Windows.Controls.Button
         {
             Content = english ? "Close" : "بستن",
             MinWidth = 90,
@@ -271,7 +271,7 @@ public sealed class QrCodeWindow : Window
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
         var safeName = string.Concat(Title.Where(c => char.IsLetterOrDigit(c) || c is '-' or '_')).Trim();
-        var dialog = new SaveFileDialog
+        var dialog = new Microsoft.Win32.SaveFileDialog
         {
             Filter = "PNG image|*.png",
             FileName = string.IsNullOrWhiteSpace(safeName) ? "V2rayWatch-QR.png" : safeName + ".png",
