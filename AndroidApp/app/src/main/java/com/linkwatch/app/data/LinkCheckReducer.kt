@@ -3,7 +3,8 @@ package com.linkwatch.app.data
 data class LinkCheckTransition(
     val profile: ProxyProfile,
     val becameDisconnected: Boolean,
-    val recovered: Boolean
+    val recovered: Boolean,
+    val outageDurationMs: Long? = null
 )
 
 /**
@@ -31,8 +32,18 @@ fun reduceLinkCheck(
         failures >= settings.failureThreshold -> LinkState.DISCONNECTED
         else -> LinkState.UNSTABLE
     }
+    val becameDisconnected = !result.success && nextState == LinkState.DISCONNECTED && previous.state != LinkState.DISCONNECTED
+    val recovered = result.success && previous.state == LinkState.DISCONNECTED
+    val disconnectedSince = when {
+        nextState == LinkState.DISCONNECTED -> previous.disconnectedSinceEpochMs ?: checkedAtEpochMs
+        result.success -> null
+        else -> previous.disconnectedSinceEpochMs
+    }
+    val outageStart = previous.disconnectedSinceEpochMs ?: previous.lastCheckedAt.takeIf { it > 0L }
+    val outageDuration = if (recovered && outageStart != null) (checkedAtEpochMs - outageStart).coerceAtLeast(0L) else null
     val updated = previous.copy(
         state = nextState,
+        disconnectedSinceEpochMs = disconnectedSince,
         delayMs = if (result.success) result.delayMs else -1L,
         lastCheckedAt = checkedAtEpochMs,
         consecutiveFailures = failures,
@@ -44,9 +55,8 @@ fun reduceLinkCheck(
     )
     return LinkCheckTransition(
         profile = updated,
-        becameDisconnected = !result.success &&
-            nextState == LinkState.DISCONNECTED &&
-            previous.state != LinkState.DISCONNECTED,
-        recovered = result.success && previous.state == LinkState.DISCONNECTED
+        becameDisconnected = becameDisconnected,
+        recovered = recovered,
+        outageDurationMs = outageDuration
     )
 }
