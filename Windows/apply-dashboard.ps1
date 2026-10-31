@@ -306,14 +306,6 @@ $dashboardMarkup = @'
           <TextBlock Text="V2rayWatch" Foreground="#172B4D" FontSize="19" FontWeight="Bold"/>
           
         </StackPanel>
-        <StackPanel>
-          <Border Background="#DDECF5" CornerRadius="10" Padding="12" Margin="0,0,0,5">
-            <TextBlock Text="⌂   داشبورد" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
-          </Border>
-          <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuServers}" Command="{Binding AddServerViaClipboardCmd}"/>
-          <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuSubscription}" Command="{Binding SubSettingCmd}"/>
-          <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuRouting}" Command="{Binding RoutingSettingCmd}"/>
-          <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuSetting}" Command="{Binding OptionSettingCmd}"/>
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel>
             <StackPanel>
