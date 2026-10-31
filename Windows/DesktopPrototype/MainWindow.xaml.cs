@@ -56,6 +56,7 @@ public partial class MainWindow : Window
                 catch { profile.Status = "NotTestable"; }
             }
             NormalizeHistory(profile);
+            profile.English = _data.English;
         }
 
         _profiles = new ObservableCollection<ServerProfile>(_data.Profiles);
@@ -125,6 +126,7 @@ public partial class MainWindow : Window
             {
                 if (!existing.Add(profile.RawUri)) continue;
                 NormalizeHistory(profile);
+                profile.English = _english;
                 _profiles.Add(profile);
                 added++;
             }
@@ -142,7 +144,13 @@ public partial class MainWindow : Window
         SetBusy(true, _english ? "Downloading and parsing subscription…" : "در حال دریافت و استخراج لینک‌های اشتراک…");
         try
         {
-            var parsed = await _subscriptionClient.FetchProfilesAsync(url, _lifetime.Token);
+            var existingSource = _subscriptions.FirstOrDefault(source => string.Equals(source.Url, url, StringComparison.OrdinalIgnoreCase));
+        if (existingSource is not null)
+        {
+            await UpdateSubscriptionAsync(existingSource);
+            return;
+        }
+        var parsed = await _subscriptionClient.FetchProfilesAsync(url, _lifetime.Token);
             SearchInput.Clear();
             var existing = _profiles.Select(p => p.RawUri).ToHashSet(StringComparer.Ordinal);
             var source = new SubscriptionSource
@@ -202,6 +210,8 @@ public partial class MainWindow : Window
                 else if (!allOtherRaw.Contains(incoming.RawUri))
                 {
                     incoming.SourceSubscriptionId = source.Id;
+                    NormalizeHistory(incoming);
+                    incoming.English = _english;
                     _profiles.Add(incoming);
                     added++;
                 }
@@ -474,6 +484,7 @@ public partial class MainWindow : Window
     private void ApplyLanguage()
     {
         FlowDirection = _english ? FlowDirection.LeftToRight : FlowDirection.RightToLeft;
+        foreach (var profile in _profiles) profile.English = _english;
         LanguageButton.Content = _english ? "EN / FA" : "FA / EN";
         HeaderSubtitle.Text = _english ? "Real proxy profile testing and monitoring" : "پایش و تست واقعی لینک‌های پروکسی";
         AddLinksButton.Content = _english ? "Add links" : "افزودن لینک";
