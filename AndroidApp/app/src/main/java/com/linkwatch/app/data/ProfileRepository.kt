@@ -94,7 +94,10 @@ class ProfileRepository private constructor(context: Context) {
             cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(128, iv))
             val json = String(cipher.doFinal(ciphertext), Charsets.UTF_8)
             val type = object : TypeToken<List<ProxyProfile>>() {}.type
-            gson.fromJson<List<ProxyProfile>>(json, type) ?: emptyList()
+            (gson.fromJson<List<ProxyProfile>>(json, type) ?: emptyList()).map { profile ->
+                // Gson sets newly-added fields to null when loading profiles saved by older app versions.
+                profile.copy(uptimeHistory = profile.uptimeHistory.orEmpty().takeLast(UPTIME_HISTORY_LIMIT))
+            }
         } catch (_: Exception) {
             // Keep the stored ciphertext intact. Never log decrypted config data.
             emptyList()
