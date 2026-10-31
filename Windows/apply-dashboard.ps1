@@ -850,13 +850,11 @@ if (-not $code.Contains("VwInitializeAppearance")) {
         try { family = new global::System.Windows.Media.FontFamily(_vwFontFamily); }
         catch { family = new global::System.Windows.Media.FontFamily("Tahoma"); }
 
-        var converted = new global::System.Windows.Media.ColorConverter().ConvertFromString(_vwFontColor);
+        var converted = global::System.Windows.Media.ColorConverter.ConvertFromString(_vwFontColor);
         var color = converted is global::System.Windows.Media.Color parsed ? parsed : global::System.Windows.Media.Color.FromRgb(23, 43, 77);
         var brush = new global::System.Windows.Media.SolidColorBrush(color);
         brush.Freeze();
         vwDashboard.Resources["VW.TextBrush"] = brush;
-        vwDashboard.FontFamily = family;
-        vwDashboard.Foreground = brush;
         VwApplyAppearanceToTree(vwDashboard, family, brush, _vwFontSize);
         vwProfilesGrid.FontFamily = family;
         vwProfilesGrid.FontSize = _vwFontSize;
