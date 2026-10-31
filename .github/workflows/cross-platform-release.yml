@@ -417,7 +417,7 @@ jobs:
           generate_release_notes: false
           fail_on_unmatched_files: true
           body: |
-            ## V2rayWatch ${{ github.ref_name }} — Android + Windows
+            ## V2rayWatch ${{ github.ref_type == 'branch' && 'v0.3.0' || github.ref_name }} — Android + Windows
 
             این انتشار، نسخهٔ مشترک هر دو پلتفرم است. از این پس هر Release رسمی با یک تگ مشترک ساخته می‌شود و انتشار مستقل Android یا Windows انجام نخواهد شد.
 
