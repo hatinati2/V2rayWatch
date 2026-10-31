@@ -11,6 +11,7 @@ import com.linkwatch.app.core.XrayDelayTester
 import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.ProfileRepository
 import com.linkwatch.app.data.reduceLinkCheck
+import com.linkwatch.app.data.notificationEvents
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -103,18 +104,11 @@ class MonitorService : Service() {
                                             )
                                             repository.upsert(transition.profile)
 
-                                            if (transition.becameDisconnected) {
-                                                NotificationHelper.notifyDisconnected(
-                                                    this@MonitorService,
-                                                    transition.profile.name,
-                                                    result.error
-                                                )
-                                            } else if (transition.recovered) {
-                                                NotificationHelper.notifyRecovered(
-                                                    this@MonitorService,
-                                                    transition.profile.name,
-                                                    result.delayMs
-                                                )
+                                            val events = notificationEvents(transition, settings)
+                                            if (events.disconnected) {
+                                                NotificationHelper.notifyDisconnected(this@MonitorService, transition.profile.id, transition.profile.name, result.error)
+                                            } else if (events.recovered) {
+                                                NotificationHelper.notifyRecovered(this@MonitorService, transition.profile.id, transition.profile.name, result.delayMs, transition.outageDurationMs)
                                             }
                                         }
                                     }
