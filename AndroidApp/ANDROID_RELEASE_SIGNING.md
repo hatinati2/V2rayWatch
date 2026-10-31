@@ -54,7 +54,7 @@ Open the repository **Settings → Secrets and variables → Actions** and confi
 On Windows PowerShell, copy the base64 value without a newline:
 
 ```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes('.\\v2raywatch-upload.jks')) | Set-Clipboard
+[Convert]::ToBase64String([IO.File]::ReadAllBytes('.\v2raywatch-upload.jks')) | Set-Clipboard
 ```
 
 On macOS/Linux:
