@@ -8,6 +8,5 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>V2rayWatch</AssemblyName>
     <RootNamespace>V2rayWatch.DesktopPrototype</RootNamespace>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 </Project>
