@@ -426,7 +426,8 @@ if (-not $code.Contains("vwManualProbeButton.ToolTip")) {
 if (-not $code.Contains("vwDashboard.FlowDirection")) {
     $initializeMarker = "        InitializeComponent();"
     if (-not $code.Contains($initializeMarker)) { throw "Could not locate InitializeComponent in upstream MainWindow.xaml.cs." }
-    $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $flowStatement)
+    $appIdCall = '        try { VwSetCurrentProcessExplicitAppUserModelID("V2rayWatch.Windows.Desktop"); } catch { }'
+    $code = $code.Replace($initializeMarker, $appIdCall + [Environment]::NewLine + $initializeMarker + [Environment]::NewLine + $flowStatement)
     [System.IO.File]::WriteAllText($codePath, $code, [System.Text.UTF8Encoding]::new($false))
 }
 
@@ -455,7 +456,6 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
             .Subscribe(update => Dispatcher.BeginInvoke(new Action(() => UpdateVwTrafficChart(update))));
         Closed += (_, _) => _vwTrafficSubscription?.Dispose();
         Loaded += (_, _) => VwInitializeMonitor();
-        try { VwSetCurrentProcessExplicitAppUserModelID("V2rayWatch.Windows.Desktop"); } catch { }
         Closed += (_, _) => VwStopMonitoring();
 '@
     $code = $code.Replace($initializeMarker, $initializeMarker + [Environment]::NewLine + $chartInit.TrimEnd())
@@ -547,10 +547,10 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
         var chars = value.ToCharArray();
         for (var i = 0; i < chars.Length; i++)
         {
-            if (chars[i] >= '\\u06F0' && chars[i] <= '\\u06F9')
-                chars[i] = (char)('0' + chars[i] - '\\u06F0');
-            else if (chars[i] >= '\\u0660' && chars[i] <= '\\u0669')
-                chars[i] = (char)('0' + chars[i] - '\\u0660');
+            if (chars[i] >= '\u06F0' && chars[i] <= '\u06F9')
+                chars[i] = (char)('0' + chars[i] - '\u06F0');
+            else if (chars[i] >= '\u0660' && chars[i] <= '\u0669')
+                chars[i] = (char)('0' + chars[i] - '\u0660');
         }
         return new string(chars);
     }
