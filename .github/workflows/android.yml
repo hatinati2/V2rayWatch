@@ -93,7 +93,7 @@ jobs:
       - name: Verify APK signature
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
         run: |
-          apksigner verify --verbose --print-certs AndroidApp/app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs AndroidApp/app/build/outputs/apk/release/app-release.apk
 
       - name: Upload signed release candidate
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
