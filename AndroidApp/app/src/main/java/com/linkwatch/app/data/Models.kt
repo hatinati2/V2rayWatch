@@ -17,6 +17,11 @@ enum class UptimeMark {
 fun appendUptimeMark(history: List<UptimeMark>, mark: UptimeMark): List<UptimeMark> =
     (history.takeLast(UPTIME_HISTORY_LIMIT) + mark).takeLast(UPTIME_HISTORY_LIMIT)
 
+fun uptimeHistorySlots(history: List<UptimeMark>): List<UptimeMark> {
+    val recent = history.takeLast(UPTIME_HISTORY_LIMIT)
+    return List((UPTIME_HISTORY_LIMIT - recent.size).coerceAtLeast(0)) { UptimeMark.UNKNOWN } + recent
+}
+
 enum class LinkState {
     UNKNOWN,
     CHECKING,
