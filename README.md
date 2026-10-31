@@ -10,9 +10,11 @@ Current Android source package: `V2rayWatch-project-0.2.1.zip`.
 
 ## Windows
 
-The Windows desktop client is based on upstream [v2rayN](https://github.com/2dust/v2rayN) 7.25.6, with V2rayWatch branding and Persian/English UI. It includes manual real-outbound delay checks for imported profiles as well as actual Windows connection features (System Proxy/TUN). Periodic background monitoring with down/recovery alerts is not implemented in the current Windows build yet.
+The Windows desktop client is based on upstream [v2rayN](https://github.com/2dust/v2rayN) 7.25.6, with V2rayWatch branding and Persian/English UI. The current development preview combines two separate modes: (1) scheduled, per-profile real outbound monitoring with configurable intervals, failure thresholds, and down/recovery tray alerts; and (2) actual Windows traffic routing through System Proxy or TUN. Link monitoring does not require System Proxy or TUN. The stable public v0.1.0 release has not been replaced by this preview.
 
 The Windows component is derived from GPL-3.0 software. See [Windows/THIRD_PARTY_NOTICES.md](Windows/THIRD_PARTY_NOTICES.md). The corresponding modified source is supplied with the Windows release.
+
+The latest development preview is built by [GitHub Actions](https://github.com/hatinati2/V2rayWatch/actions); it is experimental and still needs real Windows 10/11 validation.
 
 ## Build and releases
 
