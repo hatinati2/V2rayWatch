@@ -536,10 +536,10 @@ public partial class MainWindow : Window
         FallbackUrlInput.Text = _data.Settings.FallbackTestUrl;
     }
 
-    private static int GetComboValue(ComboBox combo, int fallback) =>
+    private static int GetComboValue(System.Windows.Controls.ComboBox combo, int fallback) =>
         combo.SelectedValue is object value && int.TryParse(value.ToString(), out var number) ? number : fallback;
 
-    private static void SetComboValue(ComboBox combo, int value)
+    private static void SetComboValue(System.Windows.Controls.ComboBox combo, int value)
     {
         foreach (ComboBoxItem item in combo.Items)
             if (int.TryParse(item.Tag?.ToString(), out var parsed) && parsed == value) { combo.SelectedItem = item; return; }
