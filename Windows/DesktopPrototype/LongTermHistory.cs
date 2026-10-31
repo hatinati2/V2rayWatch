@@ -268,7 +268,7 @@ public sealed record LongTermHistorySummary(
 
 public static class LongTermHistoryAnalytics
 {
-    private const double TimelineHeight = 88d;
+    private const double TimelineHeight = 100d;
 
     public static LongTermHistorySummary Analyze(
         IEnumerable<LongTermHistorySample> source,
@@ -315,45 +315,44 @@ public static class LongTermHistoryAnalytics
 
         var longestSpan = TimeSpan.Zero;
         var longestStreak = 0;
-        Guid? currentSession = null;
-        DateTimeOffset? failureStart = null;
-        DateTimeOffset? lastFailure = null;
-        var currentStreak = 0;
-
-        void FinishFailureRun(DateTimeOffset end)
+        foreach (var session in samples.GroupBy(sample => sample.SessionId))
         {
-            if (failureStart.HasValue)
-            {
-                var span = end - failureStart.Value;
-                if (span > longestSpan) longestSpan = span;
-            }
-            longestStreak = Math.Max(longestStreak, currentStreak);
-            failureStart = null;
-            lastFailure = null;
-            currentStreak = 0;
-        }
+            DateTimeOffset? failureStart = null;
+            DateTimeOffset? lastFailure = null;
+            var currentStreak = 0;
 
-        foreach (var sample in samples)
-        {
-            if (currentSession.HasValue && currentSession.Value != sample.SessionId)
+            void FinishFailureRun(DateTimeOffset runEnd)
             {
-                if (lastFailure.HasValue) FinishFailureRun(lastFailure.Value);
-                else FinishFailureRun(sample.TimestampUtc);
+                if (failureStart.HasValue)
+                {
+                    var span = runEnd - failureStart.Value;
+                    if (span > longestSpan) longestSpan = span;
+                }
+                longestStreak = Math.Max(longestStreak, currentStreak);
+                failureStart = null;
+                lastFailure = null;
+                currentStreak = 0;
             }
-            currentSession = sample.SessionId;
 
-            if (!sample.Success)
+            foreach (var sample in session.OrderBy(item => item.TimestampUtc))
             {
-                failureStart ??= sample.TimestampUtc;
-                lastFailure = sample.TimestampUtc;
-                currentStreak++;
+                if (!sample.Success)
+                {
+                    failureStart ??= sample.TimestampUtc;
+                    lastFailure = sample.TimestampUtc;
+                    currentStreak++;
+                }
+                else if (failureStart.HasValue)
+                {
+                    // End the observed outage at the first successful probe in the same manual session.
+                    FinishFailureRun(sample.TimestampUtc);
+                }
             }
-            else if (failureStart.HasValue)
-            {
-                FinishFailureRun(sample.TimestampUtc);
-            }
+
+            // If the session ended while checks were failing, stop at the last observed failure.
+            // Never extend an outage across a period when monitoring was stopped or the app was closed.
+            if (lastFailure.HasValue) FinishFailureRun(lastFailure.Value);
         }
-        if (lastFailure.HasValue) FinishFailureRun(lastFailure.Value);
 
         return new LongTermHistorySummary(
             samples.Count,
