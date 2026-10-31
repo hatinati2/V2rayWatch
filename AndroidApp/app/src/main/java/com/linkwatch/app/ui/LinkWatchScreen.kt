@@ -35,6 +35,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -680,6 +681,8 @@ private fun SettingsDialog(language: AppLanguage, current: MonitorSettings, onDi
     var threshold by remember(current.failureThreshold) { mutableIntStateOf(current.failureThreshold) }
     var primary by remember(current.primaryTestUrl) { mutableStateOf(current.primaryTestUrl) }
     var fallback by remember(current.fallbackTestUrl) { mutableStateOf(current.fallbackTestUrl) }
+    var notifyOnDisconnect by remember(current.notifyOnDisconnect) { mutableStateOf(current.notifyOnDisconnect) }
+    var notifyOnRecovery by remember(current.notifyOnRecovery) { mutableStateOf(current.notifyOnRecovery) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -700,6 +703,16 @@ private fun SettingsDialog(language: AppLanguage, current: MonitorSettings, onDi
                     }
                 }
                 Divider()
+                Text(uiText(language, "اعلان‌های اتصال", "Connection notifications"), fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = notifyOnDisconnect, onCheckedChange = { notifyOnDisconnect = it })
+                    Text(uiText(language, "اعلان هنگام قطع‌شدن لینک", "Notify when a link goes down"))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = notifyOnRecovery, onCheckedChange = { notifyOnRecovery = it })
+                    Text(uiText(language, "اعلان هنگام بازیابی اتصال", "Notify when a connection recovers"))
+                }
+                Divider()
                 OutlinedTextField(value = primary, onValueChange = { primary = it }, label = { Text(uiText(language, "URL تست اصلی", "Primary test URL")) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
                 OutlinedTextField(value = fallback, onValueChange = { fallback = it }, label = { Text(uiText(language, "URL تست جایگزین", "Fallback test URL")) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
                 Text(uiText(language, "این URL باید پاسخ HTTP 200 یا 204 بدهد و از داخل پروکسی قابل دسترسی باشد.", "This URL must return HTTP 200 or 204 and be reachable through the proxy."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -707,7 +720,7 @@ private fun SettingsDialog(language: AppLanguage, current: MonitorSettings, onDi
         },
         confirmButton = {
             Button(onClick = {
-                onSave(MonitorSettings(interval, threshold, primary.trim(), fallback.trim()))
+                onSave(MonitorSettings(intervalSeconds = interval, failureThreshold = threshold, primaryTestUrl = primary.trim(), fallbackTestUrl = fallback.trim(), notifyOnDisconnect = notifyOnDisconnect, notifyOnRecovery = notifyOnRecovery))
             }) { Text(uiText(language, "ذخیره", "Save")) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(uiText(language, "انصراف", "Cancel")) } }

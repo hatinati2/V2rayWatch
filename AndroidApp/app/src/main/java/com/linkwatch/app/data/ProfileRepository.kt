@@ -77,7 +77,9 @@ class ProfileRepository private constructor(context: Context) {
         intervalSeconds = settingsPrefs.getInt("interval", DEFAULT_CHECK_INTERVAL_SECONDS).coerceIn(20, 3600),
         failureThreshold = settingsPrefs.getInt("failure_threshold", DEFAULT_FAILURE_THRESHOLD).coerceIn(1, 5),
         primaryTestUrl = settingsPrefs.getString("test_url_primary", DEFAULT_PRIMARY_TEST_URL) ?: DEFAULT_PRIMARY_TEST_URL,
-        fallbackTestUrl = settingsPrefs.getString("test_url_fallback", DEFAULT_FALLBACK_TEST_URL) ?: DEFAULT_FALLBACK_TEST_URL
+        fallbackTestUrl = settingsPrefs.getString("test_url_fallback", DEFAULT_FALLBACK_TEST_URL) ?: DEFAULT_FALLBACK_TEST_URL,
+        notifyOnDisconnect = settingsPrefs.getBoolean("notify_on_disconnect", true),
+        notifyOnRecovery = settingsPrefs.getBoolean("notify_on_recovery", true)
     )
 
     fun isMonitoringEnabled(): Boolean = settingsPrefs.getBoolean("monitoring_enabled", false)
@@ -92,6 +94,8 @@ class ProfileRepository private constructor(context: Context) {
             .putInt("failure_threshold", settings.failureThreshold.coerceIn(1, 5))
             .putString("test_url_primary", settings.primaryTestUrl.trim().ifBlank { DEFAULT_PRIMARY_TEST_URL })
             .putString("test_url_fallback", settings.fallbackTestUrl.trim().ifBlank { DEFAULT_FALLBACK_TEST_URL })
+            .putBoolean("notify_on_disconnect", settings.notifyOnDisconnect)
+            .putBoolean("notify_on_recovery", settings.notifyOnRecovery)
             .apply()
     }
 
@@ -112,7 +116,13 @@ class ProfileRepository private constructor(context: Context) {
     fun restoreEncryptedBackup(backup: ByteArray, passphrase: CharArray): BackupRestoreResult {
         val plaintext = EncryptedBackupCodec.decrypt(backup, passphrase)
         val payload = try {
-            gson.fromJson(plaintext.toString(Charsets.UTF_8), BackupPayload::class.java)
+            val json = plaintext.toString(Charsets.UTF_8)
+            val decoded = gson.fromJson(json, BackupPayload::class.java)
+            val savedSettings = org.json.JSONObject(json).optJSONObject("settings")
+            decoded.copy(settings = decoded.settings.copy(
+                notifyOnDisconnect = savedSettings?.optBoolean("notifyOnDisconnect", true) ?: true,
+                notifyOnRecovery = savedSettings?.optBoolean("notifyOnRecovery", true) ?: true
+            ))
         } catch (_: Exception) {
             throw IllegalArgumentException("Backup data is invalid or unsupported")
         } finally {
