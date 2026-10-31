@@ -118,11 +118,12 @@ var persianSubscriptionHeaders = SubscriptionDisplayText.GetColumnHeaders(false)
 Check(persianSubscriptionHeaders.SequenceEqual(new[] { "نام", "تعداد", "آخرین دریافت", "عملیات" }), "subscription table headers are Persian");
 
 var subscriptionOwned = new ServerProfile { SourceSubscriptionId = "subscription-a" };
+var secondSubscriptionOwned = new ServerProfile { SourceSubscriptionId = "subscription-a" };
 var manuallyAdded = new ServerProfile();
 var otherSubscriptionOwned = new ServerProfile { SourceSubscriptionId = "subscription-b" };
-var profilesForRemoval = new List<ServerProfile> { subscriptionOwned, manuallyAdded, otherSubscriptionOwned };
+var profilesForRemoval = new List<ServerProfile> { subscriptionOwned, secondSubscriptionOwned, manuallyAdded, otherSubscriptionOwned };
 var removedOwnedCount = SubscriptionProfileOperations.RemoveOwnedProfiles(profilesForRemoval, "subscription-a");
-Check(removedOwnedCount == 1 && !profilesForRemoval.Contains(subscriptionOwned), "removing a subscription removes its owned profile");
+Check(removedOwnedCount == 2 && !profilesForRemoval.Contains(subscriptionOwned) && !profilesForRemoval.Contains(secondSubscriptionOwned), "removing a subscription removes all of its owned profiles");
 Check(profilesForRemoval.Contains(manuallyAdded) && profilesForRemoval.Contains(otherSubscriptionOwned), "removing a subscription preserves manual and other-subscription profiles");
 Check(SubscriptionProfileOperations.RemoveOwnedProfiles(profilesForRemoval, "") == 0, "empty subscription ID cannot remove profiles");
 
