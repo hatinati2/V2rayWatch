@@ -140,17 +140,17 @@ public partial class MainWindow : Window
 
     private async Task AddSubscriptionAsync(string url)
     {
-        if (_busy) return;
-        SetBusy(true, _english ? "Downloading and parsing subscription…" : "در حال دریافت و استخراج لینک‌های اشتراک…");
-        try
-        {
-            var existingSource = _subscriptions.FirstOrDefault(source => string.Equals(source.Url, url, StringComparison.OrdinalIgnoreCase));
+        var existingSource = _subscriptions.FirstOrDefault(source => string.Equals(source.Url, url, StringComparison.OrdinalIgnoreCase));
         if (existingSource is not null)
         {
             await UpdateSubscriptionAsync(existingSource);
             return;
         }
-        var parsed = await _subscriptionClient.FetchProfilesAsync(url, _lifetime.Token);
+        if (_busy) return;
+        SetBusy(true, _english ? "Downloading and parsing subscription…" : "در حال دریافت و استخراج لینک‌های اشتراک…");
+        try
+        {
+            var parsed = await _subscriptionClient.FetchProfilesAsync(url, _lifetime.Token);
             SearchInput.Clear();
             var existing = _profiles.Select(p => p.RawUri).ToHashSet(StringComparer.Ordinal);
             var source = new SubscriptionSource
@@ -164,6 +164,7 @@ public partial class MainWindow : Window
                 if (!existing.Add(profile.RawUri)) continue;
                 profile.SourceSubscriptionId = source.Id;
                 NormalizeHistory(profile);
+                profile.English = _english;
                 _profiles.Add(profile);
                 added++;
             }
