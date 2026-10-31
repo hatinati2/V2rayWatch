@@ -44,7 +44,7 @@ Check(vmess.Protocol == "VMess" && vmess.Name == "VMess Node" && vmess.Port == 2
 using (var doc = JsonDocument.Parse(vmess.ConfigJson))
     Check(doc.RootElement.GetProperty("outbounds")[0].GetProperty("streamSettings").GetProperty("wsSettings").GetProperty("path").GetString() == "/vmess", "VMess transport fields preserved");
 
-var hy2 = ServerProfileParser.ParseOne("hysteria2://password@hy2.example.net:443,5000-6000?sni=hy2.example.net&obfs=salamander&obfs-password=secret&insecure=1&pinSHA256=deadbeef#Hysteria");
+var hy2 = ServerProfileParser.ParseOne("hysteria2://password@hy2.example.net:443,5000-6000?sni=hy2.example.net&obfs=salamander&obfs-password=secret&insecure=1&pinSHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#Hysteria");
 Check(hy2.Protocol == "Hysteria2" && hy2.Port == 443, "Hysteria2 parsed");
 using (var doc = JsonDocument.Parse(hy2.ConfigJson))
 {
@@ -57,10 +57,21 @@ using (var doc = JsonDocument.Parse(hy2.ConfigJson))
     Check(stream.GetProperty("tlsSettings").GetProperty("pinnedPeerCertSha256").GetString()=="deadbeef","certificate pin retained");
     Check(hy2.Port==443,"initial Hysteria2 port");
 }
+var hy2Gecko=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?obfs=gecko&obfs-password=secret#Gecko");
+using(var geckoDoc=JsonDocument.Parse(hy2Gecko.ConfigJson))
+{
+ var geckoMask=geckoDoc.RootElement.GetProperty("outbounds")[0].GetProperty("streamSettings").GetProperty("finalmask").GetProperty("udp")[0];
+ Check(geckoMask.GetProperty("type").GetString()=="salamander","Gecko uses Salamander base mask");
+ Check(geckoMask.GetProperty("settings").GetProperty("packetSize").GetString()=="512-1200","Gecko fragmentation range mapped");
+}
+var hy2Ech=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?ech=YWJj#ECH");
+using(var echDoc=JsonDocument.Parse(hy2Ech.ConfigJson))
+ Check(echDoc.RootElement.GetProperty("outbounds")[0].GetProperty("streamSettings").GetProperty("tlsSettings").GetProperty("echConfigList").GetString()=="YWJj","Hysteria2 ECH config retained");
+
 var badHy2=false;try{ServerProfileParser.ParseOne("hy2://pass@hy2.example.net:443?obfs=salamander#missing-password");}catch(FormatException){badHy2=true;}
 Check(badHy2,"Salamander needs a password");
 var xrayPath=Environment.GetEnvironmentVariable("V2RAYWATCH_XRAY_PATH");
-if(!string.IsNullOrWhiteSpace(xrayPath)&&File.Exists(xrayPath))ValidateWithXray(xrayPath,hy2);
+if(!string.IsNullOrWhiteSpace(xrayPath)&&File.Exists(xrayPath)){ValidateWithXray(xrayPath,hy2);ValidateWithXray(xrayPath,hy2Gecko);}
 
 var multi = ServerProfileParser.ParseMany(
     "vless://id@one.example.net:443#One\n" +

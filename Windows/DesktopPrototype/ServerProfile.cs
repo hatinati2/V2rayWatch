@@ -316,12 +316,15 @@ public static class ServerProfileParser
         var q=Query(query);var tls=new JsonObject{["serverName"]=Get(q,"sni",Get(q,"peer",host)),["alpn"]=ToJsonArray(Get(q,"alpn","h3").Split(',').Select(v=>v.Trim()))};
         var fp=Get(q,"fp");if(fp.Length>0)tls["fingerprint"]=fp;if(IsTrue(Get(q,"insecure",Get(q,"allowInsecure","false"))))tls["allowInsecure"]=true;
         var pin=Get(q,"pinSHA256");if(pin.Length>0)tls["pinnedPeerCertSha256"]=pin;
+        var ech=Get(q,"ech");if(ech.Length>0)tls["echConfigList"]=ech;
         var stream=new JsonObject{["method"]="hysteria",["security"]="tls",["tlsSettings"]=tls,["hysteriaSettings"]=new JsonObject{["version"]=2,["auth"]=auth}};
         var outbound=new JsonObject{["tag"]="proxy",["protocol"]="hysteria",["settings"]=new JsonObject{["version"]=2,["address"]=host,["port"]=port},["streamSettings"]=stream};
         var masks=new JsonObject();var obfs=Get(q,"obfs").ToLowerInvariant();var obfsPassword=Get(q,"obfs-password");
-        if(obfs.Length>0){if(obfs!="salamander")throw new FormatException("این نسخه از Xray برای Hysteria2 فقط obfs از نوع salamander را پشتیبانی می‌کند.");
-            if(obfsPassword.Length==0)throw new FormatException("پارامتر obfs-password برای salamander اجباری است.");
-            masks["udp"]=new JsonArray(new JsonObject{["type"]="salamander",["settings"]=new JsonObject{["password"]=obfsPassword}});
+        if(obfs.Length>0){if(obfs!="salamander"&&obfs!="gecko")throw new FormatException("نوع obfs لینک Hysteria2 پشتیبانی نمی‌شود.");
+            if(obfsPassword.Length==0)throw new FormatException("پارامتر obfs-password برای obfs انتخاب‌شده اجباری است.");
+            var obfsSettings=new JsonObject{["password"]=obfsPassword};
+            if(obfs=="gecko")obfsSettings["packetSize"]="512-1200";
+            masks["udp"]=new JsonArray(new JsonObject{["type"]="salamander",["settings"]=obfsSettings});
         }
         var hopping=ports.Length>1||ports[0].Contains('-')?string.Join(',',ports):"";var legacy=Get(q,"mport");if(legacy.Length>0)hopping=legacy;
         if(hopping.Length>0){var iv=Get(q,"interval",Get(q,"mportInterval","30"));

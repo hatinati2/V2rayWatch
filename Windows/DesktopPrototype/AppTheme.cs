@@ -19,5 +19,5 @@ public static class AppTheme
  ["ThemeGridHoverBrush"]="#E7F2F5",["ThemeLogoBgBrush"]="#D9F1F3",["ThemeAccentTextBrush"]="#087E87",["ThemeTextBrush"]="#243244",
  ["ThemeTextStrongBrush"]="#142033",["ThemeGridBgBrush"]="#FFFFFF",["ThemeHistoryNeutralBrush"]="#CBD5E1",["ThemeDialogPanelBrush"]="#F1F5F9",
  ["ThemeInputBorderBrush"]="#AAB8C8"};
- public static void Apply(bool light){foreach(var item in light?Light:Dark){var c=(Color)ColorConverter.ConvertFromString(item.Value);Application.Current.Resources[item.Key]=new SolidColorBrush(c);}}
+ public static void Apply(bool light){foreach(var item in light?Light:Dark){var c=(System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(item.Value);System.Windows.Application.Current.Resources[item.Key]=new SolidColorBrush(c);}}
 }
