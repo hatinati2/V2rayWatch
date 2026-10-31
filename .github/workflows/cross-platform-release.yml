@@ -2,6 +2,8 @@ name: V2rayWatch Cross-Platform Release
 
 on:
   push:
+    branches:
+      - "release/unified-v0.3.0"
     tags:
       - "v*"
 
@@ -24,11 +26,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Expected a shared release tag such as v0.3.0."
-            exit 1
+          if [[ "$GITHUB_REF" == "refs/heads/release/unified-v0.3.0" ]]; then
+            release_version="0.3.0"
+          else
+            if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Expected a shared release tag such as v0.3.1."
+              exit 1
+            fi
+            release_version="${GITHUB_REF_NAME#v}"
           fi
-          release_version="${GITHUB_REF_NAME#v}"
           app_version="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' AndroidApp/app/build.gradle.kts | head -n 1)"
           if [[ "$app_version" != "$release_version" ]]; then
             echo "::error::Android versionName $app_version does not match release tag $release_version."
@@ -120,10 +126,163 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          if ($env:GITHUB_REF_NAME -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
-            throw "Expected a shared release tag such as v0.3.0."
+          if ($env:GITHUB_REF -eq "refs/heads/release/unified-v0.3.0") {
+            $releaseVersion = "0.3.0"
+          } else {
+            if ($env:GITHUB_REF_NAME -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+
+          [xml]$project = Get-Content "Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj"
+          $appVersion = [string]($project.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
+          if ($appVersion -ne $releaseVersion) {
+            throw "Windows project Version $appVersion does not match release tag $releaseVersion."
           }
-          $releaseVersion = $env:GITHUB_REF_NAME.Substring(1)
+          "RELEASE_VERSION=$releaseVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build standalone WPF application
+        shell: pwsh
+        run: |
+          dotnet build Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw "Standalone WPF build failed." }
+
+      - name: Publish portable self-contained application
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          dotnet publish Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=false -o "$env:GITHUB_WORKSPACE\publish"
+          if ($LASTEXITCODE -ne 0) { throw "Standalone Windows publish failed." }
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\publish\V2rayWatch.exe")) {
+            throw "V2rayWatch.exe was not created."
+          }
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\publish\licenses" | Out-Null
+          Copy-Item "Windows\THIRD_PARTY_NOTICES_STANDALONE.md" "$env:GITHUB_WORKSPACE\publish\THIRD_PARTY_NOTICES.md" -Force
+          Copy-Item "Windows\README-standalone.fa.md" "$env:GITHUB_WORKSPACE\publish\README-fa.md" -Force
+          Copy-Item "Windows\README-standalone.en.md" "$env:GITHUB_WORKSPACE\publish\README-en.md" -Force
+
+      - name: Download and verify official Xray Core
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $coreVersion = "v26.10.31"
+          $coreName = "Xray-windows-64"
+          $coreZip = "$env:RUNNER_TEMP\$coreName.zip"
+          $expanded = "$env:RUNNER_TEMP\official-xray"
+          $releaseBase = "https://github.com/XTLS/Xray-core/releases/download/$coreVersion"
+          $expectedHash = "2e04a9995a6f2ad1b28c0bb25c708ecb2695e43a1c9c7889c4b6ac2b48cf7a6a"
+          Invoke-WebRequest -Uri "$releaseBase/$coreName.zip" -OutFile $coreZip
+          $actualHash = (Get-FileHash -LiteralPath $coreZip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw "Official Xray ZIP SHA-256 verification failed. Expected $expectedHash, got $actualHash."
+          }
+          Expand-Archive -LiteralPath $coreZip -DestinationPath $expanded -Force
+          $xray = Get-ChildItem -LiteralPath $expanded -Filter "xray.exe" -File -Recurse | Select-Object -First 1
+          if ($null -eq $xray) { throw "Official Xray archive did not contain xray.exe." }
+          $publishCore = "$env:GITHUB_WORKSPACE\publish\core"
+          New-Item -ItemType Directory -Force -Path $publishCore | Out-Null
+          Copy-Item $xray.FullName (Join-Path $publishCore "xray.exe") -Force
+          foreach ($geo in @("geoip.dat", "geosite.dat")) {
+            $source = Get-ChildItem -LiteralPath $expanded -Filter $geo -File -Recurse | Select-Object -First 1
+            if ($null -ne $source) { Copy-Item $source.FullName (Join-Path $publishCore $geo) -Force }
+          }
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/XTLS/Xray-core/$coreVersion/LICENSE" -OutFile "$publishCore\CORE-LICENSE.txt"
+          & (Join-Path $publishCore "xray.exe") version
+          if ($LASTEXITCODE -ne 0) { throw "Official Xray Core failed its version smoke test." }
+
+      - name: Run parser tests and validate generated Xray configurations
+        shell: pwsh
+        run: |
+          $env:V2RAYWATCH_XRAY_PATH = "$env:GITHUB_WORKSPACE\publish\core\xray.exe"
+          dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw "Parser or official Xray validation failed." }
+
+      - name: Package Windows ZIP and checksum
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $asset = "V2rayWatch-Windows-${env:RELEASE_VERSION}-win-x64.zip"
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\publish\*" -DestinationPath "$env:GITHUB_WORKSPACE\$asset" -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath "$env:GITHUB_WORKSPACE\$asset" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $asset" | Set-Content -Path "$env:GITHUB_WORKSPACE\V2rayWatch-Windows-${env:RELEASE_VERSION}-SHA256SUMS.txt" -Encoding utf8
+          Write-Host "SHA-256: $hash"
+
+      - name: Upload Windows release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: V2rayWatch-Windows-release-assets
+          path: |
+            V2rayWatch-Windows-${{ env.RELEASE_VERSION }}-win-x64.zip
+            V2rayWatch-Windows-${{ env.RELEASE_VERSION }}-SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-release:
+    name: Publish one combined Android + Windows Release
+    needs:
+      - build-android
+      - build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: V2rayWatch-Android-release-assets
+          path: release-assets
+
+      - name: Download Windows release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: V2rayWatch-Windows-release-assets
+          path: release-assets
+
+      - name: Create combined SHA-256 manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat release-assets/V2rayWatch-Android-*-SHA256SUMS.txt release-assets/V2rayWatch-Windows-*-SHA256SUMS.txt > "release-assets/V2rayWatch-${GITHUB_REF_NAME#v}-SHA256SUMS.txt"
+
+      - name: Publish combined GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'branch' && 'v0.3.0' || github.ref_name }}
+          target_commitish: main
+          name: V2rayWatch ${{ github.ref_type == 'branch' && 'v0.3.0' || github.ref_name }} — Android + Windows
+          draft: false
+          prerelease: true
+          make_latest: false
+          generate_release_notes: false
+          fail_on_unmatched_files: true
+          body: |
+            ## V2rayWatch ${{ github.ref_name }} — Android + Windows
+
+            این انتشار، نسخهٔ مشترک هر دو پلتفرم است. از این پس هر Release رسمی با یک تگ مشترک ساخته می‌شود و انتشار مستقل Android یا Windows انجام نخواهد شد.
+
+            ### فایل‌های دریافت
+            - Android: فایل APK امضاشده با کلید پایدار پروژه؛ قابل نصب به‌روزرسانی روی نسخه قبلی. این APK برای نصب مستقیم است و انتشار Google Play نیست.
+            - Windows: بستهٔ Portable مستقل برای Windows 10/11 x64؛ ZIP را استخراج کنید و V2rayWatch.exe را اجرا کنید.
+
+            ### نسخه اجزای برنامه
+            - Android versionName مطابق تگ مشترک و versionCode افزایش‌یافته است.
+            - Windows نسخه مستقل WPF است و به v2rayN وابسته نیست.
+
+            ### نکات
+            - نسخه Windows در این انتشار همچنان Preview است؛ به همین دلیل این Release به‌صورت Pre-release علامت‌گذاری شده است.
+            - Windows System Proxy و TUN را تغییر نمی‌دهد.
+            - امضای APK با کلید دائمی Android انجام می‌شود؛ فایل اجرایی Windows هنوز امضای کد ناشر ندارد.
+            - پایش Windows فقط تا زمان باز بودن برنامه (از جمله System Tray) اجرا می‌شود.
+            - فایل manifest شامل SHA-256 هر دو بسته است.
+
+            ### روند انتشار بعدی
+            برای انتشار نسخه بعدی، versionName و versionCode اندروید و Version ویندوز را هماهنگ افزایش دهید و یک تگ مانند v0.3.1 بسازید. همین workflow هر دو بسته را تست و در یک Release منتشر می‌کند.
+          files: |
+            release-assets/*
+) {
+              throw "Expected a shared release tag such as v0.3.1."
+            }
+            $releaseVersion = $env:GITHUB_REF_NAME.Substring(1)
+          }
           [xml]$project = Get-Content "Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj"
           $appVersion = [string]($project.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
           if ($appVersion -ne $releaseVersion) {
