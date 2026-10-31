@@ -7,6 +7,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.security.KeyStore
@@ -14,6 +15,18 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+
+data class BackupPayload(
+    val formatVersion: Int = 1,
+    val createdAtEpochMs: Long = System.currentTimeMillis(),
+    val profiles: List<ProxyProfile>,
+    val settings: MonitorSettings
+)
+
+data class BackupRestoreResult(
+    val addedProfiles: Int,
+    val skippedProfiles: Int
+)
 
 class ProfileRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
@@ -81,6 +94,77 @@ class ProfileRepository private constructor(context: Context) {
             .putString("test_url_primary", settings.primaryTestUrl.trim().ifBlank { DEFAULT_PRIMARY_TEST_URL })
             .putString("test_url_fallback", settings.fallbackTestUrl.trim().ifBlank { DEFAULT_FALLBACK_TEST_URL })
             .apply()
+    }
+
+    fun createEncryptedBackup(passphrase: CharArray): ByteArray {
+        val payload = BackupPayload(
+            profiles = getProfiles(),
+            settings = settings()
+        )
+        val json = gson.toJson(payload).toByteArray(Charsets.UTF_8)
+        return EncryptedBackupCodec.encrypt(json, passphrase)
+    }
+
+    @Synchronized
+    fun restoreEncryptedBackup(backup: ByteArray, passphrase: CharArray): BackupRestoreResult {
+        val plaintext = EncryptedBackupCodec.decrypt(backup, passphrase)
+        val payload = try {
+            gson.fromJson(plaintext.toString(Charsets.UTF_8), BackupPayload::class.java)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Backup data is invalid or unsupported")
+        } finally {
+            plaintext.fill(0)
+        }
+
+        require(payload != null && payload.formatVersion == 1) { "Backup data version is not supported" }
+        require(payload.profiles.size <= 5_000) { "Backup contains too many profiles" }
+
+        val backupSettings = payload.settings
+        require(backupSettings != null) { "Backup settings are missing" }
+        require(backupSettings.intervalSeconds in 20..3600) { "Backup monitoring interval is invalid" }
+        require(backupSettings.failureThreshold in 1..5) { "Backup failure threshold is invalid" }
+        require(backupSettings.primaryTestUrl.startsWith("https://", ignoreCase = true)) { "Backup primary test URL must use HTTPS" }
+        require(backupSettings.fallbackTestUrl.isBlank() || backupSettings.fallbackTestUrl.startsWith("https://", ignoreCase = true)) {
+            "Backup fallback test URL must use HTTPS"
+        }
+
+        val next = _profiles.value.toMutableList()
+        val knownLinks = next.map { it.rawLink }.toHashSet()
+        var added = 0
+        var skipped = 0
+
+        payload.profiles.forEach { profile ->
+            require(profile.id.isNotBlank() && profile.name.isNotBlank() && profile.protocol.isNotBlank()) {
+                "Backup contains an incomplete profile"
+            }
+            require(profile.rawLink.isNotBlank() && profile.configJson.isNotBlank()) {
+                "Backup contains a profile without configuration data"
+            }
+            require(profile.port in 0..65535) { "Backup contains an invalid profile port" }
+            require(profile.configJson.length <= 2 * 1024 * 1024) { "A profile configuration in the backup is too large" }
+
+            if (!knownLinks.add(profile.rawLink)) {
+                skipped++
+            } else {
+                val safeId = if (next.any { it.id == profile.id }) UUID.randomUUID().toString() else profile.id
+                next.add(
+                    profile.copy(
+                        id = safeId,
+                        state = LinkState.UNKNOWN,
+                        delayMs = -1L,
+                        lastCheckedAt = 0L,
+                        consecutiveFailures = 0,
+                        lastError = "",
+                        uptimeHistory = profile.uptimeHistory.orEmpty().takeLast(UPTIME_HISTORY_LIMIT)
+                    )
+                )
+                added++
+            }
+        }
+
+        persist(next)
+        saveSettings(backupSettings)
+        return BackupRestoreResult(addedProfiles = added, skippedProfiles = skipped)
     }
 
     private fun loadProfiles(): List<ProxyProfile> {
