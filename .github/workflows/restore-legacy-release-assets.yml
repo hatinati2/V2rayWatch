@@ -1,3 +1,4 @@
+# One-time recovery: restore assets from the original v0.2.3 CI run.
 name: Restore historical v0.2.3 release assets
 
 on:
