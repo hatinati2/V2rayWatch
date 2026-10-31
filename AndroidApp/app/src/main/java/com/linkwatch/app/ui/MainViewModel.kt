@@ -13,6 +13,7 @@ import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.MonitorSettings
 import com.linkwatch.app.data.ProfileRepository
 import com.linkwatch.app.data.ProxyProfile
+import com.linkwatch.app.data.reduceLinkCheck
 import com.linkwatch.app.monitor.MonitorController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,6 +21,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 
@@ -105,23 +108,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun testNow(profile: ProxyProfile) {
         viewModelScope.launch {
             val current = repository.getProfiles().firstOrNull { it.id == profile.id } ?: return@launch
-            withContext(Dispatchers.IO) { repository.upsert(current.copy(state = LinkState.CHECKING)) }
-            val result = tester.test(current, repository.settings())
-            val threshold = repository.settings().failureThreshold
-            val failures = if (result.success) 0 else current.consecutiveFailures + 1
-            val nextState = when {
-                result.success -> LinkState.CONNECTED
-                failures >= threshold -> LinkState.DISCONNECTED
-                else -> LinkState.UNSTABLE
+            val previousState = current.state.takeUnless { it == LinkState.CHECKING } ?: LinkState.UNKNOWN
+            try {
+                withContext(Dispatchers.IO) {
+                    repository.upsert(current.copy(state = LinkState.CHECKING))
+                }
+                val settings = repository.settings()
+                val result = tester.test(current, settings)
+                val latest = repository.getProfiles().firstOrNull { it.id == current.id } ?: return@launch
+                val transition = reduceLinkCheck(
+                    previous = latest.copy(state = previousState),
+                    result = result,
+                    settings = settings,
+                    checkedAtEpochMs = System.currentTimeMillis()
+                )
+                val updated = transition.profile.copy(
+                    lastError = if (result.success) "" else uiError(language, result.error)
+                )
+                withContext(Dispatchers.IO) { repository.upsert(updated) }
+                messageFlow.value = if (result.success) "${current.name}: ${result.delayMs} ms" else message("تست ${current.name} ناموفق بود", "Test failed for ${current.name}")
+            } catch (cancelled: CancellationException) {
+                restorePendingCheck(current.id, previousState)
+                throw cancelled
+            } catch (e: Exception) {
+                restorePendingCheck(current.id, previousState)
+                messageFlow.value = e.message?.take(180)?.let { uiError(language, it) }
+                    ?: message("تست لینک ناموفق بود", "Link test failed")
             }
-            withContext(Dispatchers.IO) { repository.upsert(current.copy(
-                state = nextState,
-                delayMs = result.delayMs,
-                lastCheckedAt = System.currentTimeMillis(),
-                consecutiveFailures = failures,
-                lastError = if (result.success) "" else uiError(language, result.error)
-            )) }
-            messageFlow.value = if (result.success) "${current.name}: ${result.delayMs} ms" else message("تست ${current.name} ناموفق بود", "Test failed for ${current.name}")
+        }
+    }
+
+    private suspend fun restorePendingCheck(profileId: String, previousState: LinkState) {
+        withContext(NonCancellable + Dispatchers.IO) {
+            val latest = repository.getProfiles().firstOrNull { it.id == profileId }
+            if (latest?.state == LinkState.CHECKING) {
+                runCatching { repository.upsert(latest.copy(state = previousState)) }
+            }
         }
     }
 

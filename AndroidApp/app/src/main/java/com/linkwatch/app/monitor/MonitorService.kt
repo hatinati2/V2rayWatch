@@ -9,9 +9,8 @@ import androidx.core.app.ServiceCompat
 import com.linkwatch.app.LinkWatchApplication
 import com.linkwatch.app.core.XrayDelayTester
 import com.linkwatch.app.data.LinkState
-import com.linkwatch.app.data.ProxyProfile
-import com.linkwatch.app.data.UptimeMark
-import com.linkwatch.app.data.appendUptimeMark
+import com.linkwatch.app.data.ProfileRepository
+import com.linkwatch.app.data.reduceLinkCheck
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +21,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import java.util.concurrent.atomic.AtomicInteger
@@ -74,56 +74,94 @@ class MonitorService : Service() {
                 withContext(Dispatchers.Main.immediate) {
                     promoteToForeground(completed.get(), profiles.size)
                 }
+
+                // One bad profile must not cancel sibling checks or terminate the monitor loop.
                 try {
-                    profiles.map { original ->
-                        async {
-                            val current = repository.getProfiles().firstOrNull { it.id == original.id }
-                            if (current != null) {
-                                repository.upsert(current.copy(state = LinkState.CHECKING))
-                                val result = tester.test(current, settings)
-                                val previousFailures = current.consecutiveFailures
-                                val nextFailures = if (result.success) 0 else previousFailures + 1
-                                val nextState = when {
-                                    result.success -> LinkState.CONNECTED
-                                    nextFailures >= settings.failureThreshold -> LinkState.DISCONNECTED
-                                    else -> LinkState.UNSTABLE
-                                }
-                                val updated = current.copy(
-                                    state = nextState,
-                                    delayMs = result.delayMs,
-                                    lastCheckedAt = System.currentTimeMillis(),
-                                    consecutiveFailures = nextFailures,
-                                    lastError = if (result.success) "" else result.error,
-                                    uptimeHistory = appendUptimeMark(
-                                        current.uptimeHistory.orEmpty(),
-                                        if (result.success) UptimeMark.CONNECTED else UptimeMark.DISCONNECTED
-                                    )
-                                )
-                                // A profile deleted during its probe must not be re-created by this completion.
-                                if (repository.getProfiles().any { it.id == current.id }) {
-                                    repository.upsert(updated)
-                                    if (nextState == LinkState.DISCONNECTED && current.state != LinkState.DISCONNECTED) {
-                                        NotificationHelper.notifyDisconnected(this@MonitorService, current.name, result.error)
-                                    } else if (result.success && current.state == LinkState.DISCONNECTED) {
-                                        NotificationHelper.notifyRecovered(this@MonitorService, current.name, result.delayMs)
+                    supervisorScope {
+                        profiles.map { original ->
+                            async {
+                                var checkedProfileId: String? = null
+                                var stateBeforeCheck: LinkState? = null
+                                try {
+                                    val current = repository.getProfiles().firstOrNull { it.id == original.id }
+                                    if (current != null) {
+                                        checkedProfileId = current.id
+                                        stateBeforeCheck = current.state.takeUnless { it == LinkState.CHECKING }
+                                            ?: LinkState.UNKNOWN
+                                        repository.upsert(current.copy(state = LinkState.CHECKING))
+                                        val result = tester.test(current, settings)
+
+                                        // Re-read after the probe so edits made during the request are preserved.
+                                        // Keep the original state only for transition/notification decisions.
+                                        val latest = repository.getProfiles().firstOrNull { it.id == current.id }
+                                        if (latest != null) {
+                                            val transition = reduceLinkCheck(
+                                                previous = latest.copy(state = stateBeforeCheck ?: LinkState.UNKNOWN),
+                                                result = result,
+                                                settings = settings,
+                                                checkedAtEpochMs = System.currentTimeMillis()
+                                            )
+                                            repository.upsert(transition.profile)
+
+                                            if (transition.becameDisconnected) {
+                                                NotificationHelper.notifyDisconnected(
+                                                    this@MonitorService,
+                                                    transition.profile.name,
+                                                    result.error
+                                                )
+                                            } else if (transition.recovered) {
+                                                NotificationHelper.notifyRecovered(
+                                                    this@MonitorService,
+                                                    transition.profile.name,
+                                                    result.delayMs
+                                                )
+                                            }
+                                        }
+                                    }
+                                } catch (cancelled: CancellationException) {
+                                    restorePendingCheck(repository, checkedProfileId, stateBeforeCheck)
+                                    throw cancelled
+                                } catch (_: Exception) {
+                                    // Restore a temporary CHECKING state if a storage/probe operation failed.
+                                    restorePendingCheck(repository, checkedProfileId, stateBeforeCheck)
+                                } finally {
+                                    val count = completed.incrementAndGet()
+                                    try {
+                                        withContext(Dispatchers.Main.immediate) {
+                                            promoteToForeground(count, profiles.size)
+                                        }
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Exception) {
+                                        // A progress-notification refresh must not abort the monitor round.
                                     }
                                 }
                             }
-                            val count = completed.incrementAndGet()
-                            withContext(Dispatchers.Main.immediate) {
-                                promoteToForeground(count, profiles.size)
-                            }
-                        }
-                    }.awaitAll()
-                } catch (e: CancellationException) {
-                    throw e
+                        }.awaitAll()
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
                 } catch (_: Exception) {
-                    // Individual profile failures are recorded by XrayDelayTester; keep monitoring other links.
+                    // Keep the service loop alive if a round-level operation unexpectedly fails.
                 }
 
                 val targetMs = max(settings.intervalSeconds * 1000L, 20_000L)
                 val elapsedMs = System.currentTimeMillis() - roundStartedAt
                 delay(max(targetMs - elapsedMs, 1_000L))
+            }
+        }
+    }
+
+    private fun restorePendingCheck(
+        repository: ProfileRepository,
+        profileId: String?,
+        previousState: LinkState?
+    ) {
+        if (profileId == null || previousState == null) return
+        runCatching {
+            val latest = repository.getProfiles().firstOrNull { it.id == profileId }
+            if (latest?.state == LinkState.CHECKING) {
+                repository.upsert(latest.copy(state = previousState))
             }
         }
     }
