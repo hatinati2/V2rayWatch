@@ -101,7 +101,7 @@ public static class ServerProfileParser
             {
                 profiles.Add(ParseOne(line));
             }
-            catch (Exception ex) when (ex is FormatException or JsonException or UriFormatException or ArgumentException)
+            catch (Exception ex) when (ex is FormatException or JsonException or ArgumentException)
             {
                 errors.Add($"خط {lineNumber}: {ex.Message}");
             }
@@ -295,7 +295,7 @@ public static class ServerProfileParser
             : raw;
         var uri = ParseUri(normalized);
         var host = RequireHost(uri);
-        var port = uri.IsDefaultPort ? 443 : RequirePort(uri);
+        var port = uri.Port is -1 or 0 ? 443 : RequirePort(uri);
         var auth = Decode(uri.UserInfo);
         if (string.IsNullOrWhiteSpace(auth)) throw new FormatException("رمز Hysteria2 خالی است.");
         var q = Query(uri.Query);
