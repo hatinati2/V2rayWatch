@@ -93,6 +93,8 @@ public static class SubscriptionDisplayText
 public sealed class MonitorSettings
 {
     public int IntervalSeconds { get; set; } = 20;
+    public bool NotifyOnDisconnect { get; set; } = true;
+    public bool NotifyOnRecovery { get; set; } = true;
     public int ConsecutiveFailureThreshold { get; set; } = 2;
     public int TimeoutSeconds { get; set; } = 15;
     public string PrimaryTestUrl { get; set; } = "https://www.google.com/generate_204";
