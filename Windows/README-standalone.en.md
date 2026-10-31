@@ -53,4 +53,4 @@ Parser and generated-Xray-config smoke tests:
 
     dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj -c Release
 
-The portable GitHub Actions artifact includes V2rayWatch.exe and the official XTLS/Xray-core v26.10.31 Windows x64 binary. CI verifies the archive SHA-256 against the official .dgst file. Keep the Xray license and third-party notices with the package.
+The portable GitHub Actions artifact includes V2rayWatch.exe and the official XTLS/Xray-core v26.10.31 Windows x64 binary. CI verifies the archive SHA-256 against the digest published for that exact GitHub release asset. Keep the Xray license and third-party notices with the package.
