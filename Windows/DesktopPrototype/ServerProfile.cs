@@ -323,7 +323,7 @@ public static class ServerProfileParser
             if(obfsPassword.Length==0)throw new FormatException("پارامتر obfs-password برای salamander اجباری است.");
             masks["udp"]=new JsonArray(new JsonObject{["type"]="salamander",["settings"]=new JsonObject{["password"]=obfsPassword}});
         }
-        var hopping=ports.Length>1||ports[0].Contains('-',StringComparison.Ordinal)?string.Join(',',ports):"";var legacy=Get(q,"mport");if(legacy.Length>0)hopping=legacy;
+        var hopping=ports.Length>1||ports[0].Contains('-')?string.Join(',',ports):"";var legacy=Get(q,"mport");if(legacy.Length>0)hopping=legacy;
         if(hopping.Length>0){var iv=Get(q,"interval",Get(q,"mportInterval","30"));
             if(!int.TryParse(iv,NumberStyles.None,CultureInfo.InvariantCulture,out var sec)||sec<5||sec>3600)throw new FormatException("فاصلهٔ تغییر پورت Hysteria2 باید بین ۵ تا ۳۶۰۰ ثانیه باشد.");
             masks["quicParams"]=new JsonObject{["udpHop"]=new JsonObject{["ports"]=hopping,["interval"]=sec}};
