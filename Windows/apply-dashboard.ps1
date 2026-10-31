@@ -95,7 +95,7 @@ $dashboardMarkup = @'
       <Setter Property="BorderThickness" Value="0,0,0,1"/>
     </Style>
     <Style x:Key="VW.DataGridCell" TargetType="{x:Type DataGridCell}">
-      <Setter Property="Foreground" Value="#172B4D"/>
+      <Setter Property="Foreground" Value="{DynamicResource VW.TextBrush}"/>
       <Setter Property="FontSize" Value="13"/>
       <Setter Property="Padding" Value="7,5"/>
       <Setter Property="BorderBrush" Value="#E2E8F0"/>
@@ -108,7 +108,7 @@ $dashboardMarkup = @'
       </Style.Triggers>
     </Style>
     <Style x:Key="VW.DataGridRow" TargetType="{x:Type DataGridRow}">
-      <Setter Property="Foreground" Value="#172B4D"/>
+      <Setter Property="Foreground" Value="{DynamicResource VW.TextBrush}"/>
       <Setter Property="MinHeight" Value="34"/>
       <Style.Triggers>
         <Trigger Property="IsSelected" Value="True">
@@ -135,16 +135,20 @@ $dashboardMarkup = @'
       <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
         <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuReload}" Command="{Binding ReloadCmd}"/>
         <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuAddServerViaClipboard}" Command="{Binding AddServerViaClipboardCmd}"/>
-        <ComboBox x:Name="vwMonitorIntervalCombo" Width="72" Margin="7,0,3,0" Padding="5" SelectedIndex="0" Background="#E8EEF5" Foreground="#172B4D" BorderBrush="{StaticResource VW.Line}">
-          <ComboBoxItem Content="20 s" Tag="20"/>
-          <ComboBoxItem Content="30 s" Tag="30"/>
-          <ComboBoxItem Content="60 s" Tag="60"/>
-          <ComboBoxItem Content="120 s" Tag="120"/>
+        <ComboBox x:Name="vwMonitorIntervalCombo" Width="116" Margin="7,0,3,0" Padding="7" SelectedIndex="0"
+                  ToolTip="Monitoring interval / بازهٔ بررسی" Background="#FFFFFF" Foreground="#172B4D"
+                  BorderBrush="{StaticResource VW.Line}" ItemContainerStyle="{StaticResource VW.ComboBoxItem}" FontSize="13">
+          <ComboBoxItem Content="20 seconds" Tag="20"/>
+          <ComboBoxItem Content="30 seconds" Tag="30"/>
+          <ComboBoxItem Content="60 seconds" Tag="60"/>
+          <ComboBoxItem Content="120 seconds" Tag="120"/>
         </ComboBox>
-        <ComboBox x:Name="vwMonitorFailureCombo" Width="82" Margin="3,0" Padding="5" SelectedIndex="1" Background="#E8EEF5" Foreground="#172B4D" BorderBrush="{StaticResource VW.Line}">
-          <ComboBoxItem Content="1 fail" Tag="1"/>
-          <ComboBoxItem Content="2 fails" Tag="2"/>
-          <ComboBoxItem Content="3 fails" Tag="3"/>
+        <ComboBox x:Name="vwMonitorFailureCombo" Width="132" Margin="3,0" Padding="7" SelectedIndex="1"
+                  ToolTip="Failures before alert / تعداد خطا تا هشدار" Background="#FFFFFF" Foreground="#172B4D"
+                  BorderBrush="{StaticResource VW.Line}" ItemContainerStyle="{StaticResource VW.ComboBoxItem}" FontSize="13">
+          <ComboBoxItem Content="1 failure" Tag="1"/>
+          <ComboBoxItem Content="2 failures" Tag="2"/>
+          <ComboBoxItem Content="3 failures" Tag="3"/>
         </ComboBox>
         <Button x:Name="vwMonitorToggleButton" Style="{StaticResource VW.Button}" Content="Start monitor" Click="VwMonitorToggle_Click"/>
         <TextBlock x:Name="vwMonitorStatus" Text="Monitoring stopped" Foreground="{StaticResource VW.Muted}" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" MaxWidth="170"/>
