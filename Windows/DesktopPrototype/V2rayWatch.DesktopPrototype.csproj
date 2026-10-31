@@ -17,4 +17,8 @@
   <ItemGroup>
     <Content Include="Assets\V2rayWatch.ico"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="QRCoder" Version="1.8.1" />
+    <PackageReference Include="ZXing.Net.Bindings.Windows.Compatibility" Version="0.16.17" />
+  </ItemGroup>
 </Project>
