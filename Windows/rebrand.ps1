@@ -92,7 +92,7 @@ if ($methodStart -ge 0) {
 Write-Utf8NoBom $mainCsPath $mainCs
 
 # Generate a distinct multi-resolution V2rayWatch stopwatch icon for the EXE, window and tray.
-$iconPath = Join-Path $SourceRoot "v2rayN\\v2rayN\\Resources\\V2rayWatch.ico"
+$iconPath = Join-Path $SourceRoot "v2rayN\v2rayN\Resources\V2rayWatch.ico"
 New-Item -ItemType Directory -Force -Path (Split-Path $iconPath) | Out-Null
 Add-Type -AssemblyName System.Drawing
 
