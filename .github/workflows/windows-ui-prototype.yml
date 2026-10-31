@@ -1,12 +1,10 @@
-name: Windows UI prototype build
+name: V2rayWatch Windows Link Monitor
 
 on:
   pull_request:
     paths:
       - "Windows/DesktopPrototype/**"
       - "Windows/DesktopPrototype.Tests/**"
-      - "Windows/apply-dashboard.ps1"
-      - "Windows/rebrand.ps1"
       - ".github/workflows/windows-ui-prototype.yml"
   workflow_dispatch:
 
@@ -14,92 +12,89 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-ui-${{ github.event.pull_request.number || github.ref }}
+  group: windows-link-monitor-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-wpf-prototype:
+  build-and-test:
+    name: Build and test standalone Windows Link Monitor
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-      - name: Build WPF prototype
-        run: dotnet build Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release
-      - name: Run profile parser smoke tests
-        run: dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
 
-  build-upstream-dashboard:
-    name: Build branded upstream WPF dashboard
-    runs-on: windows-latest
-    steps:
-      - name: Checkout V2rayWatch
-        uses: actions/checkout@v4
-      - name: Checkout pinned v2rayN source
-        shell: pwsh
-        run: |
-          git clone --depth 1 --branch 7.25.6 --recurse-submodules https://github.com/2dust/v2rayN.git upstream
-          if ($LASTEXITCODE -ne 0) { throw "Could not fetch upstream v2rayN 7.25.6." }
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Apply V2rayWatch branding and dashboard
-        shell: pwsh
-        run: |
-          & "$env:GITHUB_WORKSPACE\Windows\rebrand.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
-          & "$env:GITHUB_WORKSPACE\Windows\apply-dashboard.ps1" -SourceRoot "$env:GITHUB_WORKSPACE\upstream"
-      - name: Build integrated Windows client
-        shell: pwsh
-        run: |
-          dotnet build "./upstream/v2rayN/v2rayN/v2rayN.csproj" -c Release -r win-x64 -p:EnableWindowsTargeting=true
-          if ($LASTEXITCODE -ne 0) { throw "Integrated V2rayWatch WPF build failed." }
 
-      - name: Publish portable integrated client
+      - name: Build standalone WPF application
+        shell: pwsh
+        run: |
+          dotnet build Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw "Standalone WPF build failed." }
+
+      - name: Publish portable self-contained application
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $output = "$env:GITHUB_WORKSPACE\integrated-publish"
-          dotnet publish "./upstream/v2rayN/v2rayN/v2rayN.csproj" -c Release -r win-x64 -p:SelfContained=true -p:EnableWindowsTargeting=true -o $output
-          if ($LASTEXITCODE -ne 0) { throw "Could not publish integrated V2rayWatch client." }
-          dotnet publish "./upstream/v2rayN/AmazTool/AmazTool.csproj" -c Release -r win-x64 -p:SelfContained=true -p:PublishTrimmed=true -p:EnableWindowsTargeting=true -o $output
-          if ($LASTEXITCODE -ne 0) { throw "Could not publish V2rayWatch helper tool." }
-
-      - name: Add pinned Xray and sing-box cores
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $coreZip = "$env:RUNNER_TEMP\v2rayN-windows-64-core-bin.zip"
-          $expanded = "$env:RUNNER_TEMP\core-bin"
-          $coreUrl = "https://raw.githubusercontent.com/2dust/v2rayN-core-bin/43271eebef5772c94eccc56746261e5193e7a65c/v2rayN-windows-64.zip"
-          Invoke-WebRequest -Uri $coreUrl -OutFile $coreZip
-          Expand-Archive -LiteralPath $coreZip -DestinationPath $expanded -Force
-          $binSource = Join-Path $expanded "v2rayN-windows-64\bin"
-          if (-not (Test-Path $binSource)) { throw "Pinned core package has no expected bin directory." }
-          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\integrated-publish\bin" | Out-Null
-          Copy-Item -Path "$binSource\*" -Destination "$env:GITHUB_WORKSPACE\integrated-publish\bin" -Recurse -Force
-          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\integrated-publish\licenses" | Out-Null
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/2dust/v2rayN-core-bin/43271eebef5772c94eccc56746261e5193e7a65c/LICENSE" -OutFile "$env:GITHUB_WORKSPACE\integrated-publish\licenses\CORE-BIN-GPL-3.0.txt"
-          Copy-Item "$env:GITHUB_WORKSPACE\upstream\LICENSE" "$env:GITHUB_WORKSPACE\integrated-publish\licenses\V2RAYN-GPL-3.0.txt" -Force
-          Copy-Item "$env:GITHUB_WORKSPACE\Windows\THIRD_PARTY_NOTICES.md" "$env:GITHUB_WORKSPACE\integrated-publish\THIRD_PARTY_NOTICES.md" -Force
-          Copy-Item "$env:GITHUB_WORKSPACE\Windows\README.fa.md" "$env:GITHUB_WORKSPACE\integrated-publish\README-fa.md" -Force
-          Copy-Item "$env:GITHUB_WORKSPACE\Windows\README.en.md" "$env:GITHUB_WORKSPACE\integrated-publish\README-en.md" -Force
-
-      - name: Package and upload integrated Windows preview
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          if (-not (Test-Path "$env:GITHUB_WORKSPACE\integrated-publish\V2rayWatch.exe")) {
-            throw "V2rayWatch.exe is missing from the portable publish directory."
+          dotnet publish Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=false -o "$env:GITHUB_WORKSPACE\publish"
+          if ($LASTEXITCODE -ne 0) { throw "Standalone Windows publish failed." }
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\publish\V2rayWatch.exe")) {
+            throw "V2rayWatch.exe was not created."
           }
-          Compress-Archive -Path "$env:GITHUB_WORKSPACE\integrated-publish\*" -DestinationPath "$env:GITHUB_WORKSPACE\V2rayWatch-Windows-integrated-preview.zip" -CompressionLevel Optimal
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\publish\licenses" | Out-Null
+          Copy-Item "Windows\THIRD_PARTY_NOTICES_STANDALONE.md" "$env:GITHUB_WORKSPACE\publish\THIRD_PARTY_NOTICES.md" -Force
+          Copy-Item "Windows\README-standalone.fa.md" "$env:GITHUB_WORKSPACE\publish\README-fa.md" -Force
+          Copy-Item "Windows\README-standalone.en.md" "$env:GITHUB_WORKSPACE\publish\README-en.md" -Force
 
-      - name: Upload integrated Windows preview artifact
+      - name: Download official pinned Xray Core
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $coreVersion = "v26.10.31"
+          $coreName = "Xray-windows-64"
+          $coreZip = "$env:RUNNER_TEMP\$coreName.zip"
+          $expanded = "$env:RUNNER_TEMP\official-xray"
+          $releaseBase = "https://github.com/XTLS/Xray-core/releases/download/$coreVersion"
+          $expectedHash = "2e04a9995a6f2ad1b28c0bb25c708ecb2695e43a1c9c7889c4b6ac2b48cf7a6a"
+          Invoke-WebRequest -Uri "$releaseBase/$coreName.zip" -OutFile $coreZip
+          $actualHash = (Get-FileHash -LiteralPath $coreZip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw "Official Xray ZIP SHA-256 verification failed. Expected $expectedHash, got $actualHash."
+          }
+
+          Expand-Archive -LiteralPath $coreZip -DestinationPath $expanded -Force
+          $xray = Get-ChildItem -LiteralPath $expanded -Filter "xray.exe" -File -Recurse | Select-Object -First 1
+          if ($null -eq $xray) { throw "Official Xray Windows archive did not contain xray.exe." }
+          $publishCore = "$env:GITHUB_WORKSPACE\publish\core"
+          New-Item -ItemType Directory -Force -Path $publishCore | Out-Null
+          Copy-Item $xray.FullName (Join-Path $publishCore "xray.exe") -Force
+          foreach ($geo in @("geoip.dat", "geosite.dat")) {
+            $source = Get-ChildItem -LiteralPath $expanded -Filter $geo -File -Recurse | Select-Object -First 1
+            if ($null -ne $source) { Copy-Item $source.FullName (Join-Path $publishCore $geo) -Force }
+          }
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/XTLS/Xray-core/$coreVersion/LICENSE" -OutFile "$publishCore\CORE-LICENSE.txt"
+          & (Join-Path $publishCore "xray.exe") version
+          if ($LASTEXITCODE -ne 0) { throw "The official Xray Core failed its version smoke test." }
+
+      - name: Run parser smoke tests and validate Hysteria2 with official Xray
+        shell: pwsh
+        run: |
+          $env:V2RAYWATCH_XRAY_PATH = "$env:GITHUB_WORKSPACE\publish\core\xray.exe"
+          dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw "Parser or official Xray validation failed." }
+
+      - name: Package standalone Windows preview
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\publish\*" -DestinationPath "$env:GITHUB_WORKSPACE\V2rayWatch-Windows-LinkMonitor-preview.zip" -CompressionLevel Optimal
+
+      - name: Upload standalone Windows preview
         uses: actions/upload-artifact@v4
         with:
-          name: V2rayWatch-Windows-integrated-preview
-          path: V2rayWatch-Windows-integrated-preview.zip
+          name: V2rayWatch-Windows-LinkMonitor-preview
+          path: V2rayWatch-Windows-LinkMonitor-preview.zip
           if-no-files-found: error
+          retention-days: 30
