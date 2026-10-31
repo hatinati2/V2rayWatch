@@ -172,24 +172,13 @@ $dashboardMarkup = @'
         <TextBlock Text="  WINDOWS CLIENT" Foreground="{StaticResource VW.Muted}" FontSize="10" VerticalAlignment="Center" Margin="12,5,0,0"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
-        <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuReload}" Command="{Binding ReloadCmd}"/>
-        <Button Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuAddServerViaClipboard}" Command="{Binding AddServerViaClipboardCmd}"/>
-        <TextBlock x:Name="vwMonitorIntervalLabel" Text="Interval (sec)" Foreground="{StaticResource VW.Muted}" FontSize="12" VerticalAlignment="Center" Margin="7,0,3,0"/>
-        <TextBox x:Name="vwMonitorIntervalInput" Text="20" Width="88" MaxLength="5" Margin="3,0,5,0" Padding="7,5"
-                 ToolTip="Enter any interval from 1 to 99999 seconds / فاصله از ۱ تا ۹۹۹۹۹ ثانیه"
-                 Background="#FFFFFF" Foreground="{DynamicResource VW.TextBrush}" BorderBrush="{StaticResource VW.Line}"
-                 VerticalContentAlignment="Center" HorizontalContentAlignment="Center" TextAlignment="Center"
-                 FlowDirection="LeftToRight" FontSize="13"
-                 PreviewTextInput="VwIntervalInput_PreviewTextInput" DataObject.Pasting="VwIntervalInput_Pasting"/>
-        <ComboBox x:Name="vwMonitorFailureCombo" Width="132" Margin="3,0" Padding="7" SelectedIndex="1"
-                  ToolTip="Failures before alert / تعداد خطا تا هشدار" Background="#FFFFFF" Foreground="{DynamicResource VW.TextBrush}"
-                  BorderBrush="{StaticResource VW.Line}" ItemContainerStyle="{StaticResource VW.ComboBoxItem}" FontSize="13">
-          <ComboBoxItem Content="1 failure" Tag="1"/>
-          <ComboBoxItem Content="2 failures" Tag="2"/>
-          <ComboBoxItem Content="3 failures" Tag="3"/>
-        </ComboBox>
-        <Button x:Name="vwMonitorToggleButton" Style="{StaticResource VW.Button}" Content="Start monitor" Click="VwMonitorToggle_Click"/>
-        <TextBlock x:Name="vwMonitorStatus" Text="Monitoring stopped" Foreground="{StaticResource VW.Muted}" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" MaxWidth="170"/>
+        <Button x:Name="vwReconnectButton" Style="{StaticResource VW.Button}" Background="#315BCE" Foreground="#FFFFFF"
+                Content="اتصال / راه‌اندازی مجدد" ToolTip="بارگذاری پروفایل انتخاب‌شده و راه‌اندازی هسته"
+                Command="{Binding ReloadCmd}"/>
+        <Button x:Name="vwImportButton" Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuAddServerViaClipboard}"
+                Command="{Binding AddServerViaClipboardCmd}"/>
+        <Button x:Name="vwSettingsButton" Style="{StaticResource VW.Button}" Content="{x:Static resx:ResUI.menuSetting}"
+                Command="{Binding OptionSettingCmd}"/>
       </StackPanel>
       <TextBlock Text="کلاینت دسکتاپ فارسی / English" Foreground="{StaticResource VW.Muted}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
     </DockPanel>
@@ -198,7 +187,7 @@ $dashboardMarkup = @'
   <Grid Grid.Row="1" Margin="14,13">
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="*"/>
-      <ColumnDefinition Width="226"/>
+      <ColumnDefinition Width="244"/>
     </Grid.ColumnDefinitions>
 
     <Grid Grid.Column="0" Margin="0,0,12,0">
@@ -218,12 +207,12 @@ $dashboardMarkup = @'
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <DockPanel>
               <TextBlock Text="{x:Static resx:ResUI.TbConnections}" Foreground="{DynamicResource VW.TextBrush}" FontWeight="SemiBold" FontSize="15"/>
-              <TextBlock x:Name="vwConnectionModeLabel" Text="WINDOWS CONNECTION" Foreground="{StaticResource VW.Muted}" FontSize="9" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+              <TextBlock x:Name="vwConnectionModeLabel" Text="CURRENT PROFILE" Foreground="{StaticResource VW.Muted}" FontSize="9" DockPanel.Dock="Left" VerticalAlignment="Center"/>
             </DockPanel>
             <Grid Grid.Row="1" Margin="0,15">
               <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/></Grid.ColumnDefinitions>
               <Border Width="78" Height="78" CornerRadius="39" Background="#E8EEFF" BorderBrush="{StaticResource VW.Cyan}" BorderThickness="2" VerticalAlignment="Center">
-                <TextBlock Text="✓" Foreground="{StaticResource VW.Green}" FontSize="43" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <TextBlock Text="⇄" Foreground="{StaticResource VW.Cyan}" FontSize="39" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </Border>
               <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,0,0">
                 <TextBlock Text="{Binding StatusBarViewModel.RunningServerDisplay, TargetNullValue=—}" Foreground="{DynamicResource VW.TextBrush}" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
@@ -239,19 +228,41 @@ $dashboardMarkup = @'
         </Border>
 
         <Grid Grid.Column="1">
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
-          <Border Grid.Row="0" Style="{StaticResource VW.Card}" Margin="7,0,0,6">
-            <StackPanel>
-              <TextBlock Text="{x:Static resx:ResUI.TbSettingsDisplayRealTimeSpeed}" Foreground="{StaticResource VW.Muted}" FontSize="12"/>
-              <TextBlock Text="{Binding StatusBarViewModel.SpeedProxyDisplay, TargetNullValue=—}" Foreground="{DynamicResource VW.TextBrush}" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,0" TextWrapping="Wrap"/>
-              
-            </StackPanel>
+          <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Border Grid.Row="0" Style="{StaticResource VW.Card}" Margin="7,0,0,6" MinHeight="92">
+            <Grid>
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              <DockPanel>
+                <TextBlock x:Name="vwProxySpeedTitle" Text="Proxy speed" Foreground="{DynamicResource VW.TextBrush}" FontSize="14" FontWeight="SemiBold"/>
+                <Border DockPanel.Dock="Left" Background="#E8EEFF" CornerRadius="8" Padding="7,3">
+                  <TextBlock x:Name="vwSpeedLiveBadge" Text="LIVE" Foreground="#315BCE" FontSize="9" FontWeight="Bold"/>
+                </Border>
+              </DockPanel>
+              <TextBlock Grid.Row="1" Text="{Binding StatusBarViewModel.SpeedProxyDisplay, TargetNullValue=—}"
+                         Foreground="{DynamicResource VW.TextBrush}" FontSize="17" FontWeight="SemiBold" Margin="0,9,0,5" TextWrapping="Wrap"/>
+              <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <CheckBox x:Name="vwSpeedDisplayToggle" Content="نمایش سرعت زنده" IsThreeState="False" Click="VwSpeedDisplayToggle_Click"
+                          Foreground="{StaticResource VW.Cyan}" FontSize="11" VerticalAlignment="Center" ToolTip="تغییر این گزینه با راه‌اندازی مجدد برنامه اعمال می‌شود"/>
+                <TextBlock x:Name="vwSpeedStatus" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Grid>
           </Border>
-          <Border Grid.Row="1" Style="{StaticResource VW.Card}" Margin="7,6,0,0">
+          <Border Grid.Row="1" Style="{StaticResource VW.Card}" Margin="7,6,0,0" MinHeight="105">
             <StackPanel>
-              <TextBlock Text="{x:Static resx:ResUI.TbSettingsDisplayRealTimeSpeed}" Foreground="{StaticResource VW.Muted}" FontSize="12"/>
-              <TextBlock Text="{Binding StatusBarViewModel.SpeedDirectDisplay, TargetNullValue=—}" Foreground="{DynamicResource VW.TextBrush}" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,0" TextWrapping="Wrap"/>
-              <Canvas x:Name="vwTrafficCanvas" Height="36" Margin="0,8,0,0" ClipToBounds="True">
+              <TextBlock x:Name="vwDirectSpeedTitle" Text="Direct traffic" Foreground="{DynamicResource VW.TextBrush}" FontSize="14" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding StatusBarViewModel.SpeedDirectDisplay, TargetNullValue=—}" Foreground="{DynamicResource VW.TextBrush}"
+                         FontSize="17" FontWeight="SemiBold" Margin="0,7,0,0" TextWrapping="Wrap"/>
+              <TextBlock x:Name="vwDirectSpeedStatus" Text="Live traffic reported by the active core" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,4,0,0" TextWrapping="Wrap"/>
+              <TextBlock x:Name="vwTrafficChartTitle" Text="Proxy traffic history" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,8,0,0"/>
+              <DockPanel Margin="0,3,0,0">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                  <Ellipse Width="7" Height="7" Fill="{StaticResource VW.Green}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                  <TextBlock x:Name="vwDownloadLegend" Text="Download" Foreground="{StaticResource VW.Muted}" FontSize="9" Margin="0,0,9,0"/>
+                  <Ellipse Width="7" Height="7" Fill="{StaticResource VW.Cyan}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                  <TextBlock x:Name="vwUploadLegend" Text="Upload" Foreground="{StaticResource VW.Muted}" FontSize="9"/>
+                </StackPanel>
+              </DockPanel>
+              <Canvas x:Name="vwTrafficCanvas" Height="28" Margin="0,4,0,0" ClipToBounds="True">
                 <Polyline x:Name="vwDownloadLine" Stroke="{StaticResource VW.Green}" StrokeThickness="2" Points=""/>
                 <Polyline x:Name="vwUploadLine" Stroke="{StaticResource VW.Cyan}" StrokeThickness="2" Points=""/>
               </Canvas>
@@ -267,7 +278,7 @@ $dashboardMarkup = @'
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <DockPanel Margin="0,0,0,12">
               <TextBlock Text="{x:Static resx:ResUI.menuServers}" Foreground="{DynamicResource VW.TextBrush}" FontSize="16" FontWeight="SemiBold"/>
-              <TextBlock Text="PROFILES" Foreground="{StaticResource VW.Muted}" FontSize="9" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+              <TextBlock x:Name="vwProfilesSectionTitle" Text="SAVED PROFILES" Foreground="{StaticResource VW.Muted}" FontSize="9" DockPanel.Dock="Left" VerticalAlignment="Center"/>
             </DockPanel>
             <DataGrid x:Name="vwProfilesGrid" Grid.Row="1"
                       ItemsSource="{Binding ProfilesViewModel.ProfileItems}"
@@ -404,13 +415,42 @@ $dashboardMarkup = @'
               <Border Background="#E8EEFF" CornerRadius="14" Padding="12" Margin="0,0,0,5">
                 <TextBlock Text="⌂   داشبورد / Dashboard" Foreground="#315BCE" FontSize="14" FontWeight="SemiBold"/>
               </Border>
-              <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuServers}" Command="{Binding AddServerViaClipboardCmd}"/>
+              <Button x:Name="vwImportNavigationButton" Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuAddServerViaClipboard}" Command="{Binding AddServerViaClipboardCmd}"/>
               <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuSubscription}" Command="{Binding SubSettingCmd}"/>
               <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuRouting}" Command="{Binding RoutingSettingCmd}"/>
               <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuSetting}" Command="{Binding OptionSettingCmd}"/>
-              <Button Style="{StaticResource VW.NavButton}" Content="{x:Static resx:ResUI.menuReload}" Command="{Binding ReloadCmd}"/>
             </StackPanel>
-            <Border Background="#FFFFFF" BorderBrush="{StaticResource VW.Line}" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,13,0,5">
+            <Border Style="{StaticResource VW.Card}" Padding="11" Margin="0,10,0,4">
+              <StackPanel>
+                <TextBlock x:Name="vwMonitorTitle" Text="پایش خودکار لینک‌ها" Foreground="{DynamicResource VW.TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <TextBlock x:Name="vwMonitorHelp" Text="سلامت سرورها را بدون تغییر System Proxy بررسی کن." Foreground="{StaticResource VW.Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                    <TextBlock x:Name="vwMonitorIntervalLabel" Text="فاصله (ثانیه)" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,0,0,3"/>
+                    <TextBox x:Name="vwMonitorIntervalInput" Text="20" MaxLength="5" Padding="6,5"
+                             ToolTip="Enter any interval from 1 to 99999 seconds"
+                             Background="#FFFFFF" Foreground="{DynamicResource VW.TextBrush}" BorderBrush="{StaticResource VW.Line}"
+                             VerticalContentAlignment="Center" HorizontalContentAlignment="Center" TextAlignment="Center"
+                             FlowDirection="LeftToRight" FontSize="12"
+                             PreviewTextInput="VwIntervalInput_PreviewTextInput" DataObject.Pasting="VwIntervalInput_Pasting"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                    <TextBlock x:Name="vwMonitorFailureLabel" Text="خطا تا هشدار" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="0,0,0,3"/>
+                    <ComboBox x:Name="vwMonitorFailureCombo" Padding="5" SelectedIndex="1"
+                              ToolTip="Consecutive failures before alert" Background="#FFFFFF" Foreground="{DynamicResource VW.TextBrush}"
+                              BorderBrush="{StaticResource VW.Line}" ItemContainerStyle="{StaticResource VW.ComboBoxItem}" FontSize="11">
+                      <ComboBoxItem Content="1 failure" Tag="1"/>
+                      <ComboBoxItem Content="2 failures" Tag="2"/>
+                      <ComboBoxItem Content="3 failures" Tag="3"/>
+                    </ComboBox>
+                  </StackPanel>
+                </Grid>
+                <Button x:Name="vwMonitorToggleButton" Style="{StaticResource VW.Button}" Content="شروع پایش" Click="VwMonitorToggle_Click" HorizontalAlignment="Stretch" Margin="0,8,0,2"/>
+                <TextBlock x:Name="vwMonitorStatus" Text="پایش متوقف است" Foreground="{StaticResource VW.Muted}" FontSize="10" Margin="2,4,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+            <Border Background="#FFFFFF" BorderBrush="{StaticResource VW.Line}" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,9,0,5">
               <StackPanel>
                 <TextBlock x:Name="vwAppearanceTitle" Text="ظاهر و خوانایی / Appearance" Foreground="{DynamicResource VW.TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                 <TextBlock x:Name="vwFontFamilyLabel" Text="فونت / Font" Foreground="{StaticResource VW.Muted}" FontSize="12" Margin="0,0,0,4"/>
