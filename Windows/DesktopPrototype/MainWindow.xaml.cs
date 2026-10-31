@@ -635,12 +635,14 @@ public partial class MainWindow : Window
     {
         if (_monitorCancellation is not null) return;
         if (_profiles.Count == 0) { SetStatus(_english ? "Add profiles before starting monitoring." : "قبل از شروع پایش، لینک‌ها را اضافه کن.", true); return; }
-        _monitorSessionId = _historyStore is null ? null : Guid.NewGuid();
+        var historyReady = _historyStore is not null;
+        _monitorSessionId = historyReady ? Guid.NewGuid() : null;
         if (_historyStore is not null)
         {
             try { _historyStore.PruneExpired(DateTimeOffset.UtcNow.AddDays(-7)); }
             catch (Exception ex)
             {
+                historyReady = false;
                 _monitorSessionId = null;
                 SetStatus((_english ? "History cleanup failed: " : "پاک‌سازی تاریخچه ناموفق بود: ") + ex.Message, true);
             }
@@ -648,12 +650,12 @@ public partial class MainWindow : Window
         _monitorCancellation = new CancellationTokenSource();
         _data.MonitorEnabled = true;
         SaveData();
-        MonitorButton.Content = _english ? "Stop monitoring" : "توقف پایش خودکار";
+        MonitorButton.Content = _english ? "Stop monitoring" : "توقف پایش";
         SetStatus(
-            _historyStore is null
-                ? (_english ? "Monitoring started; long-term history is unavailable." : "پایش شروع شد؛ ذخیرهٔ تاریخچهٔ بلندمدت در دسترس نیست.")
-                : (_english ? "Monitoring started. Long-term history is recording." : "پایش شروع شد؛ تاریخچهٔ بلندمدت ثبت می‌شود."),
-            _historyStore is null);
+            historyReady
+                ? (_english ? "Monitoring started. Long-term history is recording." : "پایش شروع شد؛ تاریخچهٔ بلندمدت ثبت می‌شود.")
+                : (_english ? "Monitoring started; long-term history is unavailable." : "پایش شروع شد؛ ذخیرهٔ تاریخچهٔ بلندمدت در دسترس نیست."),
+            !historyReady);
         _monitorTask = MonitorLoopAsync(_monitorCancellation.Token);
     }
 
@@ -668,8 +670,8 @@ public partial class MainWindow : Window
         cts.Dispose();
         _data.MonitorEnabled = false;
         SaveData();
-        MonitorButton.Content = _english ? "Start monitoring" : "شروع پایش خودکار";
-        SetStatus(_english ? "Automatic monitoring stopped." : "پایش خودکار متوقف شد.", false);
+        MonitorButton.Content = _english ? "Start monitoring" : "شروع پایش";
+        SetStatus(_english ? "Monitoring stopped." : "پایش متوقف شد.", false);
     }
 
     private async Task MonitorLoopAsync(CancellationToken cancellationToken)
@@ -762,7 +764,11 @@ public partial class MainWindow : Window
             "V2rayWatch",System.Windows.MessageBoxButton.YesNo,System.Windows.MessageBoxImage.Warning);
         if(answer!=System.Windows.MessageBoxResult.Yes)return;
         if(_monitorCancellation is not null)await StopMonitoringAsync();
-        foreach(var profile in _profiles.Where(p=>!string.IsNullOrWhiteSpace(p.SourceSubscriptionId)).ToList())_profiles.Remove(profile);
+        foreach(var profile in _profiles.Where(p=>!string.IsNullOrWhiteSpace(p.SourceSubscriptionId)).ToList())
+        {
+            _historyStore?.DeleteProfile(profile.Id);
+            _profiles.Remove(profile);
+        }
         _subscriptions.Clear();SearchInput.Clear();SaveData();RefreshSummary();
         SetStatus(_english?"All subscription URLs and their profiles were removed.":"همهٔ اشتراک‌ها و لینک‌های متعلق به آن‌ها حذف شدند.",false);
     }
@@ -825,7 +831,7 @@ public partial class MainWindow : Window
         AddLinksButton.Content = _english ? "Add links" : "افزودن لینک";
         AddSubscriptionButton.Content = _english ? "Add subscription" : "افزودن Subscription";
         TestAllButton.Content = _english ? "Test all links" : "تست همه لینک‌ها";
-        MonitorButton.Content = _monitorCancellation is null ? (_english ? "Start monitoring" : "شروع پایش خودکار") : (_english ? "Stop monitoring" : "توقف پایش خودکار");
+        MonitorButton.Content = _monitorCancellation is null ? (_english ? "Start monitoring" : "شروع پایش") : (_english ? "Stop monitoring" : "توقف پایش");
         TotalLabel.Text = _english ? "All profiles" : "کل پروفایل‌ها";
         ConnectedLabel.Text = _english ? "Connected" : "متصل";
         DisconnectedLabel.Text = _english ? "Disconnected" : "قطع";
@@ -836,7 +842,7 @@ public partial class MainWindow : Window
         LongTermHistoryButton.Content = _english ? "Long-term history" : "تاریخچهٔ بلندمدت";
         RemoveSelectedButton.Content = _english ? "Remove" : "حذف";
         DeleteAllProfilesButton.Content = _english ? "Remove all links" : "حذف همه لینک‌ها";
-        GridFooter.Text = _english ? "Manual tests do not change automatic monitoring history." : "تست دستی، تاریخچهٔ پایش خودکار را تغییر نمی‌دهد.";
+        GridFooter.Text = _english ? "Manual tests are not added to the 20-check or long-term history." : "تست دستی وارد نوار ۲۰ بررسی و تاریخچهٔ بلندمدت نمی‌شود.";
         ImportClipboardButton.Content = _english ? "Paste from clipboard" : "چسباندن از Clipboard";
         ImportFileButton.Content = _english ? "Import file" : "ورود از فایل";
         ExportBackupButton.Content = _english ? "Export backup" : "پشتیبان‌گیری";
