@@ -222,6 +222,7 @@ jobs:
             release-assets/V2rayWatch-Windows-x64.zip
             release-assets/v2rayN-windows-64.zip
             release-assets/V2rayWatch-Windows-source-GPL-3.0.zip
+            release-assets/V2rayWatch-Windows-SHA256SUMS.txt
             release-assets/V2rayWatch-Android-0.2.2-debug-preview.apk
             release-assets/V2rayWatch-Android-0.2.2-debug-preview.apk.sha256
           fail_on_unmatched_files: true
