@@ -125,6 +125,7 @@
                 <TextBox x:Name="SearchInput" Width="180" Style="{StaticResource DarkTextBox}" VerticalContentAlignment="Center"
                          TextChanged="SearchInput_TextChanged" ToolTip="جست‌وجوی نام، میزبان یا پروتکل"/>
                 <Button x:Name="TestSelectedButton" Content="تست انتخاب‌شده" Click="TestSelected_Click"/>
+                <Button x:Name="LongTermHistoryButton" Content="تاریخچهٔ بلندمدت" Click="LongTermHistory_Click" IsEnabled="False"/>
                 <Button x:Name="RemoveSelectedButton" Content="حذف" Click="RemoveSelected_Click"/>
                 <Button x:Name="DeleteAllProfilesButton" Content="حذف همه لینک‌ها" Click="RemoveAllProfiles_Click"/>
               </StackPanel>
