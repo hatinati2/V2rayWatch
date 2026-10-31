@@ -6,7 +6,7 @@ This is a Windows desktop client based on the upstream open-source v2rayN projec
 
 ## Persian and English
 
-Both Persian and English resources are included. On a fresh install, Persian is selected when the Windows UI culture is Persian; otherwise English is the default. The dashboard language button saves the preference and automatically restarts the app in the selected language.
+Both Persian and English resources are included. On a fresh install, Persian is selected when the Windows UI culture is Persian; otherwise English is the default. The process sets a dedicated Windows AppUserModelID at startup to separate its taskbar group from v2rayN. Remove any old pinned v2rayN shortcut, launch the new V2rayWatch.exe once, then pin V2rayWatch. The dashboard language button saves the preference and automatically restarts the app in the selected language.
 
 ## Main features
 
