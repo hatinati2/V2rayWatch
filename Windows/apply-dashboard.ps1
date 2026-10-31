@@ -258,8 +258,8 @@ $dashboardMarkup = @'
                       <ColumnDefinition Width="88"/>
                       <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Last 20 checks" Foreground="#64748B" FontSize="10" VerticalAlignment="Center"
-                               ToolTip="Oldest result on the left, newest on the right"/>
+                    <TextBlock Text="۲۰ نتیجهٔ اخیر / Last 20" Foreground="#64748B" FontSize="10" VerticalAlignment="Center"
+                               ToolTip="قدیمی‌تر در چپ، جدیدتر در راست / Oldest left, newest right"/>
                     <ItemsControl Grid.Column="1" ItemsSource="{Binding VwHistory}" ToolTip="20 most recent monitoring results">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
