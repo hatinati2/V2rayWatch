@@ -10,7 +10,7 @@ This branch builds an independent Windows version of V2rayWatch. Its purpose is 
 - Save subscription sources and update one or all sources later
 - Preserve manually imported profiles when a subscription is updated; only profiles owned by that source are synchronized
 - Test one profile or all profiles using a temporary Xray Core process and an HTTPS request through that profile's own outbound
-- Scheduled monitoring, 20/30/60/120-second intervals, a 1–5 consecutive-failure threshold, and configurable timeouts
+- Scheduled monitoring with configurable 1–9999-second intervals, a 1–9999 consecutive-failure threshold, and configurable timeouts
 - Per-profile status, latest delay, last-check time, and a 20-check automatic uptime strip
 - Tray notifications on disconnect and recovery
 - Persian and English UI
