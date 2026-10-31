@@ -22,7 +22,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: V2rayWatch-Windows-build
-          run-id: 41187180078
+          run-id: 41187653198
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: restore/windows
 
@@ -30,7 +30,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: V2rayWatch-Android-preview
-          run-id: 41187180078
+          run-id: 41187653198
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: restore/android
 
