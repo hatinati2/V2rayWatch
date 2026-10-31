@@ -10,6 +10,7 @@ import libv2ray.Libv2ray
 import com.linkwatch.app.data.DelayResult
 import com.linkwatch.app.data.MonitorSettings
 import com.linkwatch.app.data.ProxyProfile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -35,15 +36,29 @@ class XrayDelayTester(context: Context) {
                 activeController.startLoop(profile.configJson, 0)
                 started = true
 
-                val primary = runCatching { activeController.measureDelay(settings.primaryTestUrl) }.getOrElse { -1L }
+                val primary = try {
+                    activeController.measureDelay(settings.primaryTestUrl)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    -1L
+                }
                 if (primary >= 0L) return@withContext DelayResult(success = true, delayMs = primary)
 
                 val fallback = settings.fallbackTestUrl.trim()
                 if (fallback.isNotEmpty() && fallback != settings.primaryTestUrl) {
-                    val secondary = runCatching { activeController.measureDelay(fallback) }.getOrElse { -1L }
+                    val secondary = try {
+                        activeController.measureDelay(fallback)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        -1L
+                    }
                     if (secondary >= 0L) return@withContext DelayResult(success = true, delayMs = secondary)
                 }
                 DelayResult(success = false, error = "تست اتصال واقعی ناموفق بود یا مهلت پاسخ تمام شد")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 DelayResult(success = false, error = safeError(e))
             } finally {
