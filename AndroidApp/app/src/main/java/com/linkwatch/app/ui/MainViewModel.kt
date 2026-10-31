@@ -60,7 +60,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 repository.createEncryptedBackup(passphrase)
             } finally {
-                passphrase.fill('\\u0000')
+                passphrase.fill('\u0000')
             }
         }
 
@@ -75,7 +75,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
             } finally {
-                passphrase.fill('\\u0000')
+                passphrase.fill('\u0000')
                 backup.fill(0)
             }
         }
