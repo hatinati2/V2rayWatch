@@ -12,6 +12,9 @@ This branch builds an independent Windows version of V2rayWatch. Its purpose is 
 - Test one profile or all profiles using a temporary Xray Core process and an HTTPS request through that profile's own outbound
 - Scheduled monitoring with configurable 1–9999-second intervals, a 1–9999 consecutive-failure threshold, and configurable timeouts
 - Per-profile status, latest delay, last-check time, and a 20-check automatic uptime strip
+- Per-profile long-term history with 24-hour and 7-day views, successful-check percentage, failure count, average/min/max delay, and a time-bucket chart
+- Long-term samples are collected only while the user has manually started monitoring. One-off manual tests and periods with monitoring stopped are excluded; unobserved time is shown as no data, not downtime
+- The latest seven days are kept locally in a separate SQLite database; older records are pruned automatically
 - Tray notifications on disconnect and recovery, with independent notification controls
 - Portable encrypted backup/restore using the same Android format; move a `.v2vwbackup` file between Windows and Android and use the same passphrase
 - Non-destructive restore: existing profiles are kept, duplicate links are skipped, and monitoring/notification preferences plus uptime history are transferred
@@ -40,9 +43,10 @@ On update:
 
 - The test engine in this preview is the official Xray Core binary from XTLS/Xray-core. Exact protocol/transport support depends on the bundled Xray version. sing-box-based testing is not implemented in this preview.
 - Some full Xray JSON configurations or advanced transports may need additional compatibility work.
-- Monitoring runs while the app remains open (including in the system tray). Automatic monitoring as a Windows Service or after a full process exit is not implemented yet.
+- Monitoring starts only when the user presses **Start monitoring**. It does not resume automatically when the app is relaunched or Windows restarts. It runs while the app remains open (including in the system tray) and stops when the app exits.
 - A monitoring round may take longer than the selected interval depending on profile count and probe timeouts; rounds do not overlap.
 - Windows-only subscription source URLs and UI preferences are not part of the shared backup; profiles and monitoring/notification settings are transferred.
+- Windows long-term history is device-local and is not included in the shared Android/Windows backup.
 - QR scanning from image files is supported; live webcam scanning is not implemented yet.
 - This preview still requires live testing on Windows 10/11. Passing CI does not replace testing real profiles and real subscription providers.
 
