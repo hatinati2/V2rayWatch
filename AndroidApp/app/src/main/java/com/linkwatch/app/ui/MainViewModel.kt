@@ -13,6 +13,7 @@ import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.MonitorSettings
 import com.linkwatch.app.data.ProfileRepository
 import com.linkwatch.app.data.ProxyProfile
+import com.linkwatch.app.data.reduceLinkCheck
 import com.linkwatch.app.monitor.MonitorController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -59,7 +60,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 repository.createEncryptedBackup(passphrase)
             } finally {
-                passphrase.fill('\u0000')
+                passphrase.fill('\\u0000')
             }
         }
 
@@ -74,7 +75,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
             } finally {
-                passphrase.fill('\u0000')
+                passphrase.fill('\\u0000')
                 backup.fill(0)
             }
         }
@@ -106,21 +107,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val current = repository.getProfiles().firstOrNull { it.id == profile.id } ?: return@launch
             withContext(Dispatchers.IO) { repository.upsert(current.copy(state = LinkState.CHECKING)) }
-            val result = tester.test(current, repository.settings())
-            val threshold = repository.settings().failureThreshold
-            val failures = if (result.success) 0 else current.consecutiveFailures + 1
-            val nextState = when {
-                result.success -> LinkState.CONNECTED
-                failures >= threshold -> LinkState.DISCONNECTED
-                else -> LinkState.UNSTABLE
-            }
-            withContext(Dispatchers.IO) { repository.upsert(current.copy(
-                state = nextState,
-                delayMs = result.delayMs,
-                lastCheckedAt = System.currentTimeMillis(),
-                consecutiveFailures = failures,
+            val settings = repository.settings()
+            val result = tester.test(current, settings)
+            val latest = repository.getProfiles().firstOrNull { it.id == current.id } ?: return@launch
+            val transition = reduceLinkCheck(
+                previous = latest.copy(state = current.state),
+                result = result,
+                settings = settings,
+                checkedAtEpochMs = System.currentTimeMillis()
+            )
+            val updated = transition.profile.copy(
                 lastError = if (result.success) "" else uiError(language, result.error)
-            )) }
+            )
+            withContext(Dispatchers.IO) { repository.upsert(updated) }
             messageFlow.value = if (result.success) "${current.name}: ${result.delayMs} ms" else message("تست ${current.name} ناموفق بود", "Test failed for ${current.name}")
         }
     }
