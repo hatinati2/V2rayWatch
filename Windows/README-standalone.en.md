@@ -12,7 +12,10 @@ This branch builds an independent Windows version of V2rayWatch. Its purpose is 
 - Test one profile or all profiles using a temporary Xray Core process and an HTTPS request through that profile's own outbound
 - Scheduled monitoring with configurable 1–9999-second intervals, a 1–9999 consecutive-failure threshold, and configurable timeouts
 - Per-profile status, latest delay, last-check time, and a 20-check automatic uptime strip
-- Tray notifications on disconnect and recovery
+- Tray notifications on disconnect and recovery, with independent notification controls
+- Portable encrypted backup/restore using the same Android format; move a `.v2vwbackup` file between Windows and Android and use the same passphrase
+- Non-destructive restore: existing profiles are kept, duplicate links are skipped, and monitoring/notification preferences plus uptime history are transferred
+- Generate and save a QR image for a selected profile, or import a link by reading a QR code from an image file
 - Persian and English UI
 - Profile/subscription data stored at LocalAppData/V2rayWatch/data.v2vw, protected with Windows DPAPI
 
@@ -39,7 +42,8 @@ On update:
 - Some full Xray JSON configurations or advanced transports may need additional compatibility work.
 - Monitoring runs while the app remains open (including in the system tray). Automatic monitoring as a Windows Service or after a full process exit is not implemented yet.
 - A monitoring round may take longer than the selected interval depending on profile count and probe timeouts; rounds do not overlap.
-- Portable encrypted backup/restore is not implemented yet. The current data file is protected for the same Windows user on the same device.
+- Windows-only subscription source URLs and UI preferences are not part of the shared backup; profiles and monitoring/notification settings are transferred.
+- QR scanning from image files is supported; live webcam scanning is not implemented yet.
 - This preview still requires live testing on Windows 10/11. Passing CI does not replace testing real profiles and real subscription providers.
 
 ## Build from source
