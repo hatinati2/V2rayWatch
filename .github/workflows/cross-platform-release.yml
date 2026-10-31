@@ -129,7 +129,11 @@ jobs:
           if ($env:GITHUB_REF -eq "refs/heads/release/unified-v0.3.0") {
             $releaseVersion = "0.3.0"
           } else {
-            if ($env:GITHUB_REF_NAME -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+
+            if ($env:GITHUB_REF_NAME -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
+              throw "Expected a shared release tag such as v0.3.1."
+            }
+            $releaseVersion = $env:GITHUB_REF_NAME.Substring(1)
+          }
           [xml]$project = Get-Content "Windows/DesktopPrototype/V2rayWatch.DesktopPrototype.csproj"
           $appVersion = [string]($project.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
           if ($appVersion -ne $releaseVersion) {
@@ -241,7 +245,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat release-assets/V2rayWatch-Android-*-SHA256SUMS.txt release-assets/V2rayWatch-Windows-*-SHA256SUMS.txt > "release-assets/V2rayWatch-${GITHUB_REF_NAME#v}-SHA256SUMS.txt"
+          if [[ "$GITHUB_REF" == "refs/heads/release/unified-v0.3.0" ]]; then
+            release_version="0.3.0"
+          else
+            release_version="${GITHUB_REF_NAME#v}"
+          fi
+          cat release-assets/V2rayWatch-Android-*-SHA256SUMS.txt release-assets/V2rayWatch-Windows-*-SHA256SUMS.txt > "release-assets/V2rayWatch-$release_version-SHA256SUMS.txt"
 
       - name: Publish combined GitHub Release
         uses: softprops/action-gh-release@v2
@@ -255,7 +264,7 @@ jobs:
           generate_release_notes: false
           fail_on_unmatched_files: true
           body: |
-            ## V2rayWatch ${{ github.ref_name }} — Android + Windows
+            ## V2rayWatch ${{ github.ref_type == 'branch' && 'v0.3.0' || github.ref_name }} — Android + Windows
 
             این انتشار، نسخهٔ مشترک هر دو پلتفرم است. از این پس هر Release رسمی با یک تگ مشترک ساخته می‌شود و انتشار مستقل Android یا Windows انجام نخواهد شد.
 
@@ -399,8 +408,9 @@ jobs:
       - name: Publish combined GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: V2rayWatch ${{ github.ref_name }} — Android + Windows
+          tag_name: ${{ github.ref_type == 'branch' && 'v0.3.0' || github.ref_name }}
+          target_commitish: main
+          name: V2rayWatch ${{ github.ref_type == 'branch' && 'v0.3.0' || github.ref_name }} — Android + Windows
           draft: false
           prerelease: true
           make_latest: false
