@@ -24,7 +24,7 @@ Replace-TextOnce "v2rayN\ServiceLib\Global.cs" '{ ECoreType.v2rayN, "2dust/v2ray
 
 # Keep upstream dialogs and secondary windows on the Android app's light blue Material palette.
 Replace-TextOnce "v2rayN\v2rayN\App.xaml" 'PrimaryColor="Blue"' 'PrimaryColor="Indigo"'
-Replace-TextOnce "v2rayN\v2rayN\App.xaml" 'SecondaryColor="Lime"' 'SecondaryColor="BlueGrey"'
+Replace-TextOnce "v2rayN\v2rayN\App.xaml" 'SecondaryColor="Lime"' 'SecondaryColor="Blue"' # Blue has a supported MaterialDesign 5.3.2 secondary palette.
 Replace-TextOnce "v2rayN\ServiceLib\Global.cs" 'public const string PromotionUrl = @"aHR0cHM6Ly85LjIzNDQ1Ni54eXovYWJjLmh0bWw=";' 'public const string PromotionUrl = "";'
 
 # Prefer Persian on Persian Windows installations, otherwise English.
@@ -75,7 +75,6 @@ Replace-TextOnce "v2rayN\v2rayN\Views\StatusBarView.xaml" 'ToolTipText="v2rayN"'
 # Give every secondary WPF window the same V2rayWatch title-bar icon.
 $windowBasePath = Join-Path $SourceRoot "v2rayN\v2rayN\Base\WindowBase.cs"
 if (-not (Test-Path $windowBasePath)) { throw "WindowBase.cs not found; cannot brand secondary window icons." }
-$windowBase = [System.IO.File]::ReadAllText($windowBasePath).Replace("`r`n", "`n")
 $windowBase = [System.IO.File]::ReadAllText($windowBasePath).Replace("`r`n", "`n")
 $windowConstructorPattern = '(?m)^    public WindowBase\(\)\n    \{\n        Loaded \+= OnLoaded;\n    \}'
 $windowConstructorMatches = [regex]::Matches($windowBase, $windowConstructorPattern)
