@@ -22,6 +22,14 @@ Both Persian and English resources are included. On a fresh install, Persian is 
 
 Exact support depends on the selected core and the fields in each profile. Private or vendor-specific options may still require validation.
 
+## Scheduled link monitoring in the development preview
+
+The development branch adds a **Start monitoring** control. It uses v2rayN's real per-profile Real Ping path to test every testable profile independently of System Proxy and TUN. Intervals are 20, 30, 60, or 120 seconds; the failure threshold is 1–3 consecutive failures (default: 20 seconds and 2 failures). The profile table shows Connected, Unstable, Disconnected, or Not testable. Tray notifications are sent when a profile transitions to disconnected and when it recovers.
+
+Manual Real Ping results are kept separate from monitor rounds. New profiles added during a round are not treated as failures until the next round. Monitoring continues while the app remains running in the system tray, but stops when the process exits; start it again after relaunch. A round can take longer than the selected interval when probes time out, and rounds are never overlapped.
+
+This is available in the development preview only. Stable public release v0.1.0 has not been replaced by this feature branch.
+
 ## Install and run
 
 1. Download V2rayWatch-Windows-x64.zip from GitHub Releases.
