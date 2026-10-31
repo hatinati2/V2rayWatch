@@ -2,8 +2,12 @@ name: Android 0.2.2 release
 
 on:
   push:
-    tags:
-      - "v0.2.2"
+    branches:
+      - "release/android-0.2.2"
+    paths:
+      - "AndroidApp/**"
+      - ".github/workflows/android-release.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write
