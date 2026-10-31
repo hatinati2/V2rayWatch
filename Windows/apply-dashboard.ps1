@@ -340,6 +340,7 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
     private global::System.Threading.CancellationTokenSource? _vwMonitorCts;
     private readonly global::System.Collections.Generic.Dictionary<string, int> _vwMonitorFailures = new();
     private readonly global::System.Collections.Generic.HashSet<string> _vwMonitorDown = new();
+    private readonly global::System.Collections.Generic.HashSet<string> _vwMonitorRoundProfileIds = new();
     private readonly global::System.Collections.Generic.Dictionary<string, int> _vwMonitorResults = new();
     private bool _vwMonitorRoundRunning;
     private int _vwMonitorIntervalSeconds = 20;
@@ -510,11 +511,13 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
                     continue;
                 }
                 _vwMonitorResults.Clear();
+                _vwMonitorRoundProfileIds.Clear();
+                foreach (var item in profilesViewModel.ProfileItems) _vwMonitorRoundProfileIds.Add(item.IndexId);
                 _vwMonitorRoundRunning = true;
                 await Dispatcher.InvokeAsync(() => vwMonitorStatus.Text = VwIsPersian() ? $"در حال بررسی {profileCount} لینک..." : $"Checking {profileCount} links...");
                 try
                 {
-                    await profilesViewModel.ServerSpeedtest(ESpeedActionType.FastRealping, cancellationToken);
+                    await profilesViewModel.ServerSpeedtest(ESpeedActionType.FastRealping, cancellationToken, true);
                     await Dispatcher.InvokeAsync(VwCompleteMonitorRound, DispatcherPriority.Background);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -572,6 +575,7 @@ if (-not $code.Contains("_vwTrafficSubscription")) {
         var down = 0;
         foreach (var profile in profiles)
         {
+            if (!_vwMonitorRoundProfileIds.Contains(profile.IndexId)) continue;
             if (!_vwMonitorResults.TryGetValue(profile.IndexId, out var delay))
             {
                 if (profile.ConfigType == EConfigType.Custom || (!profile.ConfigType.IsComplexType() && profile.Port <= 0))
@@ -701,7 +705,7 @@ if (-not $profilesVm.Contains("VwSpeedTestResultReceived")) {
                     try
                     {
                         SetSpeedTestResult(result).GetAwaiter().GetResult();
-                        VwSpeedTestResultReceived?.Invoke(result);
+                        if (captureVwResults) VwSpeedTestResultReceived?.Invoke(result);
                         completion.TrySetResult(true);
                     }
                     catch (Exception ex)
@@ -727,7 +731,7 @@ if (-not $profilesVm.Contains("VwSpeedTestResultReceived")) {
     $profilesVm = $profilesVm.Replace($oldCallback, $newCallback)
 
     $signatureOld = "public async Task ServerSpeedtest(ESpeedActionType actionType)"
-    $signatureNew = "public async Task ServerSpeedtest(ESpeedActionType actionType, CancellationToken cancellationToken = default)"
+    $signatureNew = "public async Task ServerSpeedtest(ESpeedActionType actionType, CancellationToken cancellationToken = default, bool captureVwResults = false)"
     if (-not $profilesVm.Contains($signatureOld)) { throw "Could not locate ServerSpeedtest method signature." }
     $profilesVm = $profilesVm.Replace($signatureOld, $signatureNew)
     [System.IO.File]::WriteAllText($profilesVmPath, $profilesVm, [System.Text.UTF8Encoding]::new($false))
