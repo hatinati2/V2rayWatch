@@ -47,10 +47,15 @@ Use the in-app Backup button to create a `.v2vwbackup` file. The file uses PBKDF
 
 Restore merges profiles without deleting existing ones, skips duplicates, restores monitoring settings, preserves uptime history, and never starts monitoring automatically. Current connection states are reset to Unknown until checked again.
 
-## Release process
+## Android 0.2.3 release process
+
+The next Android component release is **0.2.3** (`versionCode` **5**). It is intentionally independent from the existing multi-platform **`v0.2.3`** release/tag. Do not move, retag, or replace that existing release.
 
 1. Create and verify an encrypted backup from the currently installed Android app.
-2. Generate the upload keystore once and configure the four GitHub Actions secrets.
-3. Run the Android workflow manually with signed release candidate enabled.
-4. Install the candidate on a test device (export/restore the backup if replacing 0.2.2), verify its signer, profile migration, backup restore, monitoring, and app restart.
-5. Keep this branch separate until tests pass. Do not move the existing `v0.2.3` tag or alter its assets.
+2. Generate the upload keystore once and configure the four GitHub Actions secrets above.
+3. Run **Actions → Android build → Run workflow** on `main`, with **Also build a signed release APK** enabled. This creates a signed candidate artifact; it does not publish a release.
+4. Install the signed candidate and verify its signer, profile data, backup restore, monitoring, alert sounds/vibration, and app restart. For the first migration from an older debug-signed preview, uninstall that preview only after the backup has been verified, then restore the backup. Later updates signed with this same persistent key should install in place.
+5. After the 0.2.3 candidate has passed device testing, create and push the Android-only tag **`android-v0.2.3`** from the approved commit on `main`.
+6. The `Android signed release` workflow builds and verifies the signed release APK from that tag, then publishes a separate GitHub Release with the APK and SHA-256 checksum. It does not replace the existing `v0.2.3` release or mark the Android-only release as the repository's latest release.
+
+Never create the Android release tag before candidate validation. Keep the keystore and passwords out of source control and chat.
