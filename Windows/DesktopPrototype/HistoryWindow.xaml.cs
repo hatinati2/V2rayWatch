@@ -56,8 +56,8 @@ public partial class HistoryWindow : Window
         DelayRangeText.Text = "";
         LongestFailureText.Text = "";
         DataScopeText.Text = _english
-            ? "Only automatic monitoring checks are included. Manual one-off tests are not recorded."
-            : "فقط بررسی‌های پایش خودکار در این گزارش ثبت می‌شوند؛ تست‌های دستیِ تکی در تاریخچه وارد نمی‌شوند.";
+            ? "Only checks recorded while you have manually started monitoring are included. Stopped or unmonitored periods are left as no data; one-off manual tests are excluded."
+            : "فقط بررسی‌هایی ثبت می‌شوند که هنگام فعال‌بودن پایشِ شروع‌شده با انتخاب خودت انجام شده‌اند. زمان توقف پایش بدون داده می‌ماند و تست‌های دستی محاسبه نمی‌شوند.";
     }
 
     private void RefreshHistory()
