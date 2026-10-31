@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -61,6 +62,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -77,6 +80,8 @@ import com.linkwatch.app.uiError
 import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.MonitorSettings
 import com.linkwatch.app.data.ProxyProfile
+import com.linkwatch.app.data.UPTIME_HISTORY_LIMIT
+import com.linkwatch.app.data.UptimeMark
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
@@ -397,7 +402,66 @@ private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: ()
                     Icon(Icons.Outlined.DeleteOutline, contentDescription = uiText(language, "حذف", "Delete"), tint = MaterialTheme.colorScheme.error)
                 }
             }
+            UptimeHistoryBar(language = language, history = profile.uptimeHistory)
         }
+    }
+}
+
+@Composable
+private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
+    val recent = history.takeLast(UPTIME_HISTORY_LIMIT)
+    val cells = List((UPTIME_HISTORY_LIMIT - recent.size).coerceAtLeast(0)) { UptimeMark.UNKNOWN } + recent
+
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                uiText(language, "تاریخچهٔ ۲۰ بررسی اخیر", "Last 20 checks"),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "${recent.size}/$UPTIME_HISTORY_LIMIT",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth()) {
+            cells.forEachIndexed { index, mark ->
+                val cellColor = when (mark) {
+                    UptimeMark.CONNECTED -> Color(0xFF16A34A)
+                    UptimeMark.DISCONNECTED -> Color(0xFFDC2626)
+                    UptimeMark.UNKNOWN -> Color(0xFFCBD5E1)
+                }
+                val description = when (mark) {
+                    UptimeMark.CONNECTED -> uiText(language, "بررسی موفق", "Check succeeded")
+                    UptimeMark.DISCONNECTED -> uiText(language, "بررسی ناموفق", "Check failed")
+                    UptimeMark.UNKNOWN -> uiText(language, "بدون سابقه", "No history")
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(11.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(cellColor)
+                        .semantics { contentDescription = "${index + 1}: $description" }
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            UptimeLegend(language, Color(0xFF16A34A), "متصل", "Up")
+            UptimeLegend(language, Color(0xFFDC2626), "قطع", "Down")
+            UptimeLegend(language, Color(0xFFCBD5E1), "بدون سابقه", "No data")
+        }
+    }
+}
+
+@Composable
+private fun UptimeLegend(language: AppLanguage, color: Color, persian: String, english: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.size(7.dp).clip(RoundedCornerShape(2.dp)).background(color))
+        Text(uiText(language, persian, english), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
