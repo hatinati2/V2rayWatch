@@ -21,6 +21,10 @@ function Replace-TextOnce([string]$RelativePath, [string]$Old, [string]$New) {
 Replace-TextOnce "v2rayN\ServiceLib\Global.cs" 'public const string AppName = "v2rayN";' 'public const string AppName = "V2rayWatch";'
 Replace-TextOnce "v2rayN\ServiceLib\Global.cs" 'public const string AutoRunName = "v2rayNAutoRun";' 'public const string AutoRunName = "V2rayWatchAutoRun";'
 Replace-TextOnce "v2rayN\ServiceLib\Global.cs" '{ ECoreType.v2rayN, "2dust/v2rayN" },' '{ ECoreType.v2rayN, "hatinati2/V2rayWatch" },'
+
+# Keep upstream dialogs and secondary windows on the Android app's light blue Material palette.
+Replace-TextOnce "v2rayN\v2rayN\App.xaml" 'PrimaryColor="Blue"' 'PrimaryColor="Indigo"'
+Replace-TextOnce "v2rayN\v2rayN\App.xaml" 'SecondaryColor="Lime"' 'SecondaryColor="Blue"' # Blue has a supported MaterialDesign 5.3.2 secondary palette.
 Replace-TextOnce "v2rayN\ServiceLib\Global.cs" 'public const string PromotionUrl = @"aHR0cHM6Ly85LjIzNDQ1Ni54eXovYWJjLmh0bWw=";' 'public const string PromotionUrl = "";'
 
 # Prefer Persian on Persian Windows installations, otherwise English.
@@ -67,6 +71,30 @@ Replace-TextOnce "v2rayN\v2rayN\Views\MainWindow.xaml" 'Title="v2rayN"' 'Title="
 Replace-TextOnce "v2rayN\v2rayN\Views\MainWindow.xaml" 'Icon="/Resources/v2rayN.ico"' 'Icon="/Resources/V2rayWatch.ico"'
 Replace-TextOnce "v2rayN\v2rayN\Views\StatusBarView.xaml" 'IconSource="/Resources/v2rayN.ico"' 'IconSource="/Resources/V2rayWatch.ico"'
 Replace-TextOnce "v2rayN\v2rayN\Views\StatusBarView.xaml" 'ToolTipText="v2rayN"' 'ToolTipText="V2rayWatch"'
+
+# Give every secondary WPF window the same V2rayWatch title-bar icon.
+$windowBasePath = Join-Path $SourceRoot "v2rayN\v2rayN\Base\WindowBase.cs"
+if (-not (Test-Path $windowBasePath)) { throw "WindowBase.cs not found; cannot brand secondary window icons." }
+$windowBase = [System.IO.File]::ReadAllText($windowBasePath).Replace("`r`n", "`n")
+$windowConstructorPattern = '(?m)^    public WindowBase\(\)\n    \{\n        Loaded \+= OnLoaded;\n    \}'
+$windowConstructorMatches = [regex]::Matches($windowBase, $windowConstructorPattern)
+if ($windowConstructorMatches.Count -ne 1) { throw "Expected exactly one WindowBase constructor marker; found $($windowConstructorMatches.Count)." }
+$newWindowBaseConstructor = @'
+    public WindowBase()
+    {
+        try
+        {
+            Icon = new global::System.Windows.Media.Imaging.BitmapImage(
+                new global::System.Uri("pack://application:,,,/Resources/V2rayWatch.ico", global::System.UriKind.Absolute));
+        }
+        catch { }
+
+        Loaded += OnLoaded;
+    }
+'@
+$windowConstructorMatch = $windowConstructorMatches[0]
+$windowBase = $windowBase.Substring(0, $windowConstructorMatch.Index) + $newWindowBaseConstructor + $windowBase.Substring($windowConstructorMatch.Index + $windowConstructorMatch.Length)
+Write-Utf8NoBom $windowBasePath $windowBase
 
 # Remove the upstream promotional menu and its click handler.
 $mainXamlPath = Join-Path $SourceRoot "v2rayN\v2rayN\Views\MainWindow.xaml"
@@ -196,6 +224,24 @@ try {
 finally {
     $iconWriter.Dispose()
     $iconStream.Dispose()
+}
+
+# v2rayN switches among four tray/taskbar icons based on proxy mode.
+# Use the exact V2rayWatch stopwatch artwork for every state so the brand never changes.
+$iconDirectories = @(
+    (Join-Path $SourceRoot "v2rayN\v2rayN\Resources"),
+    (Join-Path $SourceRoot "v2rayN\v2rayN.Desktop\Assets")
+)
+foreach ($iconDirectory in $iconDirectories) {
+    if (Test-Path $iconDirectory) {
+        foreach ($iconIndex in 1..4) {
+            $stateIconPath = Join-Path $iconDirectory "NotifyIcon$iconIndex.ico"
+            if (-not (Test-Path $stateIconPath)) {
+                throw "Expected tray/taskbar icon slot not found: $stateIconPath"
+            }
+            Copy-Item -LiteralPath $iconPath -Destination $stateIconPath -Force
+        }
+    }
 }
 
 Write-Host "V2rayWatch branding applied to upstream v2rayN 7.25.6."
