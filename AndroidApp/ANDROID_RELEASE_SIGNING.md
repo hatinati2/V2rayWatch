@@ -1,36 +1,60 @@
 # Android release signing and safe upgrades
 
-## Purpose
+## Current release
 
-Android release APKs must use one persistent upload key. Never generate a new key for each release, commit a keystore to Git, or share the keystore/passwords in chat.
+The official **V2rayWatch Android 0.2.3** release has been published successfully:
 
-## Important migration note for 0.2.2 previews
+- Release tag: `android-v0.2.3`
+- Android version: `versionName 0.2.3`, `versionCode 5`
+- [Official signed APK](https://github.com/hatinati2/V2rayWatch/releases/download/android-v0.2.3/V2rayWatch-Android-0.2.3-release.apk)
+- [SHA-256 checksum file](https://github.com/hatinati2/V2rayWatch/releases/download/android-v0.2.3/V2rayWatch-Android-0.2.3-SHA256SUMS.txt)
+- [GitHub Release page](https://github.com/hatinati2/V2rayWatch/releases/tag/android-v0.2.3)
 
-The 0.2.2 APKs published from GitHub Actions used the default debug signing configuration. The corresponding runner-generated debug keystore was not saved as a release asset or repository secret. A new persistent release key therefore cannot be assumed to match an already-installed 0.2.2 preview. To avoid losing saved profiles, first create an encrypted V2rayWatch backup from the installed app, then install the first permanently signed release and restore that backup. Do not uninstall the old app before verifying the backup file and passphrase.
+The Android-only tag and release are separate from the Windows / multi-platform `v0.2.3` release. Do not move, replace, or reuse either tag for the other platform.
+
+## Signing key: keep it safe
+
+Android release APKs must all use the same persistent signing key. Never generate a new key for each release, commit the keystore to Git, or share the keystore/passwords in chat.
+
+Keep at least two secure copies of the `.jks` file, including an encrypted offline backup. Store the keystore password and key password separately in a trusted password manager or another secure location. Losing the keystore or its passwords can prevent future in-place updates signed with this key.
+
+## One-time migration from old 0.2.2 preview APKs
+
+The 0.2.2 APKs produced by the development workflow used a runner-generated GitHub Actions debug key. That key is different from the persistent release key used for the official 0.2.3 APK, so Android will reject an in-place update across those signatures.
+
+For a device that still has one of those old previews installed:
+
+1. Create an encrypted `.v2vwbackup` file from inside the installed app.
+2. Verify that the backup file exists and that its passphrase is recorded safely and separately.
+3. Uninstall the old debug-signed preview.
+4. Install the official signed APK from the release link above.
+5. Restore the backup and verify profiles, monitoring preferences, alert preferences, and uptime history.
+
+Do not uninstall the old app until the backup and passphrase have both been checked. After the persistent-key release is installed, later releases signed with the same key should install in place.
 
 ## Generate the upload keystore once
 
-Run this locally on a trusted computer with JDK 17 or newer. Keep the generated `.jks` file in an encrypted offline backup. Losing this key prevents future in-place updates signed with it.
+This is a one-time operation. Run it locally on a trusted computer with JDK 17 or newer:
 
 ```bash
 keytool -genkeypair -v -keystore v2raywatch-upload.jks -keyalg RSA -keysize 4096 -validity 10000 -alias v2raywatch-upload
 ```
 
-Choose strong, distinct store and key passwords. Do not send them to ChatGPT or commit the keystore.
+Choose strong, distinct store and key passwords. Keep the generated file outside the repository. Do not send the file or passwords in chat.
 
 ## Configure GitHub Actions secrets
 
-Open the repository Settings → Secrets and variables → Actions and add these repository secrets:
+Open the repository **Settings → Secrets and variables → Actions** and configure these repository secrets:
 
 - `ANDROID_RELEASE_KEYSTORE_BASE64`: base64 encoding of the complete `.jks` file.
 - `ANDROID_SIGNING_STORE_PASSWORD`: keystore password.
-- `ANDROID_SIGNING_KEY_ALIAS`: alias entered during key generation.
+- `ANDROID_SIGNING_KEY_ALIAS`: alias entered during key generation (the current release uses `v2raywatch-upload`).
 - `ANDROID_SIGNING_KEY_PASSWORD`: key password.
 
 On Windows PowerShell, copy the base64 value without a newline:
 
 ```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes('.\v2raywatch-upload.jks')) | Set-Clipboard
+[Convert]::ToBase64String([IO.File]::ReadAllBytes('.\\v2raywatch-upload.jks')) | Set-Clipboard
 ```
 
 On macOS/Linux:
@@ -39,23 +63,24 @@ On macOS/Linux:
 base64 < v2raywatch-upload.jks | tr -d '\n'
 ```
 
-The workflow only builds a signed candidate when manually dispatched with `build_signed_release` enabled. It does not publish a GitHub Release. The signed artifact should be checked on a device before any future release/tag is created.
+Never expose secret values in workflow logs, commits, screenshots, or chat.
 
-## Encrypted profile backup
+## Checklist for future Android releases
 
-Use the in-app Backup button to create a `.v2vwbackup` file. The file uses PBKDF2-HMAC-SHA256 to derive an AES-256-GCM key from a passphrase of at least 12 characters. Keep the passphrase separately from the backup file; neither can recover the other.
+Each Android release must have a new, higher `versionCode`; never reuse a version code. The Android `versionName` must match the Android release tag exactly.
 
-Restore merges profiles without deleting existing ones, skips duplicates, restores monitoring settings, preserves uptime history, and never starts monitoring automatically. Current connection states are reset to Unknown until checked again.
+1. Update `versionName` and increment `versionCode` in `AndroidApp/app/build.gradle.kts`. For example, a future `0.2.4` release must use the tag `android-v0.2.4`.
+2. Merge the reviewed source changes into `main`.
+3. From **Actions → Android build**, run the workflow on `main` with **Also build a signed release APK** enabled. This produces a signed candidate artifact; it does not publish a GitHub Release.
+4. Install the signed candidate as an update on a test device. Verify that the existing profiles and settings remain present, then test backup/restore, monitoring, delay checks, alerts, app restart, and any new functionality. Do not uninstall the already signed app for normal upgrades.
+5. Only after the candidate passes device testing, create the Android-only tag `android-vX.Y.Z` on the approved commit in `main`, where `X.Y.Z` exactly matches `versionName`.
+6. The **Android signed release** workflow runs automatically for tags matching `android-v*`. It validates the tag/version match, runs unit tests, builds and verifies the signed APK, creates a SHA-256 checksum file, and publishes a separate Android-only GitHub Release.
+7. Open the published release and verify that both the APK and checksum assets are present. Keep the existing Windows / multi-platform release and tag unchanged.
 
-## Android 0.2.3 release process
+Do not create the release tag before candidate validation. The release workflow uses the persistent signing secrets and fails if any required secret is missing.
 
-The next Android component release is **0.2.3** (`versionCode` **5**). It is intentionally independent from the existing multi-platform **`v0.2.3`** release/tag. Do not move, retag, or replace that existing release.
+## Encrypted profile backup format
 
-1. Create and verify an encrypted backup from the currently installed Android app.
-2. Generate the upload keystore once and configure the four GitHub Actions secrets above.
-3. Run **Actions → Android build → Run workflow** on `main`, with **Also build a signed release APK** enabled. This creates a signed candidate artifact; it does not publish a release.
-4. Install the signed candidate and verify its signer, profile data, backup restore, monitoring, alert sounds/vibration, and app restart. For the first migration from an older debug-signed preview, uninstall that preview only after the backup has been verified, then restore the backup. Later updates signed with this same persistent key should install in place.
-5. After the 0.2.3 candidate has passed device testing, create and push the Android-only tag **`android-v0.2.3`** from the approved commit on `main`.
-6. The `Android signed release` workflow builds and verifies the signed release APK from that tag, then publishes a separate GitHub Release with the APK and SHA-256 checksum. It does not replace the existing `v0.2.3` release or mark the Android-only release as the repository's latest release.
+The in-app `.v2vwbackup` file uses PBKDF2-HMAC-SHA256 to derive an AES-256-GCM key from a passphrase of at least 12 characters. Keep the passphrase separately from the backup file; neither can recover the other.
 
-Never create the Android release tag before candidate validation. Keep the keystore and passwords out of source control and chat.
+Restore merges profiles without deleting existing ones, skips duplicates, restores monitoring and alert settings, preserves uptime history, and never starts monitoring automatically. Current connection states reset to Unknown until checked again.
