@@ -127,6 +127,106 @@ Check(removedOwnedCount == 2 && !profilesForRemoval.Contains(subscriptionOwned) 
 Check(profilesForRemoval.Contains(manuallyAdded) && profilesForRemoval.Contains(otherSubscriptionOwned), "removing a subscription preserves manual and other-subscription profiles");
 Check(SubscriptionProfileOperations.RemoveOwnedProfiles(profilesForRemoval, "") == 0, "empty subscription ID cannot remove profiles");
 
+
+// Portable backup interoperability contract (Android V2VWBAK1 format).
+var portableSettings = new MonitorSettings
+{
+    IntervalSeconds = 60,
+    ConsecutiveFailureThreshold = 3,
+    TimeoutSeconds = 21,
+    PrimaryTestUrl = "https://www.google.com/generate_204",
+    FallbackTestUrl = "https://www.gstatic.com/generate_204",
+    NotifyOnDisconnect = false,
+    NotifyOnRecovery = true
+};
+var portableProfile = new ServerProfile
+{
+    Name = vless.Name,
+    Protocol = vless.Protocol,
+    Host = vless.Host,
+    Port = vless.Port,
+    RawUri = vlessRaw,
+    ConfigJson = vless.ConfigJson,
+    UptimeHistory = ["N", "G", "R"]
+};
+var backupPassphrase = "V2rayWatch-Portable-Backup-2026".ToCharArray();
+var encryptedBackup = PortableBackupService.CreateBackup([portableProfile], portableSettings, backupPassphrase);
+Check(Encoding.ASCII.GetString(encryptedBackup, 0, 8) == "V2VWBAK1", "portable backup uses Android magic header");
+Check(encryptedBackup[8] == 1, "portable backup format version matches Android");
+var portablePlaintext = PortableBackupCodec.Decrypt(encryptedBackup, backupPassphrase);
+try
+{
+    using var backupJson = JsonDocument.Parse(portablePlaintext);
+    var root = backupJson.RootElement;
+    Check(root.GetProperty("formatVersion").GetInt32() == 1, "portable JSON format version is Android-compatible");
+    Check(root.TryGetProperty("createdAtEpochMs", out _), "portable backup contains Android timestamp property");
+    Check(root.GetProperty("profiles")[0].GetProperty("rawLink").GetString() == vlessRaw, "profile rawLink property matches Android schema");
+    Check(root.GetProperty("settings").GetProperty("notifyOnDisconnect").GetBoolean() == false, "notification settings use Android property names");
+}
+finally
+{
+    System.Security.Cryptography.CryptographicOperations.ZeroMemory(portablePlaintext);
+}
+
+var restorePassphrase = "V2rayWatch-Portable-Backup-2026".ToCharArray();
+var portableRestore = PortableBackupService.RestoreBackup(encryptedBackup, restorePassphrase, Array.Empty<ServerProfile>());
+Check(portableRestore.AddedProfiles == 1 && portableRestore.SkippedProfiles == 0, "portable backup adds profiles on an empty Windows install");
+Check(portableRestore.Profiles.Single().RawUri == vlessRaw, "portable restore preserves shareable proxy link");
+Check(portableRestore.Profiles.Single().Status == "Unknown" && portableRestore.Profiles.Single().DelayMs is null, "portable restore resets transient connection state");
+Check(portableRestore.Profiles.Single().UptimeHistory.TakeLast(3).SequenceEqual(new[] { "N", "G", "R" }), "portable restore maps Android uptime history to Windows history");
+Check(portableRestore.Settings.IntervalSeconds == 60 && portableRestore.Settings.ConsecutiveFailureThreshold == 3, "portable restore preserves Android monitoring settings");
+Check(!portableRestore.Settings.NotifyOnDisconnect && portableRestore.Settings.NotifyOnRecovery, "portable restore preserves Android notification preferences");
+var duplicateRestore = PortableBackupService.RestoreBackup(
+    encryptedBackup,
+    "V2rayWatch-Portable-Backup-2026".ToCharArray(),
+    [portableProfile]);
+Check(duplicateRestore.AddedProfiles == 0 && duplicateRestore.SkippedProfiles == 1 && duplicateRestore.Profiles.Count == 1,
+    "portable restore skips duplicate raw links without deleting existing profiles");
+
+var wrongPassphraseRejected = false;
+try
+{
+    _ = PortableBackupCodec.Decrypt(encryptedBackup, "Wrong-Passphrase-123".ToCharArray());
+}
+catch (System.Security.Cryptography.CryptographicException)
+{
+    wrongPassphraseRejected = true;
+}
+Check(wrongPassphraseRejected, "portable backup rejects an incorrect passphrase");
+
+var modifiedBackup = encryptedBackup.ToArray();
+modifiedBackup[^1] ^= 0x01;
+var tamperRejected = false;
+try
+{
+    _ = PortableBackupCodec.Decrypt(modifiedBackup, "V2rayWatch-Portable-Backup-2026".ToCharArray());
+}
+catch (System.Security.Cryptography.CryptographicException)
+{
+    tamperRejected = true;
+}
+Check(tamperRejected, "portable backup rejects modified ciphertext");
+System.Security.Cryptography.CryptographicOperations.ZeroMemory(encryptedBackup);
+System.Security.Cryptography.CryptographicOperations.ZeroMemory(modifiedBackup);
+Array.Clear(backupPassphrase, 0, backupPassphrase.Length);
+Array.Clear(restorePassphrase, 0, restorePassphrase.Length);
+
+// QR PNG generation and image-file decoding round trip.
+var qrPng = QrCodeService.GeneratePng(vlessRaw);
+Check(qrPng.Length > 100, "QR code PNG image generated");
+var qrTempPath = Path.Combine(Path.GetTempPath(), "v2vw-qr-test-" + Guid.NewGuid().ToString("N") + ".png");
+try
+{
+    File.WriteAllBytes(qrTempPath, qrPng);
+    var decodedQr = QrCodeService.DecodeImageFile(qrTempPath);
+    Check(decodedQr == vlessRaw, "QR image scanner recovers the exact proxy link");
+}
+finally
+{
+    try { File.Delete(qrTempPath); } catch { }
+    System.Security.Cryptography.CryptographicOperations.ZeroMemory(qrPng);
+}
+
 Console.WriteLine("All V2rayWatch standalone profile parser smoke tests passed.");
 static void ValidateWithXray(string xrayPath,ServerProfile profile)
 {
