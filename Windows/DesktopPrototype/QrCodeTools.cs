@@ -171,7 +171,7 @@ public static class PassphrasePrompt
             }
             if (confirm && repeated?.Password != value)
             {
-                MessageBox.Show(
+                System.Windows.MessageBox.Show(
                     window,
                     english ? "The passphrases do not match." : "دو عبارت عبور یکسان نیستند.",
                     "V2rayWatch",
@@ -207,7 +207,7 @@ public sealed class QrCodeWindow : Window
         Height = 540;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        FlowDirection = english ? FlowDirection.LeftToRight : FlowDirection.RightToLeft;
+        FlowDirection = english ? System.Windows.FlowDirection.LeftToRight : System.Windows.FlowDirection.RightToLeft;
         Background = System.Windows.Media.Brushes.White;
 
         var panel = new StackPanel { Margin = new Thickness(22) };
@@ -282,7 +282,7 @@ public sealed class QrCodeWindow : Window
         try
         {
             await File.WriteAllBytesAsync(dialog.FileName, _png);
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 this,
                 _english ? "QR image saved." : "تصویر QR ذخیره شد.",
                 "V2rayWatch",
@@ -291,7 +291,7 @@ public sealed class QrCodeWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 this,
                 ex.Message,
                 "V2rayWatch",
