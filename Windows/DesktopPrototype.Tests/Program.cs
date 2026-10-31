@@ -111,6 +111,21 @@ subscriptionLanguage.English = false;
 Check(subscriptionLanguage.LastUpdatedDisplay == "هنوز دریافت نشده", "subscription empty state is Persian");
 Check(subscriptionLanguage.RemoveActionDisplay == "حذف", "subscription row remove action is Persian");
 
+var englishSubscriptionHeaders = SubscriptionDisplayText.GetColumnHeaders(true);
+Check(englishSubscriptionHeaders.SequenceEqual(new[] { "Name", "Links", "Last fetched", "Action" }), "subscription table headers are English");
+Check(englishSubscriptionHeaders.All(header => header.All(character => character < 128)), "English subscription headers contain no Persian or Arabic characters");
+var persianSubscriptionHeaders = SubscriptionDisplayText.GetColumnHeaders(false);
+Check(persianSubscriptionHeaders.SequenceEqual(new[] { "نام", "تعداد", "آخرین دریافت", "عملیات" }), "subscription table headers are Persian");
+
+var subscriptionOwned = new ServerProfile { SourceSubscriptionId = "subscription-a" };
+var manuallyAdded = new ServerProfile();
+var otherSubscriptionOwned = new ServerProfile { SourceSubscriptionId = "subscription-b" };
+var profilesForRemoval = new List<ServerProfile> { subscriptionOwned, manuallyAdded, otherSubscriptionOwned };
+var removedOwnedCount = SubscriptionProfileOperations.RemoveOwnedProfiles(profilesForRemoval, "subscription-a");
+Check(removedOwnedCount == 1 && !profilesForRemoval.Contains(subscriptionOwned), "removing a subscription removes its owned profile");
+Check(profilesForRemoval.Contains(manuallyAdded) && profilesForRemoval.Contains(otherSubscriptionOwned), "removing a subscription preserves manual and other-subscription profiles");
+Check(SubscriptionProfileOperations.RemoveOwnedProfiles(profilesForRemoval, "") == 0, "empty subscription ID cannot remove profiles");
+
 Console.WriteLine("All V2rayWatch standalone profile parser smoke tests passed.");
 static void ValidateWithXray(string xrayPath,ServerProfile profile)
 {
