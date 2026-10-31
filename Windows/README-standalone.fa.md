@@ -53,4 +53,4 @@
 
     dotnet run --project Windows/DesktopPrototype.Tests/V2rayWatch.DesktopPrototype.Tests.csproj -c Release
 
-نسخهٔ Portable تولیدشده توسط GitHub Actions شامل V2rayWatch.exe و core/xray.exe است. Xray Core نسخهٔ رسمی v26.10.31 از مخزن XTLS دریافت می‌شود و SHA-256 فایل ZIP آن در CI با فایل dgst رسمی بررسی می‌شود. مجوز Xray و اعلان‌های ثالث باید همراه بسته نگه داشته شوند.
+نسخهٔ Portable تولیدشده توسط GitHub Actions شامل V2rayWatch.exe و core/xray.exe است. Xray Core نسخهٔ رسمی v26.10.31 از مخزن XTLS دریافت می‌شود و SHA-256 آرشیو Windows x64 در CI با مقدار رسمی ثبت‌شده برای همان Release مقایسه می‌شود. مجوز Xray و اعلان‌های ثالث باید همراه بسته نگه داشته شوند.
