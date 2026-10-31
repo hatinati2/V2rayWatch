@@ -18,7 +18,7 @@ Both platform UIs show a 20-cell strip under each profile: green for successful 
 
 ## Source and licensing
 
-- Android source: [AndroidApp/](AndroidApp/) (app component version 0.2.2).
+- Android source: [AndroidApp/](AndroidApp/) (next signed component target: 0.2.3, version code 5; release pending candidate validation).
 - Windows source modifications and branding/dashboard scripts are distributed with the Windows release under the applicable GPL-3.0 obligations.
 - Windows upstream: [2dust/v2rayN 7.25.6](https://github.com/2dust/v2rayN).
 
