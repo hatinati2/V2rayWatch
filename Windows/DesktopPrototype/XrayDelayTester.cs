@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
@@ -11,6 +12,7 @@ namespace V2rayWatch.DesktopPrototype;
 public sealed class XrayDelayTester
 {
     private static readonly SemaphoreSlim Concurrency = new(2, 2);
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> ProfileLocks = new();
     private readonly string _corePath;
 
     public XrayDelayTester()
@@ -24,15 +26,19 @@ public sealed class XrayDelayTester
         if (!File.Exists(_corePath))
             return new DelayTestResult(false, null, "فایل core/xray.exe پیدا نشد. بستهٔ کامل V2rayWatch را دریافت کن.");
 
-        await Concurrency.WaitAsync(cancellationToken).ConfigureAwait(false);
-        var workDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "V2rayWatch", "runtime", Guid.NewGuid().ToString("N"));
-
-        Process? process = null;
+        var profileLock = ProfileLocks.GetOrAdd(profile.Id, _ => new SemaphoreSlim(1, 1));
+        await profileLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            Directory.CreateDirectory(workDirectory);
+            await Concurrency.WaitAsync(cancellationToken).ConfigureAwait(false);
+            var workDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "V2rayWatch", "runtime", Guid.NewGuid().ToString("N"));
+
+            Process? process = null;
+            try
+            {
+                Directory.CreateDirectory(workDirectory);
             using var startupTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             startupTimeout.CancelAfter(TimeSpan.FromSeconds(12));
             var port = GetFreePort();
@@ -98,8 +104,13 @@ public sealed class XrayDelayTester
                 catch { }
                 process.Dispose();
             }
-            try { Directory.Delete(workDirectory, recursive: true); } catch { }
-            Concurrency.Release();
+                try { Directory.Delete(workDirectory, recursive: true); } catch { }
+                Concurrency.Release();
+            }
+        }
+        finally
+        {
+            profileLock.Release();
         }
     }
 
