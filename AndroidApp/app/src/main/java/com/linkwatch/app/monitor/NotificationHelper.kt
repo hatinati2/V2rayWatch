@@ -5,20 +5,31 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.linkwatch.app.AppLanguage
 import com.linkwatch.app.MainActivity
+import com.linkwatch.app.R
 import com.linkwatch.app.uiText
 import com.linkwatch.app.uiError
 import com.linkwatch.app.data.formatOutageDuration
 
 object NotificationHelper {
     const val CHANNEL_MONITOR = "linkwatch_monitor"
-    const val CHANNEL_ALERTS = "linkwatch_alerts"
+    private const val CHANNEL_DISCONNECTED = "linkwatch_alert_disconnected_v2"
+    private const val CHANNEL_RECOVERED = "linkwatch_alert_recovered_v2"
     const val ONGOING_ID = 4101
     private const val ALERT_ID = 4102
+
+    private val disconnectVibration = longArrayOf(
+        0L, 900L, 260L, 900L, 260L, 900L, 420L, 1_100L
+    )
+    private val recoveryVibration = longArrayOf(
+        0L, 420L, 220L, 420L, 220L, 620L
+    )
 
     private fun lang(context: Context) = AppLanguage.load(context)
 
@@ -36,14 +47,50 @@ object NotificationHelper {
                 setShowBadge(false)
             }
         )
+
+        val soundAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
         manager.createNotificationChannel(
             NotificationChannel(
-                CHANNEL_ALERTS,
-                uiText(language, "هشدار قطع و وصل لینک", "Connection alerts"),
+                CHANNEL_DISCONNECTED,
+                uiText(language, "هشدار صوتی قطع اتصال", "Disconnect warning sound"),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = uiText(language, "هشدار هنگام قطع شدن یا بازیابی اتصال واقعی پروکسی", "Alerts when a proxy connection goes down or recovers")
+                description = uiText(
+                    language,
+                    "آهنگ هشدار اختصاصی و ویبره طولانی هنگام قطع شدن لینک",
+                    "Distinct warning melody and extended vibration when a link disconnects"
+                )
+                setSound(
+                    Uri.parse("android.resource://${context.packageName}/${R.raw.disconnect_warning}"),
+                    soundAttributes
+                )
                 enableVibration(true)
+                setVibrationPattern(disconnectVibration)
+                setShowBadge(true)
+            }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_RECOVERED,
+                uiText(language, "آهنگ آرام اتصال مجدد", "Gentle reconnection melody"),
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = uiText(
+                    language,
+                    "ملودی آرام و ویبره ملایم هنگام برقراری دوباره اتصال",
+                    "Gentle melody and vibration when the connection is restored"
+                )
+                setSound(
+                    Uri.parse("android.resource://${context.packageName}/${R.raw.connection_restored}"),
+                    soundAttributes
+                )
+                enableVibration(true)
+                setVibrationPattern(recoveryVibration)
                 setShowBadge(true)
             }
         )
@@ -63,7 +110,7 @@ object NotificationHelper {
     fun notifyDisconnected(context: Context, profileId: String, profileName: String, reason: String) {
         val language = lang(context)
         val fallback = uiText(language, "تست اتصال واقعی ناموفق بود", "Real connection test failed")
-        val notification = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+        val notification = NotificationCompat.Builder(context, CHANNEL_DISCONNECTED)
             .setSmallIcon(android.R.drawable.stat_notify_error)
             .setContentTitle(uiText(language, "لینک قطع شده است: $profileName", "Link is down: $profileName"))
             .setContentText(if (reason.isBlank()) fallback else uiError(language, reason))
@@ -81,10 +128,10 @@ object NotificationHelper {
         val delayText = uiText(language, "تاخیر واقعی: ${delayMs} ms", "Real Delay: ${delayMs} ms")
         val outage = outageDurationMs?.let { formatOutageDuration(it, language.isEnglish) }
         val content = outage?.let { uiText(language, "مدت قطعی: $it", "Outage duration: $it") } ?: delayText
-        val expanded = if (outage == null) content else "$content\\n$delayText"
-        val notification = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+        val expanded = if (outage == null) content else "$content\n$delayText"
+        val notification = NotificationCompat.Builder(context, CHANNEL_RECOVERED)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle(uiText(lang(context), "اتصال دوباره برقرار شد: $profileName", "Connection restored: $profileName"))
+            .setContentTitle(uiText(language, "اتصال دوباره برقرار شد: $profileName", "Connection restored: $profileName"))
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(expanded))
             .setContentIntent(openAppIntent(context))
