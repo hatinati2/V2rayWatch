@@ -1,0 +1,44 @@
+<Window x:Class="V2rayWatch.DesktopPrototype.AddProfilesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="V2rayWatch — افزودن لینک" Width="720" Height="520" MinWidth="620" MinHeight="430"
+        WindowStartupLocation="CenterOwner" Background="#0A1729" Foreground="#EAF2FF"
+        FlowDirection="RightToLeft" FontFamily="Segoe UI">
+  <Grid Margin="20">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel Margin="0,0,0,14">
+      <TextBlock x:Name="DialogTitle" Text="افزودن پروفایل" FontSize="23" FontWeight="SemiBold"/>
+      <TextBlock x:Name="DialogHint" Text="لینک تکی، چند لینک یا آدرس اشتراک را وارد کن." Foreground="#93A9C5" FontSize="12" Margin="0,5,0,0"/>
+    </StackPanel>
+    <TabControl x:Name="InputTabs" Grid.Row="1" Background="#102440" BorderBrush="#29466E" SelectionChanged="InputTabs_SelectionChanged">
+      <TabItem x:Name="LinksTab" Header="لینک‌ها">
+        <Grid Margin="14">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <TextBlock Text="یک لینک یا چند لینک در خط‌های جداگانه؛ لینک Xray JSON نیز پذیرفته می‌شود." Foreground="#93A9C5" TextWrapping="Wrap" Margin="0,0,0,8"/>
+          <TextBox x:Name="LinksInput" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                   Background="#071426" Foreground="#EAF2FF" BorderBrush="#29466E" CaretBrush="White" Padding="12"
+                   FontFamily="Consolas" FontSize="13"/>
+        </Grid>
+      </TabItem>
+      <TabItem x:Name="SubscriptionTab" Header="Subscription">
+        <Grid Margin="14">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <TextBlock Text="آدرس HTTPS اشتراک را وارد کن. برنامه محتوا را دریافت می‌کند، لینک‌ها را استخراج می‌کند و منبع را برای به‌روزرسانی بعدی ذخیره می‌کند."
+                     Foreground="#93A9C5" TextWrapping="Wrap" Margin="0,0,0,12"/>
+          <TextBox x:Name="SubscriptionInput" Grid.Row="1" Padding="10" Background="#071426" Foreground="#EAF2FF"
+                   BorderBrush="#29466E" FlowDirection="LeftToRight" FontFamily="Consolas"/>
+          <TextBlock Grid.Row="2" x:Name="SubscriptionNote" Text="فقط HTTPS مجاز است. پروفایل‌های دستی با به‌روزرسانی اشتراک حذف نمی‌شوند."
+                     Foreground="#7DD3C7" VerticalAlignment="Top" Margin="0,12,0,0" TextWrapping="Wrap"/>
+        </Grid>
+      </TabItem>
+    </TabControl>
+    <DockPanel Grid.Row="2" Margin="0,14,0,0">
+      <TextBlock x:Name="DialogStatus" Text="اطلاعات اتصال در فضای محلی کاربر رمزگذاری می‌شوند." Foreground="#93A9C5" FontSize="11" VerticalAlignment="Center"/>
+      <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+        <Button Content="لغو" Click="Cancel_Click" Padding="15,8" Margin="4,0" Background="#193453" BorderBrush="#315273"/>
+        <Button x:Name="ImportButton" Content="افزودن لینک‌ها" Click="Import_Click" Padding="17,8" Margin="4,0"
+                Background="#087EBA" BorderBrush="#08C7D8" Foreground="White" FontWeight="SemiBold"/>
+      </StackPanel>
+    </DockPanel>
+  </Grid>
+</Window>
