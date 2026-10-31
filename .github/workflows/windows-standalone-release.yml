@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - "release/windows-standalone-v0.1.0"
+    paths:
+      - ".github/workflows/windows-standalone-release.yml"
 
 permissions:
   contents: write
@@ -14,7 +16,6 @@ concurrency:
 
 jobs:
   build-and-release:
-    if: github.event.head_commit.message == 'chore(release): publish standalone Windows 0.1.0'
     name: Build, test, and publish Windows Portable
     runs-on: windows-latest
     steps:
