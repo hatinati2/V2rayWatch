@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate Android version and release tag
+        id: version
         shell: bash
         run: |
           set -euo pipefail
@@ -36,6 +37,8 @@ jobs:
           fi
           echo "ANDROID_VERSION_NAME=$version_name" >> "$GITHUB_ENV"
           echo "ANDROID_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -106,19 +109,20 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: V2rayWatch Android ${{ env.ANDROID_VERSION_NAME }}
+          name: V2rayWatch Android ${{ steps.version.outputs.version_name }}
           draft: false
           prerelease: false
           generate_release_notes: false
           make_latest: false
           fail_on_unmatched_files: true
           body: |
-            ## V2rayWatch Android ${{ env.ANDROID_VERSION_NAME }}
+            ## V2rayWatch Android ${{ steps.version.outputs.version_name }}
 
             - Signed Android APK built from the tagged source using the repository's persistent Android upload key.
+            - Android version code: ${{ steps.version.outputs.version_code }}.
             - Android component release; this is separate from the existing multi-platform release and does not replace the `v0.2.3` tag or release.
             - Verify the SHA-256 checksum before installing.
             - This APK is a sideload build and is not a Google Play release.
           files: |
-            release-assets/V2rayWatch-Android-${{ env.ANDROID_VERSION_NAME }}-release.apk
-            release-assets/V2rayWatch-Android-${{ env.ANDROID_VERSION_NAME }}-SHA256SUMS.txt
+            release-assets/V2rayWatch-Android-${{ steps.version.outputs.version_name }}-release.apk
+            release-assets/V2rayWatch-Android-${{ steps.version.outputs.version_name }}-SHA256SUMS.txt
