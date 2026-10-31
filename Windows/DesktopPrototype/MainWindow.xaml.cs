@@ -216,16 +216,13 @@ public partial class MainWindow : Window
                     added++;
                 }
             }
-            foreach (var obsolete in oldSourceProfiles.Where(p => !fetchedByRaw.ContainsKey(p.RawUri)).ToList())
-                _profiles.Remove(obsolete);
-
             source.ProfileCount = _profiles.Count(p => p.SourceSubscriptionId == source.Id);
             source.LastUpdatedUtc = DateTimeOffset.UtcNow;
             SaveData();
             RefreshSummary();
             SetStatus(_english
-                ? $"{source.Name}: {fetched.Count} fetched, {added} added, {updated} updated. Manual profiles were preserved."
-                : $"{source.Name}: {fetched.Count} لینک دریافت شد؛ {added} جدید، {updated} به‌روزرسانی شد. لینک‌های دستی حفظ شدند.", false);
+                ? $"{source.Name}: {fetched.Count} fetched, {added} added, {updated} updated. Existing profiles not in this response were kept."
+                : $"{source.Name}: {fetched.Count} لینک دریافت شد؛ {added} جدید، {updated} به‌روزرسانی شد. لینک‌های دستی و موارد قبلیِ غایب حفظ شدند.", false);
         }
         catch (OperationCanceledException) { SetStatus(_english ? "Subscription update cancelled." : "به‌روزرسانی اشتراک لغو شد.", true); }
         catch (Exception ex) { SetStatus((_english ? "Subscription update failed: " : "به‌روزرسانی اشتراک ناموفق بود: ") + ex.Message, true); }
