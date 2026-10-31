@@ -81,6 +81,7 @@ import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.MonitorSettings
 import com.linkwatch.app.data.ProxyProfile
 import com.linkwatch.app.data.UPTIME_HISTORY_LIMIT
+import com.linkwatch.app.data.uptimeHistorySlots
 import com.linkwatch.app.data.UptimeMark
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -409,8 +410,8 @@ private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: ()
 
 @Composable
 private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
-    val recent = history.takeLast(UPTIME_HISTORY_LIMIT)
-    val cells = List((UPTIME_HISTORY_LIMIT - recent.size).coerceAtLeast(0)) { UptimeMark.UNKNOWN } + recent
+    val recentCount = history.takeLast(UPTIME_HISTORY_LIMIT).size
+    val cells = uptimeHistorySlots(history)
 
     Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -422,7 +423,7 @@ private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
                 modifier = Modifier.weight(1f)
             )
             Text(
-                "${recent.size}/$UPTIME_HISTORY_LIMIT",
+                "$recentCount/$UPTIME_HISTORY_LIMIT",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
