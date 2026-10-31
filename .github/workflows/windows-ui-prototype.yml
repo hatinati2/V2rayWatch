@@ -61,19 +61,10 @@ jobs:
           $coreVersion = "v26.10.31"
           $coreName = "Xray-windows-64"
           $coreZip = "$env:RUNNER_TEMP\$coreName.zip"
-          $digestFile = "$env:RUNNER_TEMP\$coreName.zip.dgst"
           $expanded = "$env:RUNNER_TEMP\official-xray"
           $releaseBase = "https://github.com/XTLS/Xray-core/releases/download/$coreVersion"
+          $expectedHash = "2e04a9995a6f2ad1b28c0bb25c708ecb2695e43a1c9c7889c4b6ac2b48cf7a6a"
           Invoke-WebRequest -Uri "$releaseBase/$coreName.zip" -OutFile $coreZip
-          Invoke-WebRequest -Uri "$releaseBase/$coreName.zip.dgst" -OutFile $digestFile
-
-          $digestText = Get-Content -LiteralPath $digestFile -Raw
-          $digestMatch = [regex]::Match($digestText, '(?im)^\s*(?:SHA2?-256|SHA256)\s*[=:]\s*([0-9a-f]{64})\s*$')
-          if (-not $digestMatch.Success) {
-            $digestMatch = [regex]::Match($digestText, '(?im)^\s*([0-9a-f]{64})\s*$')
-          }
-          if (-not $digestMatch.Success) { throw "Could not read the official Xray SHA-256 digest file." }
-          $expectedHash = $digestMatch.Groups[1].Value.ToLowerInvariant()
           $actualHash = (Get-FileHash -LiteralPath $coreZip -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($actualHash -ne $expectedHash) {
             throw "Official Xray ZIP SHA-256 verification failed. Expected $expectedHash, got $actualHash."
