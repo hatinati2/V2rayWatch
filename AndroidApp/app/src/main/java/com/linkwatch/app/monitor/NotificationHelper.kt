@@ -12,11 +12,13 @@ import com.linkwatch.app.AppLanguage
 import com.linkwatch.app.MainActivity
 import com.linkwatch.app.uiText
 import com.linkwatch.app.uiError
+import com.linkwatch.app.data.formatOutageDuration
 
 object NotificationHelper {
     const val CHANNEL_MONITOR = "linkwatch_monitor"
     const val CHANNEL_ALERTS = "linkwatch_alerts"
     const val ONGOING_ID = 4101
+    private const val ALERT_ID = 4102
 
     private fun lang(context: Context) = AppLanguage.load(context)
 
@@ -58,7 +60,7 @@ object NotificationHelper {
         .setPriority(NotificationCompat.PRIORITY_LOW)
         .build()
 
-    fun notifyDisconnected(context: Context, profileName: String, reason: String) {
+    fun notifyDisconnected(context: Context, profileId: String, profileName: String, reason: String) {
         val language = lang(context)
         val fallback = uiText(language, "تست اتصال واقعی ناموفق بود", "Real connection test failed")
         val notification = NotificationCompat.Builder(context, CHANNEL_ALERTS)
@@ -71,20 +73,26 @@ object NotificationHelper {
             .setCategory(NotificationCompat.CATEGORY_ERROR)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
-        runCatching { NotificationManagerCompat.from(context).notify(profileName.hashCode(), notification) }
+        runCatching { NotificationManagerCompat.from(context).notify(profileId, ALERT_ID, notification) }
     }
 
-    fun notifyRecovered(context: Context, profileName: String, delayMs: Long) {
+    fun notifyRecovered(context: Context, profileId: String, profileName: String, delayMs: Long, outageDurationMs: Long?) {
+        val language = lang(context)
+        val delayText = uiText(language, "تاخیر واقعی: ${delayMs} ms", "Real Delay: ${delayMs} ms")
+        val outage = outageDurationMs?.let { formatOutageDuration(it, language.isEnglish) }
+        val content = outage?.let { uiText(language, "مدت قطعی: $it", "Outage duration: $it") } ?: delayText
+        val expanded = if (outage == null) content else "$content\\n$delayText"
         val notification = NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentTitle(uiText(lang(context), "اتصال دوباره برقرار شد: $profileName", "Connection restored: $profileName"))
-            .setContentText("Real Delay: ${delayMs} ms")
+            .setContentText(content)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(expanded))
             .setContentIntent(openAppIntent(context))
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
-        runCatching { NotificationManagerCompat.from(context).notify(profileName.hashCode(), notification) }
+        runCatching { NotificationManagerCompat.from(context).notify(profileId, ALERT_ID, notification) }
     }
 
     private fun openAppIntent(context: Context): PendingIntent {
