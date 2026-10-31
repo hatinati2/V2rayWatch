@@ -56,6 +56,40 @@ public sealed class SubscriptionSource
     public string RemoveActionDisplay => English ? "Remove" : "حذف";
 }
 
+public static class SubscriptionProfileOperations
+{
+    public static List<ServerProfile> FindOwnedProfiles(IEnumerable<ServerProfile> profiles, string subscriptionId)
+    {
+        if (string.IsNullOrWhiteSpace(subscriptionId)) return [];
+        return profiles
+            .Where(profile => string.Equals(profile.SourceSubscriptionId, subscriptionId, StringComparison.Ordinal))
+            .ToList();
+    }
+
+    public static int RemoveOwnedProfiles(ICollection<ServerProfile> profiles, string subscriptionId)
+    {
+        var owned = FindOwnedProfiles(profiles, subscriptionId);
+        foreach (var profile in owned) profiles.Remove(profile);
+        return owned.Count;
+    }
+}
+
+public static class SubscriptionDisplayText
+{
+    public static IReadOnlyList<string> GetColumnHeaders(bool english) =>
+        english
+            ? new[] { "Name", "Links", "Last fetched", "Action" }
+            : new[] { "نام", "تعداد", "آخرین دریافت", "عملیات" };
+
+    public static string GetSectionTitle(bool english) =>
+        english ? "Subscriptions" : "مدیریت اشتراک‌ها";
+
+    public static string GetSectionHint(bool english) =>
+        english
+            ? "Subscription sources are saved and can be updated individually."
+            : "منابع Subscription ذخیره می‌شوند و هرکدام را می‌توان جداگانه به‌روزرسانی کرد.";
+}
+
 public sealed class MonitorSettings
 {
     public int IntervalSeconds { get; set; } = 20;
