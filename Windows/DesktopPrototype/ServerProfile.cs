@@ -317,6 +317,7 @@ public static class ServerProfileParser
         var fp=Get(q,"fp");if(fp.Length>0)tls["fingerprint"]=fp;if(IsTrue(Get(q,"insecure",Get(q,"allowInsecure","false"))))tls["allowInsecure"]=true;
         var pin=Get(q,"pinSHA256");if(pin.Length>0)tls["pinnedPeerCertSha256"]=pin;
         var ech=Get(q,"ech");if(ech.Length>0)tls["echConfigList"]=ech;
+        var ech=Get(q,"ech");if(ech.Length>0)tls["echConfigList"]=ech;
         var stream=new JsonObject{["method"]="hysteria",["security"]="tls",["tlsSettings"]=tls,["hysteriaSettings"]=new JsonObject{["version"]=2,["auth"]=auth}};
         var outbound=new JsonObject{["tag"]="proxy",["protocol"]="hysteria",["settings"]=new JsonObject{["version"]=2,["address"]=host,["port"]=port},["streamSettings"]=stream};
         var masks=new JsonObject();var obfs=Get(q,"obfs").ToLowerInvariant();var obfsPassword=Get(q,"obfs-password");

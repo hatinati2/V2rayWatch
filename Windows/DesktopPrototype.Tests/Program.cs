@@ -68,6 +68,17 @@ var hy2Ech=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?ech=
 using(var echDoc=JsonDocument.Parse(hy2Ech.ConfigJson))
  Check(echDoc.RootElement.GetProperty("outbounds")[0].GetProperty("streamSettings").GetProperty("tlsSettings").GetProperty("echConfigList").GetString()=="YWJj","Hysteria2 ECH config retained");
 
+var hy2Gecko=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?obfs=gecko&obfs-password=secret#Gecko");
+using(var geckoDoc=JsonDocument.Parse(hy2Gecko.ConfigJson))
+{
+ var mask=geckoDoc.RootElement.GetProperty("outbounds")[0].GetProperty("streamSettings").GetProperty("finalmask").GetProperty("udp")[0];
+ Check(mask.GetProperty("type").GetString()=="salamander","Gecko uses Salamander base mask");
+ Check(mask.GetProperty("settings").GetProperty("packetSize").GetString()=="512-1200","Gecko fragmentation range mapped");
+}
+var hy2Ech=ServerProfileParser.ParseOne("hy2://password@hy2.example.net:443?ech=YWJj#ECH");
+using(var echDoc=JsonDocument.Parse(hy2Ech.ConfigJson))
+ Check(echDoc.RootElement.GetProperty("outbounds")[0].GetProperty("streamSettings").GetProperty("tlsSettings").GetProperty("echConfigList").GetString()=="YWJj","Hysteria2 ECH config retained");
+
 var badHy2=false;try{ServerProfileParser.ParseOne("hy2://pass@hy2.example.net:443?obfs=salamander#missing-password");}catch(FormatException){badHy2=true;}
 Check(badHy2,"Salamander needs a password");
 var xrayPath=Environment.GetEnvironmentVariable("V2RAYWATCH_XRAY_PATH");

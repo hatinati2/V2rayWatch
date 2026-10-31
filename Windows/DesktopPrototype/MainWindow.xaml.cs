@@ -413,9 +413,9 @@ public partial class MainWindow : Window
 
     private async void SaveSettings_Click(object sender, RoutedEventArgs e)
     {
-        if(!int.TryParse(IntervalInput.Text.Trim(),NumberStyles.None,CultureInfo.InvariantCulture,out var interval)||interval is <1 or >9999)
+        if(!int.TryParse(NormalizeDigits(IntervalInput.Text.Trim()),NumberStyles.None,CultureInfo.InvariantCulture,out var interval)||interval is <1 or >9999)
         {SetStatus(_english?"Check interval must be between 1 and 9999 seconds.":"فاصلهٔ تست باید بین ۱ تا ۹۹۹۹ ثانیه باشد.",true);return;}
-        if(!int.TryParse(ThresholdInput.Text.Trim(),NumberStyles.None,CultureInfo.InvariantCulture,out var failureThreshold)||failureThreshold is <1 or >9999)
+        if(!int.TryParse(NormalizeDigits(ThresholdInput.Text.Trim()),NumberStyles.None,CultureInfo.InvariantCulture,out var failureThreshold)||failureThreshold is <1 or >9999)
         {SetStatus(_english?"Alert threshold must be between 1 and 9999 failures.":"تعداد شکست پیش از هشدار باید بین ۱ تا ۹۹۹۹ باشد.",true);return;}
         if(!int.TryParse(TimeoutInput.Text.Trim(),NumberStyles.None,CultureInfo.InvariantCulture,out var timeout)||timeout is <3 or >60)
         {SetStatus(_english?"Timeout must be between 3 and 60 seconds.":"مهلت تست باید بین ۳ تا ۶۰ ثانیه باشد.",true);return;}
@@ -582,6 +582,17 @@ public partial class MainWindow : Window
         ThresholdInput.Text=_data.Settings.ConsecutiveFailureThreshold.ToString(CultureInfo.InvariantCulture);
         TimeoutInput.Text=_data.Settings.TimeoutSeconds.ToString(CultureInfo.InvariantCulture);
         PrimaryUrlInput.Text=_data.Settings.PrimaryTestUrl;FallbackUrlInput.Text=_data.Settings.FallbackTestUrl;
+    }
+
+    private static string NormalizeDigits(string value)
+    {
+        var chars=value.Select(c => c switch
+        {
+            '۰'=>'0','۱'=>'1','۲'=>'2','۳'=>'3','۴'=>'4','۵'=>'5','۶'=>'6','۷'=>'7','۸'=>'8','۹'=>'9',
+            '٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4','٥'=>'5','٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9',
+            _=>c
+        }).ToArray();
+        return new string(chars);
     }
 
     private void NumericOnly_PreviewTextInput(object sender,System.Windows.Input.TextCompositionEventArgs e)
