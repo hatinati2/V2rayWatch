@@ -9,6 +9,7 @@ import androidx.core.app.ServiceCompat
 import com.linkwatch.app.LinkWatchApplication
 import com.linkwatch.app.core.XrayDelayTester
 import com.linkwatch.app.data.LinkState
+import com.linkwatch.app.data.ProfileRepository
 import com.linkwatch.app.data.reduceLinkCheck
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -79,18 +80,23 @@ class MonitorService : Service() {
                     supervisorScope {
                         profiles.map { original ->
                             async {
+                                var checkedProfileId: String? = null
+                                var stateBeforeCheck: LinkState? = null
                                 try {
                                     val current = repository.getProfiles().firstOrNull { it.id == original.id }
                                     if (current != null) {
+                                        checkedProfileId = current.id
+                                        stateBeforeCheck = current.state.takeUnless { it == LinkState.CHECKING }
+                                            ?: LinkState.UNKNOWN
                                         repository.upsert(current.copy(state = LinkState.CHECKING))
                                         val result = tester.test(current, settings)
 
                                         // Re-read after the probe so edits made during the request are preserved.
-                                        // The pre-check state is retained only for transition/notification decisions.
+                                        // Keep the original state only for transition/notification decisions.
                                         val latest = repository.getProfiles().firstOrNull { it.id == current.id }
                                         if (latest != null) {
                                             val transition = reduceLinkCheck(
-                                                previous = latest.copy(state = current.state),
+                                                previous = latest.copy(state = stateBeforeCheck ?: LinkState.UNKNOWN),
                                                 result = result,
                                                 settings = settings,
                                                 checkedAtEpochMs = System.currentTimeMillis()
@@ -113,10 +119,11 @@ class MonitorService : Service() {
                                         }
                                     }
                                 } catch (cancelled: CancellationException) {
+                                    restorePendingCheck(repository, checkedProfileId, stateBeforeCheck)
                                     throw cancelled
                                 } catch (_: Exception) {
-                                    // Isolate unexpected storage/profile errors to this profile.
-                                    // Its next scheduled check can retry without stopping other links.
+                                    // Restore a temporary CHECKING state if a storage/probe operation failed.
+                                    restorePendingCheck(repository, checkedProfileId, stateBeforeCheck)
                                 } finally {
                                     val count = completed.incrementAndGet()
                                     try {
@@ -141,6 +148,20 @@ class MonitorService : Service() {
                 val targetMs = max(settings.intervalSeconds * 1000L, 20_000L)
                 val elapsedMs = System.currentTimeMillis() - roundStartedAt
                 delay(max(targetMs - elapsedMs, 1_000L))
+            }
+        }
+    }
+
+    private fun restorePendingCheck(
+        repository: ProfileRepository,
+        profileId: String?,
+        previousState: LinkState?
+    ) {
+        if (profileId == null || previousState == null) return
+        runCatching {
+            val latest = repository.getProfiles().firstOrNull { it.id == profileId }
+            if (latest?.state == LinkState.CHECKING) {
+                repository.upsert(latest.copy(state = previousState))
             }
         }
     }
