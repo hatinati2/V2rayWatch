@@ -146,6 +146,11 @@ class ProfileRepository private constructor(context: Context) {
             }
             require(profile.port in 0..65535) { "Backup contains an invalid profile port" }
             require(profile.configJson.length <= 2 * 1024 * 1024) { "A profile configuration in the backup is too large" }
+            try {
+                org.json.JSONObject(profile.configJson)
+            } catch (_: Exception) {
+                throw IllegalArgumentException("Backup contains an invalid profile configuration")
+            }
 
             if (!knownLinks.add(profile.rawLink)) {
                 skipped++
@@ -194,13 +199,20 @@ class ProfileRepository private constructor(context: Context) {
 
     private fun persist(profiles: List<ProxyProfile>) {
         val plaintext = gson.toJson(profiles).toByteArray(Charsets.UTF_8)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
-        val iv = cipher.iv
-        val encrypted = cipher.doFinal(plaintext)
-        val combined = iv + encrypted
-        prefs.edit().putString("profiles_ciphertext", Base64.encodeToString(combined, Base64.NO_WRAP)).commit()
-        _profiles.value = profiles
+        try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+            val iv = cipher.iv
+            val encrypted = cipher.doFinal(plaintext)
+            val combined = iv + encrypted
+            val saved = prefs.edit()
+                .putString("profiles_ciphertext", Base64.encodeToString(combined, Base64.NO_WRAP))
+                .commit()
+            check(saved) { "Could not save encrypted profile data to local storage" }
+            _profiles.value = profiles
+        } finally {
+            plaintext.fill(0)
+        }
     }
 
     private fun getOrCreateKey(): SecretKey {
