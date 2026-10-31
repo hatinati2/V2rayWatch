@@ -818,7 +818,7 @@ if (-not $code.Contains("VwInitializeAppearance")) {
 
     $appearanceMethods = @'
 
-    [global::System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = global::System.Runtime.InteropServices.CharSet.Unicode)]
+    [global::System.Runtime.InteropServices.DllImport("shell32.dll", EntryPoint = "SetCurrentProcessExplicitAppUserModelID", CharSet = global::System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern int VwSetCurrentProcessExplicitAppUserModelID(string appID);
 
     private static string VwAppearanceSettingsPath()
