@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework><RootNamespace>V2rayWatch.Server.Engine</RootNamespace></PropertyGroup><ItemGroup><ProjectReference Include="..\V2rayWatch.Server.Core\V2rayWatch.Server.Core.csproj" /></ItemGroup></Project>
