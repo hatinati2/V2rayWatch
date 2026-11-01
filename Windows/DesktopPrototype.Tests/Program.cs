@@ -155,6 +155,35 @@ var portableSettings = new MonitorSettings
     NotifyOnDisconnect = false,
     NotifyOnRecovery = true
 };
+// Windows recent-check strip keeps the newest 50 samples and pads missing history as neutral.
+var recentChecks = new ServerProfile
+{
+    UptimeHistory = Enumerable.Range(0, 60).Select(index => index % 2 == 0 ? "G" : "R").ToList()
+};
+var expectedRecentChecks = recentChecks.UptimeHistory.TakeLast(50).ToArray();
+recentChecks.NormalizeRecentChecks();
+Check(recentChecks.UptimeHistory.Count == 50 &&
+      recentChecks.UptimeHistory.SequenceEqual(expectedRecentChecks),
+    "Windows recent-check history retains only the latest 50 outcomes");
+
+var importedRecentChecks = new ServerProfile { UptimeHistory = ["G", "R"] };
+importedRecentChecks.NormalizeRecentChecks();
+Check(importedRecentChecks.UptimeHistory.Count == 50 &&
+      importedRecentChecks.UptimeHistory.Take(48).All(value => value == "N") &&
+      importedRecentChecks.UptimeHistory.TakeLast(2).SequenceEqual(new[] { "G", "R" }),
+    "older 20-check profiles expand to 50 with neutral no-data slots");
+
+importedRecentChecks.RecordRecentCheck(false);
+Check(importedRecentChecks.UptimeHistory.Count == 50 &&
+      importedRecentChecks.UptimeHistory.TakeLast(3).SequenceEqual(new[] { "G", "R", "R" }),
+    "new monitoring samples keep the recent-check strip capped at 50");
+
+Check(importedRecentChecks.RecentChecksLabel == "۵۰ بررسی خودکار اخیر",
+    "recent-check label is localized in Persian");
+importedRecentChecks.English = true;
+Check(importedRecentChecks.RecentChecksLabel == "Last 50 automatic checks",
+    "recent-check label is localized in English");
+
 var portableProfile = new ServerProfile
 {
     Name = vless.Name,

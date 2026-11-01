@@ -627,9 +627,7 @@ public partial class MainWindow : Window
 
         if (fromMonitor)
         {
-            profile.UptimeHistory ??= [];
-            profile.UptimeHistory.Add(result.Success ? "G" : "R");
-            while (profile.UptimeHistory.Count > 20) profile.UptimeHistory.RemoveAt(0);
+            profile.RecordRecentCheck(result.Success);
             if (profile.Status == "Disconnected" && previousStatus != "Disconnected" && _data.Settings.NotifyOnDisconnect)
                 Notify(profile.Name, _english ? "Profile disconnected" : "قطع اتصال پروفایل", true);
             else if (result.Success && previousStatus == "Disconnected" && _data.Settings.NotifyOnRecovery)
@@ -856,7 +854,7 @@ public partial class MainWindow : Window
         LongTermHistoryButton.Content = _english ? "Long-term history" : "تاریخچهٔ بلندمدت";
         RemoveSelectedButton.Content = _english ? "Remove" : "حذف";
         DeleteAllProfilesButton.Content = _english ? "Remove all links" : "حذف همه لینک‌ها";
-        GridFooter.Text = _english ? "Manual tests are not added to the 20-check or long-term history." : "تست دستی وارد نوار ۲۰ بررسی و تاریخچهٔ بلندمدت نمی‌شود.";
+        GridFooter.Text = _english ? "Manual tests are not added to the 50-check or long-term history." : "تست دستی وارد نوار ۵۰ بررسی و تاریخچهٔ بلندمدت نمی‌شود.";
         ImportClipboardButton.Content = _english ? "Paste from clipboard" : "چسباندن از Clipboard";
         ImportFileButton.Content = _english ? "Import file" : "ورود از فایل";
         ExportBackupButton.Content = _english ? "Export backup" : "پشتیبان‌گیری";
@@ -962,11 +960,7 @@ public partial class MainWindow : Window
 
     private static void NormalizeHistory(ServerProfile profile)
     {
-        profile.UptimeHistory ??= [];
-        if (profile.UptimeHistory.Count > 20)
-            profile.UptimeHistory = profile.UptimeHistory.TakeLast(20).ToList();
-        while (profile.UptimeHistory.Count < 20)
-            profile.UptimeHistory.Insert(0, "N");
+        profile.NormalizeRecentChecks();
     }
 
     private void RefreshSummary()

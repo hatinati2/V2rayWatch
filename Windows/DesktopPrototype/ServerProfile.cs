@@ -28,7 +28,28 @@ public sealed class ServerProfile
     public string Endpoint => Port > 0 ? $"{Host}:{Port}" : Host;
     public string DelayDisplay => DelayMs is null ? "—" : $"{DelayMs.Value} ms";
     public string LastCheckedDisplay => LastCheckedUtc?.ToLocalTime().ToString("HH:mm:ss") ?? "—";
-    public string RecentChecksLabel => English ? "Last 20 automatic checks" : "۲۰ بررسی خودکار اخیر";
+    public const int RecentCheckHistoryCapacity = 50;
+
+    public string RecentChecksLabel => English
+        ? $"Last {RecentCheckHistoryCapacity} automatic checks"
+        : "۵۰ بررسی خودکار اخیر";
+
+    public void NormalizeRecentChecks()
+    {
+        UptimeHistory ??= [];
+        if (UptimeHistory.Count > RecentCheckHistoryCapacity)
+            UptimeHistory = UptimeHistory.TakeLast(RecentCheckHistoryCapacity).ToList();
+        while (UptimeHistory.Count < RecentCheckHistoryCapacity)
+            UptimeHistory.Insert(0, "N");
+    }
+
+    public void RecordRecentCheck(bool success)
+    {
+        UptimeHistory ??= [];
+        UptimeHistory.Add(success ? "G" : "R");
+        while (UptimeHistory.Count > RecentCheckHistoryCapacity)
+            UptimeHistory.RemoveAt(0);
+    }
 
     public string StatusDisplay => Status switch
     {
