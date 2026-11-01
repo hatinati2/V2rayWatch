@@ -63,11 +63,24 @@ public partial class MainWindow : Window
         {
             try
             {
-                var image = new System.Windows.Media.Imaging.BitmapImage();
-                image.BeginInit(); image.UriSource = new Uri(appIconPath); image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad; image.EndInit(); image.Freeze();
-                Icon = image; LogoImage.Source = image;
+                // Build the WPF Window.Icon from a native Windows HICON. This makes
+                // the icon available to both the title bar and the taskbar button;
+                // displaying the bitmap in LogoImage alone is not sufficient.
+                using var nativeIcon = new Drawing.Icon(appIconPath);
+                var windowIcon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                    nativeIcon.Handle,
+                    System.Windows.Int32Rect.Empty,
+                    System.Windows.Media.Imaging.BitmapSizeOptions.FromWidthAndHeight(32, 32));
+                windowIcon.Freeze();
+                Icon = windowIcon;
+                LogoImage.Source = windowIcon;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                SetStatus(
+                    (_english ? "Could not load the application icon: " : "بارگذاری آیکون برنامه ناموفق بود: ") + ex.Message,
+                    true);
+            }
         }
         _data.Profiles ??= [];
         _data.Subscriptions ??= [];
