@@ -194,7 +194,11 @@ app.MapDelete("/api/v1/profiles/{id:guid}", async (
     SqliteServerStateRepository stateStore) =>
 {
     var removed = await profileStore.DeleteAsync(id);
-    if (removed) await stateStore.DeleteProfileHistoryAsync(id);
+    if (removed)
+    {
+        await stateStore.DeleteProfileHistoryAsync(id);
+        await stateStore.RefreshSubscriptionCountsAsync(profileStore);
+    }
     return removed ? Results.NoContent() : Results.NotFound();
 }).RequireAuthorization();
 
@@ -208,6 +212,7 @@ app.MapDelete("/api/v1/profiles", async (
         await profileStore.DeleteAsync(profile.Id);
         await stateStore.DeleteProfileHistoryAsync(profile.Id);
     }
+    await stateStore.RefreshSubscriptionCountsAsync(profileStore);
     return Results.Ok(new { deleted = all.Count });
 }).RequireAuthorization();
 
