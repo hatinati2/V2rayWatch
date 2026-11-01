@@ -40,7 +40,7 @@ class ProfileBackupMergerTest {
     }
 
     @Test
-    fun restoreResetsLiveStateButKeepsNewestTwentyHistoryMarks() {
+    fun restoreResetsLiveStateButKeepsNewestFiftyHistoryMarks() {
         val history = (1..25).map {
             if (it % 2 == 0) UptimeMark.CONNECTED else UptimeMark.DISCONNECTED
         }
