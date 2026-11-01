@@ -38,7 +38,7 @@ class ConnectionHistoryTest {
         assertEquals(200L, summary.averageDelayMs)
         assertEquals(100L, summary.minimumDelayMs)
         assertEquals(300L, summary.maximumDelayMs)
-        assertEquals(3, summary.buckets.size.coerceAtMost(24))
+        assertEquals(24, summary.buckets.size)
         assertEquals(3, summary.buckets.sumOf { it.totalChecks })
     }
 
@@ -47,7 +47,7 @@ class ConnectionHistoryTest {
         val samples = (0..6).map { day ->
             ConnectionHistorySample(
                 sessionId = "session-a",
-                checkedAtEpochMs = now - (6L - day) * 24L * 60L * 60L * 1000L + 1_000L,
+                checkedAtEpochMs = now - (6L - day) * 24L * 60L * 60L * 1000L - 1_000L,
                 success = day % 2 == 0,
                 delayMs = if (day % 2 == 0) 120L + day else null
             )
