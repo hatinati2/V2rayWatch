@@ -5,7 +5,7 @@
 ## آماده در این مرحله
 - ASP.NET Core روی .NET 10 با ساختار Core / Engine / Web
 - PATH اختصاصی از اولین نصب و پشتیبانی تمام endpointها زیر prefix
-- پورت پیش‌فرض **6000** و قابل تغییر
+- پورت پیش‌فرض **6100** (برای سازگاری با محدودیت پورت Firefox؛ 6000 توسط مرورگر مسدود می‌شود) و قابل تغییر
 - ورود مدیر با رمز تصادفی نصب، کوکی HttpOnly و محدودیت تلاش ورود
 - systemd و اجرای خودکار پس از reboot با کاربر غیر root
 - اسکریپت Native مخصوص Ubuntu 24.04
@@ -13,13 +13,13 @@
 **آماده در این مرحله:** واردکردن لینک‌های VLESS، VMess، Trojan، Shadowsocks، Hysteria2 (hy2:// و hysteria2://) و Xray JSON؛ ذخیره SQLite با رمزنگاری AES-256-GCM؛ حذف پروفایل و تست دستی واقعی از مسیر Xray. سقف فعلی 100 پروفایل است. Subscription URL، پایش پس‌زمینه، تاریخچه و نمودار در مرحله‌های بعدی می‌آیند.
 
 ## نصب با یک دستور
-روی سرور تازه Ubuntu 24.04 فقط این دستور را اجرا کن:
+روی سرور تازه Ubuntu 24.04 یا 26.04 فقط این دستور را اجرا کن:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash
 ```
-پورت پیش‌فرض 6000 است. برای تغییر پورت، مثلاً:
+پورت پیش‌فرض 6100 است. برای تغییر پورت، مثلاً:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6100
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6200
 ```
 این دستور SDK موردنیاز را نصب می‌کند، سورس همین شاخه را دانلود و build می‌کند و سپس Xray Core و سرویس systemd را نصب می‌کند. نصب‌کننده اگر نصب قبلی را تشخیص دهد، برای جلوگیری از بازنویسی داده‌ها متوقف می‌شود.
 
@@ -28,21 +28,21 @@ curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-
 ```bash
 bash Server/scripts/publish-linux.sh
 ```
-پوشهٔ `Server/publish` را به Ubuntu 24.04 منتقل کنید. نصب‌کننده وابستگی‌ها، ASP.NET Core Runtime نسخه 10 و Xray Core رسمی متناسب با x86_64 یا ARM64 را نصب می‌کند و SHA-256 بسته Xray را اعتبارسنجی می‌کند:
+پوشهٔ `Server/publish` را به Ubuntu 24.04 یا Ubuntu 26.04 منتقل کنید. نصب‌کننده وابستگی‌ها، ASP.NET Core Runtime نسخه 10 و Xray Core رسمی متناسب با x86_64 یا ARM64 را نصب می‌کند و SHA-256 بسته Xray را اعتبارسنجی می‌کند:
 ```bash
 sudo bash Server/scripts/install-ubuntu.sh
 ```
 پورت قابل تغییر است:
 ```bash
-sudo bash Server/scripts/install-ubuntu.sh --port 6100
+sudo bash Server/scripts/install-ubuntu.sh --port 6200
 ```
 PATH تصادفی تولید می‌شود. PATH دلخواه:
 ```bash
-sudo bash Server/scripts/install-ubuntu.sh --port 6000 --path /vw-my-private-panel-path
+sudo bash Server/scripts/install-ubuntu.sh --port 6100 --path /vw-my-private-panel-path
 ```
 PATH باید با / شروع شود و 16 تا 64 نویسهٔ امن داشته باشد. ریشهٔ / پنل را نمایش نمی‌دهد.
 
-آدرس نمونه: `http://SERVER-IP:6000/vw-<random-token>`
+آدرس نمونه: `http://SERVER-IP:6100/vw-<random-token>`
 نام کاربری `admin` است. رمز اولیه در خروجی و فایل `/root/v2raywatch-initial-credentials.txt` با مجوز 0600 ذخیره می‌شود؛ آن را امن نگه دارید و فایل را حذف کنید.
 
 تنظیمات در `/etc/v2raywatch/server.json` است. پس از تغییر پورت یا PATH:
