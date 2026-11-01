@@ -26,6 +26,7 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.UUID
 
 class MonitorService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -60,6 +61,8 @@ class MonitorService : Service() {
 
     private fun startMonitoring() {
         if (loopJob?.isActive == true) return
+        // Each explicit monitoring run has its own ID; failure sequences never span sessions.
+        val monitoringSessionId = UUID.randomUUID().toString()
         loopJob = serviceScope.launch {
             while (isActive) {
                 val repository = (application as LinkWatchApplication).profiles
@@ -103,6 +106,14 @@ class MonitorService : Service() {
                                                 checkedAtEpochMs = System.currentTimeMillis()
                                             )
                                             repository.upsert(transition.profile)
+                                            // Only service-driven checks enter long-term history; manual tests are excluded.
+                                            repository.recordMonitoringCheck(
+                                                profileId = transition.profile.id,
+                                                sessionId = monitoringSessionId,
+                                                checkedAtEpochMs = transition.profile.lastCheckedAt,
+                                                success = result.success,
+                                                delayMs = result.delayMs.takeIf { result.success && it >= 0L }
+                                            )
 
                                             val events = notificationEvents(transition, settings)
                                             if (events.disconnected) {
