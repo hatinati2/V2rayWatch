@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.ServiceCompat
 import com.linkwatch.app.LinkWatchApplication
 import com.linkwatch.app.core.XrayDelayTester
@@ -32,21 +33,50 @@ class MonitorService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var tester: XrayDelayTester
     private var loopJob: kotlinx.coroutines.Job? = null
+    private var monitoringWakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
         tester = XrayDelayTester(applicationContext)
+        monitoringWakeLock = getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:MonitorService")
+            .apply {
+                // A non-reference-counted timed lock is refreshed for each monitoring round.
+                // It is released automatically if the service process becomes stuck or dies.
+                setReferenceCounted(false)
+            }
         NotificationHelper.createChannels(this)
         promoteToForeground(0, 0)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val repository = (application as LinkWatchApplication).profiles
         when (intent?.action) {
             ACTION_STOP -> {
+                repository.setMonitoringEnabled(false)
                 stopMonitoring()
                 return START_NOT_STICKY
             }
-            else -> startMonitoring()
+            ACTION_START -> {
+                repository.setMonitoringEnabled(true)
+                startMonitoring()
+            }
+            null -> {
+                // START_STICKY may recreate the service with a null Intent after
+                // process reclamation. Resume only if the user had left monitoring enabled.
+                if (repository.isMonitoringEnabled()) {
+                    startMonitoring()
+                } else {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf(startId)
+                    return START_NOT_STICKY
+                }
+            }
+            else -> {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf(startId)
+                return START_NOT_STICKY
+            }
         }
         return START_STICKY
     }
@@ -61,10 +91,12 @@ class MonitorService : Service() {
 
     private fun startMonitoring() {
         if (loopJob?.isActive == true) return
+        refreshMonitoringWakeLock()
         // Each explicit monitoring run has its own ID; failure sequences never span sessions.
         val monitoringSessionId = UUID.randomUUID().toString()
         loopJob = serviceScope.launch {
             while (isActive) {
+                refreshMonitoringWakeLock()
                 val repository = (application as LinkWatchApplication).profiles
                 val profiles = repository.getProfiles()
                 if (profiles.isEmpty()) {
@@ -171,15 +203,33 @@ class MonitorService : Service() {
         }
     }
 
+    @Synchronized
+    private fun refreshMonitoringWakeLock() {
+        // Keep the CPU awake while the user-requested monitor is active, including
+        // the interval between checks. The timeout is renewed by the monitor loop
+        // so a stalled process cannot leave an indefinite wake lock behind.
+        monitoringWakeLock?.acquire(WAKE_LOCK_TIMEOUT_MS)
+    }
+
+    @Synchronized
+    private fun releaseMonitoringWakeLock() {
+        val lock = monitoringWakeLock
+        if (lock?.isHeld == true) {
+            runCatching { lock.release() }
+        }
+    }
+
     private fun stopMonitoring() {
         loopJob?.cancel()
         loopJob = null
+        releaseMonitoringWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
         loopJob?.cancel()
+        releaseMonitoringWakeLock()
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -187,6 +237,8 @@ class MonitorService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
+        private const val WAKE_LOCK_TIMEOUT_MS = 10L * 60L * 1000L
+
         const val ACTION_START = "com.linkwatch.app.action.START_MONITOR"
         const val ACTION_STOP = "com.linkwatch.app.action.STOP_MONITOR"
     }
