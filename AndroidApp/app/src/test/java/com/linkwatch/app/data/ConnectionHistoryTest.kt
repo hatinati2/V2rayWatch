@@ -35,9 +35,9 @@ class ConnectionHistoryTest {
         assertEquals(2, summary.successCount)
         assertEquals(1, summary.failureCount)
         assertEquals(2.0 / 3.0 * 100.0, summary.successRatePercent!!, 0.001)
-        assertEquals(200L, summary.averageDelayMs)
-        assertEquals(100L, summary.minimumDelayMs)
-        assertEquals(300L, summary.maximumDelayMs)
+        assertEquals(200L, summary.averageDelayMs ?: -1L)
+        assertEquals(100L, summary.minimumDelayMs ?: -1L)
+        assertEquals(300L, summary.maximumDelayMs ?: -1L)
         assertEquals(24, summary.buckets.size)
         assertEquals(3, summary.buckets.sumOf { it.totalChecks })
     }
