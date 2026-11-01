@@ -27,7 +27,7 @@ for required in "$APP_DIR/V2rayWatch.Server.Web.dll" "$APP_DIR/xray" "$CONFIG_DI
 done
 command -v systemctl >/dev/null || { echo "systemctl is required." >&2; exit 1; }
 
-apt_source_matches="$(grep -RniE '\\b(focal|jammy)(-security|-updates|-backports)?\\b' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | head -n 8 || true)"
+apt_source_matches="$(grep -RniE '(^|[[:space:]/])(focal|jammy)(-[[:alnum:]]+)?([[:space:]/]|$)' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | head -n 8 || true)"
 if [[ -n "$apt_source_matches" ]]; then
   echo "WARNING: stale focal/jammy APT source entries detected."
   echo "$apt_source_matches"
