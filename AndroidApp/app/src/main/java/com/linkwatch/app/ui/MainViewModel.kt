@@ -178,7 +178,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         monitoringFlow.value = enabled
         if (enabled) {
             MonitorController.start(getApplication())
-            messageFlow.value = message("پایش مداوم شروع شد", "Monitoring started")
+            messageFlow.value = message(
+                "پایش شروع شد؛ بررسی با صفحهٔ خاموش ادامه می‌یابد و ممکن است باتری بیشتری مصرف کند.",
+                "Monitoring started. Checks continue with the screen off and may use more battery."
+            )
         } else {
             MonitorController.stop(getApplication())
             messageFlow.value = message("پایش متوقف شد", "Monitoring stopped")
