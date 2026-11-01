@@ -112,6 +112,21 @@ html[data-theme="light"]{color-scheme:light;--bg:#eef2f8;--header:#fff;--panel:#
       </section>
 
       <section class="card">
+        <div class="card-head"><div><h2 class="section-title" data-i18n="gmailTitle">اعلان با Gmail</h2><div class="hint" data-i18n="gmailHint">ارسال ایمیل هنگام قطع و بازیابی کانفیگ، حتی وقتی پنل بسته است.</div></div></div>
+        <div class="toggle-row"><span data-i18n="gmailEnabled">فعال‌سازی اعلان ایمیلی</span><label class="switch"><input id="gmailEnabled" type="checkbox"><span class="slider"></span></label></div>
+        <div class="field"><label for="gmailSenderEmail" data-i18n="gmailSender">حساب Gmail فرستنده</label><input id="gmailSenderEmail" class="input ltr" type="email" autocomplete="off" placeholder="sender@gmail.com"></div>
+        <div class="field"><label for="gmailRecipientEmail" data-i18n="gmailRecipient">ایمیل دریافت‌کننده</label><input id="gmailRecipientEmail" class="input ltr" type="email" autocomplete="off" placeholder="you@example.com"></div>
+        <div class="field"><label for="gmailAppPassword" data-i18n="gmailAppPassword">Gmail App Password</label><input id="gmailAppPassword" class="input ltr" type="password" autocomplete="new-password" maxlength="32" placeholder="•••• •••• •••• ••••"></div>
+        <div class="hint" id="gmailPasswordHint" data-i18n="gmailPasswordNotSaved">App Password ذخیره نشده است.</div>
+        <div class="field"><label for="gmailEgressProfile" data-i18n="gmailEgress">مسیر اتصال به Gmail</label><select id="gmailEgressProfile" class="input"><option value="" data-i18n="gmailDirect">اتصال مستقیم از سرور</option></select></div>
+        <div class="hint" data-i18n="gmailEgressHint">اگر دسترسی مستقیم به Gmail از ایران برقرار نیست، یک پروفایل خارجی را انتخاب کن. SOCKS فقط روی 127.0.0.1 و با پورت موقت اجرا می‌شود.</div>
+        <div class="toggle-row"><span data-i18n="gmailClearPassword">حذف App Password ذخیره‌شده</span><label class="switch"><input id="gmailClearPassword" type="checkbox"><span class="slider"></span></label></div>
+        <div class="hint" data-i18n="gmailSecurityHint">برای Gmail باید تأیید دومرحله‌ای و App Password فعال باشد. رمز در پایگاه‌داده رمزنگاری می‌شود؛ چون پنل HTTP است، آن را فقط از شبکه مورد اعتماد ثبت کن. ارسال ایمیل با SMTP و STARTTLS روی پورت خروجی 587 انجام می‌شود.</div>
+        <div class="toolbar-bottom"><button class="primary" id="saveGmailButton" data-i18n="gmailSave">ذخیره تنظیمات Gmail</button><button id="testGmailButton" data-i18n="gmailTest">ارسال ایمیل آزمایشی</button></div>
+        <div class="message" id="gmailMessage" role="status"></div>
+      </section>
+
+      <section class="card">
         <div class="card-head"><div><h2 class="section-title" data-i18n="subscriptionTitle">مدیریت اشتراک‌ها</h2><div class="hint" data-i18n="subscriptionHint">منابع HTTPS ذخیره می‌شوند و می‌توان آن‌ها را جداگانه یا یکجا به‌روزرسانی کرد.</div></div></div>
         <div class="field"><label for="subscriptionName" data-i18n="subscriptionName">نام اشتراک</label><input id="subscriptionName" class="input" placeholder="My subscription"></div>
         <div class="field"><label for="subscriptionUrl" data-i18n="subscriptionUrl">آدرس HTTPS اشتراک</label><input id="subscriptionUrl" class="input ltr" type="url" placeholder="https://example.com/subscription"></div>
@@ -183,6 +198,7 @@ subtitle:"پایش و تست واقعی لینک‌های پروکسی",lightThe
 totalProfiles:"کل پروفایل‌ها",connected:"متصل",disconnected:"قطع",subscriptions:"اشتراک‌ها",importTitle:"افزودن لینک و پیکربندی",importHint:"یک لینک، چند لینک، متن Subscription یا پیکربندی Xray را وارد کن.",clear:"پاک‌کردن",importButton:"واردکردن لینک‌ها",importFile:"ورود از فایل",pasteClipboard:"چسباندن از Clipboard",capacity:"حداکثر ۱۰۰ پروفایل · ذخیره‌سازی رمزنگاری‌شده",
 profilesTitle:"پروفایل‌ها و نتیجهٔ تست",profilesHint:"هر پروفایل مستقل از پراکسی و تنظیمات شبکه سرور تست می‌شود.",search:"جست‌وجوی نام، میزبان یا پروتکل",testSelected:"تست انتخاب‌شده",history:"تاریخچه",deleteSelected:"حذف",deleteAll:"حذف همه",profileName:"نام پروفایل",protocol:"پروتکل",host:"میزبان",status:"وضعیت",delay:"تأخیر",lastCheck:"آخرین بررسی",actions:"عملیات",loading:"در حال بارگذاری…",manualHistoryNote:"تست دستی، نوار ۵۰ بررسی خودکار را تغییر نمی‌دهد.",
 monitorSettings:"تنظیمات پایش",monitorHint:"پایش پس‌زمینه روی سرور اجرا می‌شود و بعد از راه‌اندازی مجدد ادامه می‌یابد.",interval:"فاصلهٔ هر چرخه (ثانیه)",threshold:"شکست متوالی پیش از قطع",timeout:"مهلت هر تست (ثانیه)",primaryUrl:"آدرس تست اصلی",fallbackUrl:"آدرس تست جایگزین",notifyDisconnect:"هشدار هنگام قطع لینک (در همین مرورگر)",notifyRecovery:"هشدار هنگام بازیابی لینک (در همین مرورگر)",saveSettings:"ذخیره تنظیمات",
+gmailTitle:"اعلان با Gmail",gmailHint:"ارسال ایمیل هنگام قطع و بازیابی کانفیگ، حتی وقتی پنل بسته است.",gmailEnabled:"فعال‌سازی اعلان ایمیلی",gmailSender:"حساب Gmail فرستنده",gmailRecipient:"ایمیل دریافت‌کننده",gmailAppPassword:"Gmail App Password (رمز مخصوص برنامه)",gmailPasswordNotSaved:"App Password ذخیره نشده است.",gmailPasswordSaved:"App Password به‌صورت رمزنگاری‌شده ذخیره شده است؛ برای حفظ رمز قبلی این کادر را خالی بگذار.",gmailEgress:"مسیر اتصال به Gmail",gmailDirect:"اتصال مستقیم از سرور",gmailEgressHint:"اگر دسترسی مستقیم به Gmail از ایران برقرار نیست، یک پروفایل خارجی را انتخاب کن. SOCKS فقط روی 127.0.0.1 و با پورت موقت اجرا می‌شود.",gmailClearPassword:"حذف App Password ذخیره‌شده",gmailSecurityHint:"برای Gmail باید تأیید دومرحله‌ای و App Password فعال باشد. رمز در پایگاه‌داده رمزنگاری می‌شود؛ چون پنل HTTP است، آن را فقط از شبکه مورد اعتماد ثبت کن. ارسال ایمیل با SMTP و STARTTLS روی پورت خروجی 587 انجام می‌شود.",gmailSave:"ذخیره تنظیمات Gmail",gmailTest:"ارسال ایمیل آزمایشی",gmailSaved:"تنظیمات Gmail ذخیره شد.",gmailSent:"ایمیل آزمایشی ارسال شد؛ صندوق ورودی یا Spam را بررسی کن.",
 subscriptionTitle:"مدیریت اشتراک‌ها",subscriptionHint:"منابع HTTPS ذخیره می‌شوند و می‌توان آن‌ها را جداگانه یا یکجا به‌روزرسانی کرد.",subscriptionName:"نام اشتراک",subscriptionUrl:"آدرس HTTPS اشتراک",addSubscription:"افزودن و دریافت اشتراک",noSubscriptions:"اشتراکی ثبت نشده است.",updateAllSubscriptions:"به‌روزرسانی همه اشتراک‌ها",
 serverStatus:"وضعیت سرور",webService:"سرویس وب",xrayCore:"هسته Xray",storage:"ذخیره‌سازی",securityNotice:"پنل HTTP است و رمز عبور و کوکی نشست را در مسیر شبکه رمزنگاری نمی‌کند. پورت پنل را در فایروال فقط برای IPهای مورد اعتماد باز کن.",
 ready:"آماده؛ تست هر لینک مستقل از پراکسی سیستم انجام می‌شود.",historyPeriod:"دورهٔ بررسی",successRate:"درصد موفقیت",totalChecks:"کل بررسی‌ها",averageDelay:"میانگین تأخیر",failedChecks:"بررسی ناموفق",timeline:"نمودار وضعیت اتصال",historySource:"فقط بررسی‌های خودکار پایش در این تاریخچه ثبت می‌شوند.",
@@ -193,6 +209,7 @@ subtitle:"Real proxy link monitoring and testing",lightTheme:"Light theme",darkT
 totalProfiles:"Total profiles",connected:"Connected",disconnected:"Disconnected",subscriptions:"Subscriptions",importTitle:"Add links and configuration",importHint:"Paste one link, multiple links, a subscription body, or an Xray JSON configuration.",clear:"Clear",importButton:"Import links",importFile:"Import file",pasteClipboard:"Paste clipboard",capacity:"100 profile limit · encrypted storage",
 profilesTitle:"Profiles and test results",profilesHint:"Each profile is tested independently through its own Xray outbound.",search:"Search name, host or protocol",testSelected:"Test selected",history:"History",deleteSelected:"Delete",deleteAll:"Delete all",profileName:"Profile name",protocol:"Protocol",host:"Server",status:"Status",delay:"Delay",lastCheck:"Last check",actions:"Actions",loading:"Loading…",manualHistoryNote:"Manual tests do not change the 50 recent automatic checks.",
 monitorSettings:"Monitoring settings",monitorHint:"The background monitor runs on the server and resumes after a reboot.",interval:"Cycle interval (seconds)",threshold:"Failures before disconnect",timeout:"Test timeout (seconds)",primaryUrl:"Primary test URL",fallbackUrl:"Fallback test URL",notifyDisconnect:"Notify on disconnect (this browser)",notifyRecovery:"Notify on recovery (this browser)",saveSettings:"Save settings",
+gmailTitle:"Gmail notifications",gmailHint:"Send email when a profile disconnects or recovers, even while the dashboard is closed.",gmailEnabled:"Enable email notifications",gmailSender:"Sender Gmail account",gmailRecipient:"Recipient email",gmailAppPassword:"Gmail App Password",gmailPasswordNotSaved:"No App Password is saved.",gmailPasswordSaved:"App Password is encrypted at rest; leave this field blank to keep the existing password.",gmailEgress:"Gmail connection route",gmailDirect:"Connect directly from this server",gmailEgressHint:"If Gmail is unreachable directly from Iran, select an external profile. The SOCKS listener binds only to 127.0.0.1 on a temporary port.",gmailClearPassword:"Remove the saved App Password",gmailSecurityHint:"Google 2-Step Verification and an App Password are required. The password is encrypted in the database; because the panel uses HTTP, configure it only from a trusted network. SMTP uses STARTTLS on outbound port 587.",gmailSave:"Save Gmail settings",gmailTest:"Send test email",gmailSaved:"Gmail settings saved.",gmailSent:"Test email sent; check Inbox or Spam.",
 subscriptionTitle:"Subscription management",subscriptionHint:"HTTPS sources are saved and can be refreshed individually or together.",subscriptionName:"Subscription name",subscriptionUrl:"HTTPS subscription URL",addSubscription:"Add and fetch subscription",noSubscriptions:"No subscriptions saved.",updateAllSubscriptions:"Update all subscriptions",
 serverStatus:"Server status",webService:"Web service",xrayCore:"Xray Core",storage:"Storage",securityNotice:"The panel uses HTTP; passwords and session cookies are not encrypted in transit. Restrict the panel port to trusted IP addresses in your firewall.",
 ready:"Ready; each link is tested independently of system proxy settings.",historyPeriod:"History period",successRate:"Success rate",totalChecks:"Total checks",averageDelay:"Average delay",failedChecks:"Failed checks",timeline:"Connection timeline",historySource:"Only automatic monitor checks are included in this history.",
@@ -201,7 +218,7 @@ showQr:"Show QR",qrTitle:"Profile QR code",qrHint:"This QR contains the full pro
 let lang=localStorage.getItem("v2vw-lang")||"fa";
 let theme=localStorage.getItem("v2vw-theme")||"dark";
 let profiles=[],subscriptions=[],selectedId=null,monitorEnabled=false,lastStatus=new Map(),historyPeriod="24h",busy=false;
-let qrObjectUrl=null,backupMode="export",backupFile=null;
+let qrObjectUrl=null,backupMode="export",backupFile=null,gmailHasAppPassword=false;
 const t=key=>(dict[lang]&&dict[lang][key])||dict.fa[key]||key;
 const number=value=>Number(value||0).toLocaleString(lang==="fa"?"fa-IR":"en-US");
 function setMessage(id,text,kind=""){const el=$(id);el.textContent=text;el.className="message"+(kind?" "+kind:"");}
@@ -225,8 +242,8 @@ async function api(path,options={}){
 }
 async function apiJson(path,options={}){const r=await api(path,options);if(r.status===204)return null;return r.json();}
 async function loadAll(initial=false){
- const [health,rows,subs,settings,monitor]=await Promise.all([
-  apiJson("health"),apiJson("profiles"),apiJson("subscriptions"),apiJson("settings"),apiJson("monitoring")
+ const [health,rows,subs,settings,monitor,gmail]=await Promise.all([
+  apiJson("health"),apiJson("profiles"),apiJson("subscriptions"),apiJson("settings"),apiJson("monitoring"),apiJson("notifications/gmail")
  ]);
  profiles=rows;subscriptions=subs;monitorEnabled=monitor.enabled;
  $("totalCount").textContent=number(health.profileCount);$("connectedCount").textContent=number(health.connectedCount);
@@ -235,7 +252,8 @@ async function loadAll(initial=false){
  $("monitorBadge").textContent=monitorEnabled?t("monitorOn"):t("monitorOff");$("monitorBadge").className="status "+(monitorEnabled?"Connected":"");
  $("monitorButton").textContent=monitorEnabled?t("stopMonitor"):t("startMonitor");
  $("monitorButton").className=monitorEnabled?"danger":"good";
- if(initial)fillSettings(settings.Settings);
+ if(initial){fillSettings(settings.Settings);fillGmail(gmail);}
+ else renderGmailProfileOptions($("gmailEgressProfile").value);
  renderProfiles();renderSubscriptions();
 }
 function fillSettings(s){
@@ -243,6 +261,24 @@ function fillSettings(s){
  $("timeoutInput").value=s.timeoutSeconds;$("primaryUrlInput").value=s.primaryTestUrl;
  $("fallbackUrlInput").value=s.fallbackTestUrl;$("notifyDisconnect").checked=s.notifyOnDisconnect;
  $("notifyRecovery").checked=s.notifyOnRecovery;
+}
+function renderGmailProfileOptions(preferred=""){
+ const select=$("gmailEgressProfile"),current=select.value||preferred||"";
+ select.replaceChildren();
+ const direct=document.createElement("option");direct.value="";direct.textContent=t("gmailDirect");select.append(direct);
+ for(const p of profiles){const option=document.createElement("option");option.value=p.id;option.textContent=(p.name||p.host||p.id)+" · "+p.protocol;select.append(option);}
+ if(current&&!profiles.some(p=>p.id===current)){const missing=document.createElement("option");missing.value=current;missing.textContent=lang==="fa"?"پروفایل انتخاب‌شده دیگر وجود ندارد":"Selected profile no longer exists";select.append(missing);}
+ select.value=current;
+}
+function fillGmail(s){
+ gmailHasAppPassword=!!s.hasAppPassword;
+ $("gmailEnabled").checked=!!s.enabled;
+ $("gmailSenderEmail").value=s.senderEmail||"";
+ $("gmailRecipientEmail").value=s.recipientEmail||"";
+ $("gmailAppPassword").value="";
+ $("gmailClearPassword").checked=false;
+ renderGmailProfileOptions(s.egressProfileId||"");
+ $("gmailPasswordHint").textContent=gmailHasAppPassword?t("gmailPasswordSaved"):t("gmailPasswordNotSaved");
 }
 function statusLabel(status){
  return ({Connected:t("connectedStatus"),Disconnected:t("disconnectedStatus"),Unstable:t("unstable"),Checking:t("checking"),NotTestable:t("notTestable")})[status]||t("unknown");
@@ -326,6 +362,32 @@ async function saveSettings(){
  try{await apiJson("settings",{method:"PUT",body:JSON.stringify(settings)});setMessage("settingsMessage",t("settingsSaved"),"ok");setStatus(t("settingsSaved"),"ok");}
  catch(e){setMessage("settingsMessage",e.message,"error");}
  finally{$("saveSettingsButton").disabled=false;}
+}
+async function saveGmailSettings(){
+ $("saveGmailButton").disabled=true;setMessage("gmailMessage",t("saving"));
+ const body={
+  enabled:$("gmailEnabled").checked,
+  senderEmail:$("gmailSenderEmail").value.trim(),
+  recipientEmail:$("gmailRecipientEmail").value.trim(),
+  appPassword:$("gmailAppPassword").value,
+  clearAppPassword:$("gmailClearPassword").checked,
+  egressProfileId:$("gmailEgressProfile").value||null
+ };
+ try{
+  const saved=await apiJson("notifications/gmail",{method:"PUT",body:JSON.stringify(body)});
+  gmailHasAppPassword=!!saved.hasAppPassword;$("gmailAppPassword").value="";$("gmailClearPassword").checked=false;
+  $("gmailPasswordHint").textContent=gmailHasAppPassword?t("gmailPasswordSaved"):t("gmailPasswordNotSaved");
+  setMessage("gmailMessage",t("gmailSaved"),"ok");setStatus(t("gmailSaved"),"ok");
+ }catch(e){setMessage("gmailMessage",e.message,"error");}
+ finally{$("saveGmailButton").disabled=false;}
+}
+async function testGmail(){
+ $("testGmailButton").disabled=true;setMessage("gmailMessage",t("testing"));
+ try{
+  await apiJson("notifications/gmail/test",{method:"POST"});
+  setMessage("gmailMessage",t("gmailSent"),"ok");setStatus(t("gmailSent"),"ok");
+ }catch(e){setMessage("gmailMessage",e.message,"error");}
+ finally{$("testGmailButton").disabled=false;}
 }
 async function toggleMonitoring(){
  $("monitorButton").disabled=true;
@@ -488,6 +550,8 @@ $("backupDialog").addEventListener("click",e=>{if(e.target===$("backupDialog"))c
 $("deleteSelectedButton").addEventListener("click",()=>selectedId?deleteProfile(selectedId):setStatus(t("selectProfile"),"error"));
 $("deleteAllButton").addEventListener("click",deleteAll);
 $("saveSettingsButton").addEventListener("click",saveSettings);
+$("saveGmailButton").addEventListener("click",saveGmailSettings);
+$("testGmailButton").addEventListener("click",testGmail);
 $("monitorButton").addEventListener("click",toggleMonitoring);
 $("addSubscriptionButton").addEventListener("click",addSubscription);
 $("updateAllSubscriptionsButton").addEventListener("click",updateAllSubscriptions);
