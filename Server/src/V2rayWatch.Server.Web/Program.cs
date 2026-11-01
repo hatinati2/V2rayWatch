@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Mail;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -26,6 +27,7 @@ builder.Services.AddSingleton(server);
 builder.Services.AddSingleton(new ProfileSecretProtector(keyFile));
 builder.Services.AddSingleton<SqliteProfileRepository>();
 builder.Services.AddSingleton<SqliteServerStateRepository>();
+builder.Services.AddSingleton<GmailNotificationService>();
 builder.Services.AddSingleton<SubscriptionClient>();
 builder.Services.AddSingleton<IProbeEngine, XrayDelayTester>();
 builder.Services.AddHostedService<MonitoringService>();
@@ -389,6 +391,92 @@ app.MapPut("/api/v1/settings", async (
     return Results.Ok(current);
 }).RequireAuthorization();
 
+app.MapGet("/api/v1/notifications/gmail", async (SqliteServerStateRepository stateStore) =>
+{
+    var settings = await stateStore.GetGmailNotificationSettingsAsync();
+    return Results.Ok(new GmailNotificationView(
+        settings.Enabled,
+        settings.SenderEmail,
+        settings.RecipientEmail,
+        settings.EgressProfileId,
+        !string.IsNullOrWhiteSpace(settings.AppPassword)));
+}).RequireAuthorization();
+
+app.MapPut("/api/v1/notifications/gmail", async (
+    GmailNotificationRequest request,
+    SqliteServerStateRepository stateStore,
+    SqliteProfileRepository profileStore,
+    CancellationToken cancellationToken) =>
+{
+    var current = await stateStore.GetGmailNotificationSettingsAsync(cancellationToken);
+    var sender = request.SenderEmail?.Trim() ?? "";
+    var recipient = request.RecipientEmail?.Trim() ?? "";
+
+    if (sender.Length > 320 || recipient.Length > 320)
+        return Results.BadRequest(new { error = "آدرس ایمیل بیش از حد طولانی است." });
+    if (!string.IsNullOrWhiteSpace(sender) && !IsValidEmail(sender))
+        return Results.BadRequest(new { error = "آدرس Gmail فرستنده معتبر نیست." });
+    if (!string.IsNullOrWhiteSpace(recipient) && !IsValidEmail(recipient))
+        return Results.BadRequest(new { error = "آدرس ایمیل دریافت‌کننده معتبر نیست." });
+
+    var appPassword = new string((request.AppPassword ?? "").Where(c => !char.IsWhiteSpace(c)).ToArray());
+    if (appPassword.Length > 0 &&
+        (appPassword.Length != 16 || appPassword.Any(c => !char.IsAsciiLetterOrDigit(c))))
+        return Results.BadRequest(new { error = "App Password گوگل باید ۱۶ نویسه باشد؛ فاصله‌های آن را می‌توانی وارد کنی." });
+
+    string? egressProfileId = null;
+    if (!string.IsNullOrWhiteSpace(request.EgressProfileId))
+    {
+        if (!Guid.TryParse(request.EgressProfileId, out var profileId) ||
+            await profileStore.GetAsync(profileId, cancellationToken) is null)
+            return Results.BadRequest(new { error = "پروفایل مسیر خروجی انتخاب‌شده پیدا نشد." });
+        egressProfileId = profileId.ToString("D");
+    }
+
+    current.Enabled = request.Enabled;
+    current.SenderEmail = sender;
+    current.RecipientEmail = recipient;
+    current.EgressProfileId = egressProfileId;
+
+    if (request.ClearAppPassword)
+        current.AppPassword = "";
+    else if (appPassword.Length > 0)
+        current.AppPassword = appPassword;
+
+    if (current.Enabled &&
+        (!IsValidEmail(current.SenderEmail) ||
+         !IsValidEmail(current.RecipientEmail) ||
+         string.IsNullOrWhiteSpace(current.AppPassword)))
+        return Results.BadRequest(new { error = "برای فعال‌سازی، ایمیل فرستنده، ایمیل دریافت‌کننده و App Password معتبر لازم است." });
+
+    await stateStore.SaveGmailNotificationSettingsAsync(current, cancellationToken);
+    return Results.Ok(new GmailNotificationView(
+        current.Enabled,
+        current.SenderEmail,
+        current.RecipientEmail,
+        current.EgressProfileId,
+        !string.IsNullOrWhiteSpace(current.AppPassword)));
+}).RequireAuthorization();
+
+app.MapPost("/api/v1/notifications/gmail/test", async (
+    GmailNotificationService notifications,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        await notifications.SendTestAsync(cancellationToken);
+        return Results.Ok(new { sent = true });
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+}).RequireAuthorization();
+
 app.MapGet("/api/v1/monitoring", async (SqliteServerStateRepository stateStore) =>
 {
     var current = await stateStore.GetSettingsAsync();
@@ -487,6 +575,20 @@ app.MapDelete("/api/v1/subscriptions/{id}", async (
 
 app.Run();
 
+static bool IsValidEmail(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value)) return false;
+    try
+    {
+        var parsed = new MailAddress(value);
+        return string.Equals(parsed.Address, value, StringComparison.OrdinalIgnoreCase);
+    }
+    catch (FormatException)
+    {
+        return false;
+    }
+}
+
 static ProfileView ToProfileView(ServerProfile p) => new(
     p.Id, p.Name, p.Protocol, p.Host, p.Port, p.Status, p.DelayMs, p.LastCheckedUtc,
     p.ImportWarning, p.SourceSubscriptionId, p.UptimeHistory ?? [], p.ConsecutiveFailures);
@@ -496,6 +598,19 @@ public sealed record ImportRequest(string? Text);
 public sealed record BackupRequest(string Passphrase);
 public sealed record SubscriptionRequest(string? Name, string? Url);
 public sealed record MonitoringRequest(bool Enabled);
+public sealed record GmailNotificationRequest(
+    bool Enabled,
+    string? SenderEmail,
+    string? RecipientEmail,
+    string? AppPassword,
+    bool ClearAppPassword,
+    string? EgressProfileId);
+public sealed record GmailNotificationView(
+    bool Enabled,
+    string SenderEmail,
+    string RecipientEmail,
+    string? EgressProfileId,
+    bool HasAppPassword);
 public sealed record ProfileView(
     Guid Id,
     string Name,

@@ -14,17 +14,20 @@ public sealed class MonitoringService : BackgroundService
     private readonly SqliteProfileRepository _profiles;
     private readonly SqliteServerStateRepository _state;
     private readonly IProbeEngine _probe;
+    private readonly GmailNotificationService _notifications;
     private readonly ILogger<MonitoringService> _logger;
 
     public MonitoringService(
         SqliteProfileRepository profiles,
         SqliteServerStateRepository state,
         IProbeEngine probe,
+        GmailNotificationService notifications,
         ILogger<MonitoringService> logger)
     {
         _profiles = profiles;
         _state = state;
         _probe = probe;
+        _notifications = notifications;
         _logger = logger;
     }
 
@@ -81,8 +84,12 @@ public sealed class MonitoringService : BackgroundService
                                     .ConfigureAwait(false);
 
                                 if (profile.Status != previousStatus)
+                                {
                                     _logger.LogInformation("Profile {ProfileId} changed from {Previous} to {Current}",
                                         profile.Id, previousStatus, profile.Status);
+                                    await _notifications.NotifyStatusChangeAsync(
+                                        profile, previousStatus, profile.Status, settings, token).ConfigureAwait(false);
+                                }
                             }
                             catch (OperationCanceledException) when (token.IsCancellationRequested)
                             {
