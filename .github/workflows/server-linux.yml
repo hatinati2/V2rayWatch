@@ -21,8 +21,13 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Validate installer scripts
-        run: bash -n Server/scripts/bootstrap-install.sh Server/scripts/install-ubuntu.sh Server/scripts/publish-linux.sh
+      - name: Validate installer scripts and profile-key generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n Server/scripts/bootstrap-install.sh Server/scripts/install-ubuntu.sh Server/scripts/publish-linux.sh
+          profile_key="$(openssl rand -base64 32 | tr -d '\r\n')"
+          test "$(printf '%s' "$profile_key" | base64 --decode | wc -c)" -eq 32
       - run: dotnet restore Server/V2rayWatch.Server.sln
       - run: dotnet build Server/V2rayWatch.Server.sln -c Release --no-restore
       - run: dotnet test Server/V2rayWatch.Server.sln -c Release --no-build
