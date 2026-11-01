@@ -30,13 +30,17 @@ esac
 [[ "$PORT" =~ ^[0-9]+$ ]] && (( PORT >= 1024 && PORT <= 65535 )) || { echo "Port must be 1024-65535." >&2; exit 2; }
 command -v apt-get >/dev/null || { echo "apt-get is required." >&2; exit 1; }
 
+# Use disk-backed storage rather than the often small /tmp tmpfs for extraction.
+export TMPDIR="${TMPDIR:-/var/tmp}"
+mkdir -p "$TMPDIR"
+
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl jq unzip iproute2 openssl
 mkdir -p /opt/dotnet
 if [[ ! -x /opt/dotnet/dotnet ]] || ! /opt/dotnet/dotnet --list-runtimes | grep -q '^Microsoft.AspNetCore.App 10\.'; then
-  curl --fail --silent --show-error --location https://dot.net/v1/dotnet-install.sh -o /tmp/v2raywatch-dotnet-install.sh
-  bash /tmp/v2raywatch-dotnet-install.sh --runtime aspnetcore --channel 10.0 --install-dir /opt/dotnet
-  rm -f /tmp/v2raywatch-dotnet-install.sh
+  curl --fail --silent --show-error --location https://dot.net/v1/dotnet-install.sh -o "$TMPDIR/v2raywatch-dotnet-install.sh"
+  bash "$TMPDIR/v2raywatch-dotnet-install.sh" --runtime aspnetcore --channel 10.0 --install-dir /opt/dotnet
+  rm -f "$TMPDIR/v2raywatch-dotnet-install.sh"
 fi
 
 [[ -f "$PUBLISH_DIR/V2rayWatch.Server.Web.dll" ]] || { echo "Publish first using Server/scripts/publish-linux.sh." >&2; exit 1; }
