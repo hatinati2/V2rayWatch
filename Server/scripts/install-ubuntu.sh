@@ -34,7 +34,7 @@ command -v apt-get >/dev/null || { echo "apt-get is required." >&2; exit 1; }
 export TMPDIR="${TMPDIR:-/var/tmp}"
 mkdir -p "$TMPDIR"
 
-apt_source_matches="$(grep -RniE '\\b(focal|jammy)(-security|-updates|-backports)?\\b' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | head -n 8 || true)"
+apt_source_matches="$(grep -RniE '(^|[[:space:]/])(focal|jammy)(-[[:alnum:]]+)?([[:space:]/]|$)' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | head -n 8 || true)"
 if [[ -n "$apt_source_matches" ]]; then
   echo "WARNING: stale focal/jammy APT source entries detected on this Ubuntu release."
   echo "$apt_source_matches"
