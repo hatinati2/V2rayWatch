@@ -22,6 +22,7 @@ builder.WebHost.ConfigureKestrel(k => k.Listen(IPAddress.Parse(server.ListenAddr
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o =>
 {
     o.Cookie.Name = "V2rayWatch.Server.Auth";
+    o.LoginPath = "/login";
     o.Cookie.HttpOnly = true;
     o.Cookie.SameSite = SameSiteMode.Strict;
     o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
@@ -101,4 +102,4 @@ app.MapGet("/api/v1/health", () => Results.Ok(new
 
 app.Run();
 public sealed record LoginRequest(string Password);
-public partial class Program;
+public partial class Program { }
