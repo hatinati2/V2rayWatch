@@ -14,7 +14,7 @@ For each profile, the app starts a temporary Xray Core instance using that profi
 
 The app uses `CoreController.measureDelay(url)` from AndroidLibXrayLite. The default primary URL is `https://www.google.com/generate_204`; the fallback is `https://www.gstatic.com/generate_204`. Both URLs can be changed in Monitoring Settings.
 
-## Features
+## Features in development for version 0.3.2
 
 - Persian and English UI with persisted language selection.
 - Import one profile or multiple links on separate lines.
