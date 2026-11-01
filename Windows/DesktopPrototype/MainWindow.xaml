@@ -148,10 +148,10 @@
               <DataGrid.RowDetailsTemplate>
                 <DataTemplate>
                   <Grid Margin="9,3,9,7">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="135"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="165"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding RecentChecksLabel}" Foreground="{DynamicResource ThemeMutedBrush}" FontSize="10" VerticalAlignment="Center"/>
                     <ItemsControl Grid.Column="1" ItemsSource="{Binding UptimeHistory}">
-                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" Columns="20"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" Columns="50"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
                           <Border Height="9" Margin="1" CornerRadius="2">
