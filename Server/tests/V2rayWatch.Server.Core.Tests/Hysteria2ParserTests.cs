@@ -57,6 +57,27 @@ public sealed class Hysteria2ParserTests
         Assert.Equal("Hysteria2", profiles[0].Protocol);
     }
 
+    [Theory]
+    [InlineData("hy2://secret-password@hy2.example.net:443?sni=cdn.example.net", "hysteria2-basic.json")]
+    [InlineData("hy2://secret-password@hy2.example.net:443?sni=cdn.example.net&obfs=salamander&obfs-password=obfs-secret", "hysteria2-salamander.json")]
+    [InlineData("hy2://secret-password@hy2.example.net:20000-20010,443?sni=cdn.example.net&mportInterval=20", "hysteria2-port-hop.json")]
+    public void Parser_Output_Matches_Xray_Core_Validation_Fixtures(string link, string fixture)
+    {
+        var profile = ServerProfileParser.ParseOne(link);
+        var actual = JsonNode.Parse(profile.ConfigJson)!.AsObject();
+        actual["inbounds"] = new JsonArray(new JsonObject
+        {
+            ["tag"] = "v2vw-socks",
+            ["listen"] = "127.0.0.1",
+            ["port"] = 10808,
+            ["protocol"] = "socks",
+            ["settings"] = new JsonObject { ["auth"] = "noauth", ["udp"] = false }
+        });
+        var expectedPath = Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture);
+        var expected = JsonNode.Parse(File.ReadAllText(expectedPath))!;
+        Assert.True(JsonNode.DeepEquals(expected, actual), $"Parser output differs from {fixture}");
+    }
+
     [Fact]
     public void Rejects_Hysteria2_With_Invalid_Port()
     {

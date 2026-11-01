@@ -19,3 +19,20 @@ jobs:
       - run: dotnet restore Server/V2rayWatch.Server.sln
       - run: dotnet build Server/V2rayWatch.Server.sln -c Release --no-restore
       - run: dotnet test Server/V2rayWatch.Server.sln -c Release --no-build
+      - name: Validate Hysteria2 configs with Xray Core
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="$(curl --fail --silent --show-error --location https://api.github.com/repos/XTLS/Xray-core/releases/latest)"
+          url="$(jq -r '.assets[] | select(.name == "Xray-linux-64.zip") | .browser_download_url' <<< "$release" | head -n1)"
+          digest="$(jq -r '.assets[] | select(.name == "Xray-linux-64.zip") | .digest // empty' <<< "$release" | head -n1)"
+          test -n "$url"
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          curl --fail --silent --show-error --location --retry 3 "$url" -o "$tmp/xray.zip"
+          echo "${digest#sha256:}  $tmp/xray.zip" | sha256sum --check --status
+          unzip -q "$tmp/xray.zip" -d "$tmp"
+          for config in Server/tests/V2rayWatch.Server.Core.Tests/Fixtures/hysteria2-*.json; do
+            "$tmp/xray" run -test -config "$config"
+          done
