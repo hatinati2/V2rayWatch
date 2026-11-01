@@ -10,14 +10,14 @@
 - systemd و اجرای خودکار پس از reboot با کاربر غیر root
 - اسکریپت Native مخصوص Ubuntu 24.04
 
-**هنوز آماده نیست:** موتور Xray لینوکس، مدیریت پروفایل/Subscription، پایش دائمی، SQLite، تاریخچه و نمودار. ظرفیت 100 پروفایل فعلاً هدف طراحی است، نه قابلیت فعال این build.
+**آماده در این مرحله:** واردکردن لینک‌های VLESS، VMess، Trojan، Shadowsocks، Hysteria2 (hy2:// و hysteria2://) و Xray JSON؛ ذخیره SQLite با رمزنگاری AES-256-GCM؛ حذف پروفایل و تست دستی واقعی از مسیر Xray. سقف فعلی 100 پروفایل است. Subscription URL، پایش پس‌زمینه، تاریخچه و نمودار در مرحله‌های بعدی می‌آیند.
 
 ## ساخت و نصب
 روی سیستم build، .NET 10 SDK نصب باشد:
 ```bash
 bash Server/scripts/publish-linux.sh
 ```
-پوشهٔ `Server/publish` را به Ubuntu 24.04 منتقل کنید و .NET 10 ASP.NET Core Runtime را نصب کنید:
+پوشهٔ `Server/publish` را به Ubuntu 24.04 منتقل کنید و .NET 10 ASP.NET Core Runtime را نصب کنید. نصب‌کننده Xray Core رسمی را نیز برای x86_64 یا ARM64 دانلود و SHA-256 آن را اعتبارسنجی می‌کند:
 ```bash
 sudo bash Server/scripts/install-ubuntu.sh
 ```
@@ -40,6 +40,9 @@ sudo systemctl restart v2raywatch
 sudo systemctl status v2raywatch
 sudo journalctl -u v2raywatch -n 100 --no-pager
 ```
+
+## رمزنگاری داده پروفایل
+اطلاعات خام لینک و تنظیمات شامل رمزها داخل SQLite با AES-256-GCM رمز می‌شوند. کلید در `/etc/v2raywatch/profile.key` قرار دارد؛ حتماً از آن نسخهٔ پشتیبان امن بگیر. بدون این کلید پروفایل‌های ذخیره‌شده قابل بازیابی نیستند.
 
 ## امنیت
 پنل فعلاً فقط HTTP است؛ PATH تصادفی جایگزین احراز هویت نیست و HTTP رمز عبور/کوکی نشست را در مسیر شبکه رمزنگاری نمی‌کند. برای تست Public پورت را در Firewall فقط برای IPهای مورد اعتماد باز کنید. نصب‌کننده Firewall را تغییر نمی‌دهد.
