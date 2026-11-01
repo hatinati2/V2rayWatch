@@ -83,7 +83,7 @@ find /opt/v2raywatch -type f -exec chmod 0644 {} \;
 chmod 0755 /opt/v2raywatch/xray
 
 install -d -o root -g v2raywatch -m 0750 /etc/v2raywatch
-install -d -o v2raywatch -g v2raywatch -m 0750 /var/lib/v2raywatch /var/lib/v2raywatch/runtime
+install -d -o v2raywatch -g v2raywatch -m 0700 /var/lib/v2raywatch /var/lib/v2raywatch/runtime
 cat > /etc/v2raywatch/server.json <<EOF
 {"Server":{"ListenAddress":"0.0.0.0","Port":$PORT,"BasePath":"$ADMIN_PATH","DataDirectory":"/var/lib/v2raywatch"}}
 EOF
