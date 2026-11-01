@@ -589,7 +589,7 @@ private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth()) {
             cells.forEachIndexed { index, mark ->
                 val cellColor = when (mark) {
                     UptimeMark.CONNECTED -> Color(0xFF16A34A)
@@ -664,8 +664,8 @@ private fun BackupDialog(
                 Text(
                     uiText(
                         language,
-                        "فایل پشتیبان شامل کانفیگ‌ها، تنظیمات و ۵۰ نتیجهٔ اخیر است و با رمز عبور خودت رمزگذاری می‌شود. تاریخچهٔ بلندمدت جداگانه و فقط روی همین دستگاه نگهداری می‌شود.",
-                        "The backup contains profiles, settings, and the 50 most recent checks. Long-term history is stored separately on this device and is not included in the portable backup."
+                        "فایل پشتیبان شامل کانفیگ‌ها، تنظیمات و تا ۵۰ نتیجهٔ اخیر است و با رمز عبور خودت رمزگذاری می‌شود. تاریخچهٔ بلندمدت جداگانه و فقط روی همین دستگاه نگهداری می‌شود.",
+                        "The backup contains profiles, settings, and up to 50 recent checks. Long-term history is stored separately on this device and is not included in the portable backup."
                     ),
                     style = MaterialTheme.typography.bodySmall
                 )
