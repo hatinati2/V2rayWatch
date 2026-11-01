@@ -24,11 +24,41 @@ See the [combined V2rayWatch 0.3.2 release](https://github.com/hatinati2/V2rayWa
 
 The native Linux Server release supports **Ubuntu 24.04 LTS (Noble)** and **Ubuntu 26.04 LTS (Resolute)** on x86_64 and ARM64. It uses .NET 10 and systemd, without Docker. The browser dashboard remains HTTP-only; restrict its configurable panel port (default 6100) to trusted IP addresses. Gmail SMTP uses outbound STARTTLS on port 587 and does not open an inbound port.
 
-Fresh install (release-pinned):
+### Fresh installation
+
+**Requirements:** Ubuntu 24.04 LTS or Ubuntu 26.04, x86_64 or ARM64, a sudo-capable account, and internet access. The installer uses the default TCP panel port **6100**.
+
+Run this single command on a new server:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/bootstrap-install.sh | sudo bash
 ```
+
+The installer downloads the pinned `v0.3.2` source, installs the required packages and .NET 10 SDK, builds the web panel, downloads the official Xray Core build for your CPU architecture and verifies its SHA-256 digest. It then creates the `v2raywatch` systemd service, generates a random private panel path and an initial admin password, and starts the service automatically.
+
+When installation finishes, the terminal prints the panel URL, username and password. The login username is `admin`. The initial credentials are also saved in `/root/v2raywatch-initial-credentials.txt` (permissions `0600`). Save them securely; delete that file after recording the login details.
+
+To use a different panel port, for example TCP 6200:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6200
+```
+
+After installation, open the printed URL in your browser. Replace `SERVER-IP` with your server's IP address. The installer does not change firewall rules; allow the selected panel port only from trusted IP addresses. **The panel currently uses HTTP, not HTTPS.** Do not expose the login page to an untrusted network.
+
+### View the admin password
+
+The password remains in the root-protected configuration file. To print only the current admin password:
+
+```bash
+sudo awk -F= '$1 == "V2RAYWATCH_ADMIN_PASSWORD" { print $2 }' /etc/v2raywatch/admin.env
+```
+
+Keep the password private. Also make a secure backup of `/etc/v2raywatch/profile.key`; without this encryption key, stored proxy profiles cannot be decrypted.
+
+### Update an existing installation
+
+For an existing V2rayWatch Server installation, use the updater below. **Do not run the fresh-install command again**; the installer intentionally refuses to overwrite an existing installation.
 
 Update an existing installation without deleting profiles, settings or credentials:
 
