@@ -43,12 +43,16 @@ public sealed class XrayDelayTester : IProbeEngine
                 try
                 {
                     Directory.CreateDirectory(workDirectory);
+                    if (OperatingSystem.IsLinux())
+                        File.SetUnixFileMode(workDirectory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
                     using var startupTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     startupTimeout.CancelAfter(TimeSpan.FromSeconds(12));
                     var port = GetFreePort();
                     var configPath = Path.Combine(workDirectory, "config.json");
                     var config = BuildTestConfig(profile.ConfigJson, port);
                     await File.WriteAllTextAsync(configPath, config.ToJsonString(), new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+                    if (OperatingSystem.IsLinux())
+                        File.SetUnixFileMode(configPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
 
                     var start = new ProcessStartInfo
                     {
