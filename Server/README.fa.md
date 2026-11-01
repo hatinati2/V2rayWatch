@@ -1,6 +1,6 @@
 # V2rayWatch Server
 
-نسخهٔ مستقل Linux با پنل وب، با رابط نزدیک به نسخهٔ Windows و سرویس پایش systemd. این نسخه هنوز preview است و جایگزین نسخه‌های Android و Windows نیست.
+نسخهٔ مستقل Linux با پنل وب، با هویت بصری یکسان با Android و Windows و سرویس پایش systemd. این نسخه در انتشار مشترک V2rayWatch **0.3.2** ارائه می‌شود.
 
 ## آماده در این مرحله
 - ASP.NET Core روی .NET 10 با ساختار Core / Engine / Web
@@ -20,19 +20,19 @@
 ## نصب با یک دستور
 روی سرور تازه Ubuntu 24.04 یا 26.04 فقط این دستور را اجرا کن:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/bootstrap-install.sh | sudo bash
 ```
 پورت پیش‌فرض 6100 است. برای تغییر پورت، مثلاً:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6200
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6200
 ```
-این دستور فضای موقت را روی `/var/tmp` قرار می‌دهد، .NET 10 را نصب یا نسخهٔ موجود را دوباره استفاده می‌کند، سورس همین شاخه را build می‌کند و سپس Xray Core و سرویس systemd را نصب می‌کند. پورت پیش‌فرض ۶۱۰۰ است تا با محدودیت مرورگر روی پورت ۶۰۰۰ برخورد نکند. نصب‌کننده اگر نصب قبلی را تشخیص دهد، برای جلوگیری از بازنویسی داده‌ها متوقف می‌شود. اگر مخازن قدیمی focal/jammy روی سیستم باشند، فقط هشدار می‌دهد و آن‌ها را خودکار تغییر نمی‌دهد.
+این دستور نسخهٔ رسمی `v0.3.2` را دریافت می‌کند، فضای موقت را روی `/var/tmp` قرار می‌دهد، .NET 10 را نصب یا نسخهٔ موجود را دوباره استفاده می‌کند، سورس همان Release را build می‌کند و سپس Xray Core و سرویس systemd را نصب می‌کند. پورت پیش‌فرض ۶۱۰۰ است تا با محدودیت مرورگر روی پورت ۶۰۰۰ برخورد نکند. نصب‌کننده اگر نصب قبلی را تشخیص دهد، برای جلوگیری از بازنویسی داده‌ها متوقف می‌شود. اگر مخازن قدیمی focal/jammy روی سیستم باشند، فقط هشدار می‌دهد و آن‌ها را خودکار تغییر نمی‌دهد.
 
 ### به‌روزرسانی نصب موجود (بدون حذف اطلاعات)
 
 برای نسخه‌ای که قبلاً نصب شده، **bootstrap را دوباره اجرا نکن**؛ از updater استفاده کن:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/update-ubuntu.sh | bash
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/update-ubuntu.sh | bash
 ```
 Updater برنامه را در مسیر موقت روی دیسک build می‌کند، قبل از تعویض سرویس از نسخهٔ فعلی snapshot می‌گیرد و اگر نسخهٔ جدید بالا نیاید، فایل‌های برنامه و unit قبلی systemd را برمی‌گرداند. فایل تنظیمات، رمز مدیر، PATH پنل، کلید رمزنگاری و بانک اطلاعاتی در مسیرهای مستقل باقی می‌مانند.
 
