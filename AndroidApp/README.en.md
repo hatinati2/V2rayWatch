@@ -78,7 +78,9 @@ Disconnect and recovery alerts use separate Android notification channels. Both 
 - Some advanced transport options may require additional parser work.
 - At most two temporary Xray Core instances are tested concurrently.
 - Xray Core is started temporarily for each profile test and stopped afterward. This app does not yet create a full-device VPN/TUN tunnel.
-- Continuous monitoring uses an Android foreground service and a persistent notification. Battery optimizations and device-vendor restrictions may delay checks.
+- Continuous monitoring uses an Android foreground service, a persistent notification, and a timed partial wake lock so checks can continue while the screen is off. Keeping the CPU awake while monitoring is active increases battery use; the wake lock is released when monitoring stops.
+- Set the app's battery usage to **No restriction**. Battery Saver, device-vendor policies, and system resource pressure can still affect actual check timing.
+- If the user stops the app through Android's Task Manager (Android 13+) or uses **Force stop** in system settings, Android terminates the entire app and prevents automatic restart. Open the app and manually enable monitoring again. Simply removing the Activity from Recents should not stop the started service.
 - Monitoring is not automatically restarted after a device reboot; start it again from inside the app.
 - If another VPN is active, Android may route V2rayWatch's own test connection through that VPN.
 - Subscriptions are fetched over HTTPS only.
