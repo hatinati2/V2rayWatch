@@ -135,12 +135,12 @@ fun ConnectionHistoryDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    formatBucketDate(summary.startEpochMs, range, language, isStart = true),
+                                    formatBucketDate(summary.startEpochMs, range, language),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    formatBucketDate(summary.endEpochMs, range, language, isStart = false),
+                                    formatBucketDate(summary.endEpochMs, range, language),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -345,7 +345,7 @@ private fun EmptyHistory(language: AppLanguage, loading: Boolean) {
     }
 }
 
-private fun formatBucketDate(epochMs: Long, range: ConnectionHistoryRange, language: AppLanguage, isStart: Boolean): String {
+private fun formatBucketDate(epochMs: Long, range: ConnectionHistoryRange, language: AppLanguage): String {
     val locale = if (language.isEnglish) Locale.US else Locale("fa", "IR")
     val pattern = if (range == ConnectionHistoryRange.LAST_24_HOURS) "HH:mm" else "MMM d"
     return SimpleDateFormat(pattern, locale).format(Date(epochMs))
