@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 REPOSITORY="hatinati2/V2rayWatch"
-BRANCH="feature/linux-server"
+SOURCE_REF="v0.3.2"
 APP_DIR="/opt/v2raywatch"
 CONFIG_DIR="/etc/v2raywatch"
 DATA_DIR="/var/lib/v2raywatch"
@@ -86,9 +86,9 @@ export PATH="/opt/dotnet:$PATH"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 export DOTNET_NOLOGO=1
 
-echo "[3/5] Downloading and building $BRANCH..."
+echo "[3/5] Downloading and building $SOURCE_REF..."
 curl --fail --silent --show-error --location --retry 3 \
-  "https://codeload.github.com/$REPOSITORY/tar.gz/refs/heads/$BRANCH" \
+  "https://codeload.github.com/$REPOSITORY/tar.gz/refs/tags/$SOURCE_REF" \
   -o "$WORK_DIR/source.tar.gz"
 mkdir "$WORK_DIR/source"
 tar -xzf "$WORK_DIR/source.tar.gz" --strip-components=1 -C "$WORK_DIR/source"
