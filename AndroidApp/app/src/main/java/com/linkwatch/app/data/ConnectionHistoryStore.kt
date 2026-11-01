@@ -34,6 +34,9 @@ class ConnectionHistoryStore(context: Context) :
             "CREATE INDEX index_connection_checks_profile_time " +
                 "ON connection_checks(profile_id, checked_at_ms)"
         )
+        db.execSQL(
+            "CREATE INDEX index_connection_checks_time ON connection_checks(checked_at_ms)"
+        )
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
