@@ -102,6 +102,91 @@ public sealed class ServerStateRepositoryTests
         Assert.Equal(0, refreshed.ProfileCount);
     }
 
+    [Fact]
+    public void PortableBackup_RoundTripsAndKeepsTheSharedWindowsAndroidFormat()
+    {
+        var rawLink = "vless://00000000-0000-0000-0000-000000000001@edge.example:443?security=tls&sni=edge.example#Backup";
+        var profile = ServerProfileParser.ParseOne(rawLink);
+        profile.UptimeHistory = ["G", "R", "G"];
+        var settings = new MonitorSettings
+        {
+            IntervalSeconds = 60,
+            ConsecutiveFailureThreshold = 3,
+            NotifyOnDisconnect = false
+        };
+        var passphrase = "correct horse battery staple".ToCharArray();
+
+        try
+        {
+            var encrypted = PortableBackupService.CreateBackup([profile], settings, passphrase);
+            Assert.Equal("V2VWBAK1", System.Text.Encoding.ASCII.GetString(encrypted, 0, 8));
+
+            var restored = PortableBackupService.RestoreBackup(encrypted, passphrase, Array.Empty<ServerProfile>());
+            var restoredProfile = Assert.Single(restored.Profiles);
+            Assert.Equal(rawLink, restoredProfile.RawUri);
+            Assert.Equal("Unknown", restoredProfile.Status);
+            Assert.Equal("", restoredProfile.SourceSubscriptionId);
+            Assert.Equal(60, restored.Settings.IntervalSeconds);
+            Assert.Equal(3, restored.Settings.ConsecutiveFailureThreshold);
+            Assert.False(restored.Settings.NotifyOnDisconnect);
+            Assert.Equal(1, restored.AddedProfiles);
+        }
+        finally
+        {
+            Array.Clear(passphrase, 0, passphrase.Length);
+        }
+    }
+
+    [Fact]
+    public void PortableBackup_SkipsProfilesAlreadyPresent()
+    {
+        var rawLink = "vless://00000000-0000-0000-0000-000000000002@edge.example:443?security=tls&sni=edge.example#Duplicate";
+        var profile = ServerProfileParser.ParseOne(rawLink);
+        var passphrase = "another secure passphrase".ToCharArray();
+        try
+        {
+            var encrypted = PortableBackupService.CreateBackup([profile], new MonitorSettings(), passphrase);
+            var existing = ServerProfileParser.ParseOne(rawLink);
+            var restored = PortableBackupService.RestoreBackup(encrypted, passphrase, [existing]);
+            Assert.Single(restored.Profiles);
+            Assert.Equal(0, restored.AddedProfiles);
+            Assert.Equal(1, restored.SkippedProfiles);
+        }
+        finally
+        {
+            Array.Clear(passphrase, 0, passphrase.Length);
+        }
+    }
+
+    [Fact]
+    public void PortableBackup_RejectsWrongPassphrase()
+    {
+        var profile = ServerProfileParser.ParseOne(
+            "vless://00000000-0000-0000-0000-000000000003@edge.example:443?security=tls&sni=edge.example#WrongPass");
+        var correct = "backup password is long enough".ToCharArray();
+        var wrong = "different password is wrong".ToCharArray();
+        try
+        {
+            var encrypted = PortableBackupService.CreateBackup([profile], new MonitorSettings(), correct);
+            Assert.Throws<CryptographicException>(() =>
+                PortableBackupService.RestoreBackup(encrypted, wrong, Array.Empty<ServerProfile>()));
+        }
+        finally
+        {
+            Array.Clear(correct, 0, correct.Length);
+            Array.Clear(wrong, 0, wrong.Length);
+        }
+    }
+
+    [Fact]
+    public void QrCodeService_GeneratesPngForProfileLink()
+    {
+        var png = QrCodeService.GeneratePng(
+            "vless://00000000-0000-0000-0000-000000000004@edge.example:443?security=tls&sni=edge.example#QR");
+        Assert.True(png.Length > 100);
+        Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, png[..8]);
+    }
+
     [Theory]
     [InlineData("http://example.com/subscription")]
     [InlineData("https://127.0.0.1/private")]
