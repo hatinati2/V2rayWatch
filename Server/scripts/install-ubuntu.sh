@@ -19,7 +19,14 @@ done
 
 [[ $EUID -eq 0 ]] || { echo "Run with sudo/root." >&2; exit 1; }
 . /etc/os-release
-[[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.04" ]] || { echo "Ubuntu 24.04 required." >&2; exit 1; }
+case "${ID:-}:${VERSION_ID:-}:${VERSION_CODENAME:-}" in
+  ubuntu:24.04:noble|ubuntu:26.04:resolute) ;;
+  *)
+    echo "Ubuntu 24.04 (noble) or Ubuntu 26.04 (resolute) required." >&2
+    echo "Detected: ${PRETTY_NAME:-unknown} (${VERSION_CODENAME:-unknown})." >&2
+    exit 1
+    ;;
+esac
 [[ "$PORT" =~ ^[0-9]+$ ]] && (( PORT >= 1024 && PORT <= 65535 )) || { echo "Port must be 1024-65535." >&2; exit 2; }
 command -v apt-get >/dev/null || { echo "apt-get is required." >&2; exit 1; }
 
