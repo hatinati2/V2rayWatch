@@ -18,6 +18,7 @@ import com.linkwatch.app.data.ProxyProfile
 import com.linkwatch.app.data.reduceLinkCheck
 import com.linkwatch.app.monitor.MonitorController
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
