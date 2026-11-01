@@ -21,7 +21,7 @@
       "settings": {
         "version": 2,
         "address": "hy2.example.net",
-        "port": 443
+        "port": 20000
       },
       "streamSettings": {
         "method": "hysteria",
