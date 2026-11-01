@@ -18,7 +18,7 @@ Android, Windows and Linux Server are published together under the shared `v0.3.
   - Install: `curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/bootstrap-install.sh | sudo bash`
   - Update existing installation: `curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/update-ubuntu.sh | sudo bash`
 
-See the [combined V2rayWatch 0.3.2 release](https://github.com/hatinati2/V2rayWatch/releases/tag/v0.3.2) for both packages and the combined checksum manifest.
+See the [combined V2rayWatch 0.3.2 release](https://github.com/hatinati2/V2rayWatch/releases/tag/v0.3.2) for all three platform packages and the combined checksum manifest.
 
 ## Linux Server 0.3.2
 
