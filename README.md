@@ -31,7 +31,13 @@ Custom port example:
 curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6200
 ```
 
-The Linux dashboard now includes the Windows-inspired profile table, search, test-one/test-all actions, persistent background monitoring, 50 recent automatic checks, 24-hour/7-day history data, saved monitor settings, and HTTPS subscription add/refresh/delete. The UI supports Persian/English and dark/light themes. QR and encrypted cross-platform backup/restore are not yet implemented on Linux. The panel currently uses HTTP. Restrict its TCP port to trusted IP addresses with your firewall; HTTP does not encrypt passwords or session cookies in transit. The installer uses disk-backed `/var/tmp`, reuses an existing .NET 10 SDK, and warns about stale `focal`/`jammy` APT sources without rewriting them.
+Update an existing installation without deleting profiles, settings or credentials:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/update-ubuntu.sh | sudo bash
+```
+
+The Linux dashboard now includes the Windows-inspired profile table, search, test-one/test-all actions, persistent background monitoring, 50 recent automatic checks, 24-hour/7-day history data, saved monitor settings, and HTTPS subscription add/refresh/delete. The UI supports Persian/English and dark/light themes. Browser notifications are shown only while the dashboard is open; QR and encrypted cross-platform backup/restore are not yet implemented on Linux. The panel currently uses HTTP. Restrict its TCP port to trusted IP addresses with your firewall; HTTP does not encrypt passwords or session cookies in transit. The installers use disk-backed `/var/tmp`, reuse an existing .NET 10 SDK, generate OpenSSL-compatible profile keys, and warn about stale `focal`/`jammy` APT sources without rewriting them. The update script builds into a temporary directory, swaps the app, and rolls back the previous binaries if systemd cannot start the new version.
 
 ## Shared encrypted backup
 
