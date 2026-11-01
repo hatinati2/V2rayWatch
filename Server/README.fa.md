@@ -17,7 +17,7 @@
 ```bash
 bash Server/scripts/publish-linux.sh
 ```
-پوشهٔ `Server/publish` را به Ubuntu 24.04 منتقل کنید و .NET 10 ASP.NET Core Runtime را نصب کنید. نصب‌کننده Xray Core رسمی را نیز برای x86_64 یا ARM64 دانلود و SHA-256 آن را اعتبارسنجی می‌کند:
+پوشهٔ `Server/publish` را به Ubuntu 24.04 منتقل کنید. نصب‌کننده وابستگی‌ها، ASP.NET Core Runtime نسخه 10 و Xray Core رسمی متناسب با x86_64 یا ARM64 را نصب می‌کند و SHA-256 بسته Xray را اعتبارسنجی می‌کند:
 ```bash
 sudo bash Server/scripts/install-ubuntu.sh
 ```

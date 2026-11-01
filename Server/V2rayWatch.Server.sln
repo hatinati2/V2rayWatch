@@ -28,8 +28,6 @@ Global
     {DB9C41C8-0B8C-49A3-AF8A-9E3DC5B01103}.Debug|Any CPU.Build.0 = Debug|Any CPU
     {DB9C41C8-0B8C-49A3-AF8A-9E3DC5B01103}.Release|Any CPU.ActiveCfg = Release|Any CPU
     {DB9C41C8-0B8C-49A3-AF8A-9E3DC5B01103}.Release|Any CPU.Build.0 = Release|Any CPU
-  EndGlobalSection
-  GlobalSection(ProjectConfigurationPlatforms) = postSolution
     {DB9C41C8-0B8C-49A3-AF8A-9E3DC5B01104}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
     {DB9C41C8-0B8C-49A3-AF8A-9E3DC5B01104}.Debug|Any CPU.Build.0 = Debug|Any CPU
     {DB9C41C8-0B8C-49A3-AF8A-9E3DC5B01104}.Release|Any CPU.ActiveCfg = Release|Any CPU

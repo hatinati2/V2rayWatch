@@ -1,6 +1,62 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V2rayWatch Server</title>
-<style>:root{color-scheme:dark;font-family:system-ui;background:#0b1220;color:#e5edf8}*{box-sizing:border-box}body{margin:0}header{display:flex;justify-content:space-between;padding:20px 5vw;border-bottom:1px solid #263752;background:#101a2b}button{padding:9px 13px;border:1px solid #344763;border-radius:8px;background:#17253b;color:inherit;cursor:pointer}main{width:min(100% - 36px,1100px);margin:38px auto}.muted,.label{color:#9fb0c8}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:28px}.card{padding:22px;background:#121d30;border:1px solid #263752;border-radius:14px}.value{margin-top:10px;font-size:24px;font-weight:700}.notice{margin-top:26px;padding:18px;border-left:3px solid #d7a64a;background:#221d15;color:#e8d7b4;line-height:1.6}</style></head><body>
-<header><strong>V2RAYWATCH SERVER</strong><button id="logout">Sign out</button></header><main><h1>Server overview</h1><div class="muted">Linux monitoring server · initial development build</div>
-<section class="grid"><article class="card"><div class="label">Web service</div><div class="value" id="status">Loading…</div></article><article class="card"><div class="label">Profile capacity target</div><div class="value">100</div></article><article class="card"><div class="label">Probe engine</div><div class="value">Not ready</div></article><article class="card"><div class="label">Storage</div><div class="value">Not ready</div></article></section>
-<div class="notice">Foundation build only: profile management, Xray live checks, SQLite history and background monitoring are not enabled yet.</div><p id="version" class="muted"></p></main>
-<script>async function status(){const r=await fetch('./api/v1/health');if(r.status===401){location.href='./login';return;}if(!r.ok)throw Error();const d=await r.json();document.getElementById('status').textContent=d.status;document.getElementById('version').textContent='Version '+d.version;}document.getElementById('logout').onclick=async()=>{await fetch('./api/v1/logout',{method:'POST'});location.href='./login';};status().catch(()=>document.getElementById('status').textContent='Unavailable');</script></body></html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V2rayWatch Server</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0b1220;color:#e5edf8}*{box-sizing:border-box}
+body{margin:0;min-height:100vh}header{display:flex;justify-content:space-between;align-items:center;padding:18px clamp(18px,5vw,64px);border-bottom:1px solid #263752;background:#101a2b}
+main{width:min(100% - 36px,1120px);margin:32px auto}.brand{font-weight:800;letter-spacing:.04em}button{border:1px solid #344763;border-radius:8px;padding:9px 13px;background:#17253b;color:#dce8f8;cursor:pointer}
+button.primary{background:#5b8def;color:#081222;border-color:#5b8def;font-weight:700}button.danger{color:#ffaaaa}button:disabled{opacity:.55;cursor:wait}
+.muted,.label{color:#9fb0c8}.top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}h1{margin:0 0 6px;font-size:clamp(25px,4vw,34px)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:24px 0}.card{padding:18px;background:#121d30;border:1px solid #263752;border-radius:14px}.label{font-size:13px}.value{margin-top:8px;font-size:22px;font-weight:700}
+.panel{padding:20px;margin-top:18px;background:#121d30;border:1px solid #263752;border-radius:14px}.panel h2{font-size:18px;margin:0 0 14px}
+textarea{display:block;width:100%;min-height:120px;padding:13px;background:#0b1220;color:inherit;border:1px solid #344763;border-radius:9px;font:13px ui-monospace,monospace;resize:vertical}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}#message{color:#9fb0c8;font-size:13px;min-height:20px}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #263752}th{color:#9fb0c8;font-size:12px;font-weight:600}
+.status{display:inline-block;padding:4px 8px;border-radius:20px;background:#253247;font-size:12px}.status.Connected{background:#173d30;color:#8ce0b8}.status.Disconnected{background:#442525;color:#ffaaaa}
+.empty{padding:28px;text-align:center;color:#9fb0c8}.notice{margin-top:18px;color:#d9c49c;font-size:13px;line-height:1.6}
+@media(max-width:700px){table,tbody,tr,td{display:block}thead{display:none}tr{border-bottom:1px solid #263752;padding:8px 0}td{border:0;padding:5px 0}td:before{content:attr(data-label) ": ";color:#9fb0c8}}
+</style></head><body>
+<header><div class="brand">V2RAYWATCH SERVER</div><button id="logout">Sign out</button></header>
+<main><div class="top"><div><h1>Server overview</h1><div class="muted">Linux monitoring server · profile import and on-demand checks</div></div><button id="refresh">Refresh</button></div>
+<section class="grid">
+<article class="card"><div class="label">Web service</div><div class="value" id="service">Loading…</div></article>
+<article class="card"><div class="label">Profiles</div><div class="value" id="count">0 / 100</div></article>
+<article class="card"><div class="label">Xray Core</div><div class="value" id="engine">Checking…</div></article>
+<article class="card"><div class="label">Storage</div><div class="value" id="storage">SQLite</div></article>
+</section>
+<section class="panel"><h2>Import profiles</h2><div class="muted">Paste one link, multiple links (one per line), a Base64 subscription body, or one Xray JSON configuration. Hysteria2 (hy2:// and hysteria2://) is supported.</div>
+<textarea id="links" spellcheck="false" placeholder="hy2://password@server.example:443?sni=server.example&#10;vless://..."></textarea>
+<div class="actions"><button class="primary" id="import">Import</button><span id="message" role="status"></span></div></section>
+<section class="panel"><h2>Profiles</h2><div class="muted">Manual HTTPS checks are routed through each selected profile using Xray Core.</div><div id="profiles"><div class="empty">Loading profiles…</div></div></section>
+<div class="notice">HTTP mode is not encrypted in transit. Restrict access to trusted IP addresses at the server firewall. Temporary Xray SOCKS ports listen only on loopback.</div></main>
+<script>
+const message=document.getElementById('message'),profilesBox=document.getElementById('profiles');
+function showMessage(text){message.textContent=text;}
+async function api(path,options={}){const response=await fetch('./api/v1/'+path,options);if(response.status===401){location.href='./login';throw new Error('Authentication required');}return response;}
+function makeButton(label,kind,handler){const b=document.createElement('button');b.textContent=label;if(kind)b.className=kind;b.addEventListener('click',handler);return b;}
+async function load(){
+ const hr=await api('health');if(!hr.ok)throw Error('Health request failed');const h=await hr.json();
+ document.getElementById('service').textContent=h.status;document.getElementById('count').textContent=h.profileCount+' / '+h.profileCapacity;
+ document.getElementById('engine').textContent=h.probeEngine;document.getElementById('storage').textContent=h.storage;
+ const response=await api('profiles');if(!response.ok)throw Error('Profile request failed');const rows=await response.json();profilesBox.replaceChildren();
+ if(!rows.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='No profiles imported yet.';profilesBox.append(empty);return;}
+ const table=document.createElement('table'),thead=document.createElement('thead'),headRow=document.createElement('tr');
+ ['Name','Protocol','Server','Status','Delay','Actions'].forEach(x=>{const th=document.createElement('th');th.textContent=x;headRow.append(th);});thead.append(headRow);table.append(thead);
+ const body=document.createElement('tbody');rows.forEach(p=>{
+  const row=document.createElement('tr'),values=[p.name,p.protocol,p.host+(p.port?':'+p.port:''),p.status||'Unknown',p.delayMs==null?'—':p.delayMs+' ms'],labels=['Name','Protocol','Server','Status','Delay'];
+  values.forEach((value,i)=>{const td=document.createElement('td');td.dataset.label=labels[i];if(i===3){const badge=document.createElement('span');badge.className='status '+(p.status||'');badge.textContent=value;td.append(badge);}else td.textContent=value;row.append(td);});
+  const actions=document.createElement('td');actions.dataset.label='Actions';
+  const test=makeButton('Test','',async()=>{test.disabled=true;test.textContent='Testing…';try{const r=await api('profiles/'+p.id+'/test',{method:'POST'});const d=await r.json();showMessage(d.success?'Connected · '+d.delayMs+' ms':'Failed · '+(d.error||'No response'));await load();}catch(e){showMessage(e.message);}finally{test.disabled=false;test.textContent='Test';}});
+  const remove=makeButton('Delete','danger',async()=>{if(!confirm('Delete this profile?'))return;const r=await api('profiles/'+p.id,{method:'DELETE'});if(r.ok){showMessage('Profile deleted.');await load();}});
+  actions.append(test,document.createTextNode(' '),remove);row.append(actions);body.append(row);
+ });table.append(body);profilesBox.append(table);
+}
+document.getElementById('import').addEventListener('click',async()=>{
+ const text=document.getElementById('links').value;if(!text.trim()){showMessage('Paste a profile link or configuration first.');return;}
+ const button=document.getElementById('import');button.disabled=true;showMessage('Importing…');
+ try{const r=await api('profiles/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});const d=await r.json();if(!r.ok){showMessage(d.error||'Import failed.');return;}showMessage('Imported '+d.imported+' · ignored '+d.ignored+' · total '+d.total);document.getElementById('links').value='';await load();}
+ catch(e){showMessage(e.message);}finally{button.disabled=false;}
+});
+document.getElementById('refresh').addEventListener('click',()=>load().catch(e=>showMessage(e.message)));
+document.getElementById('logout').addEventListener('click',async()=>{await api('logout',{method:'POST'});location.href='./login';});
+load().catch(e=>{profilesBox.textContent='Unable to load server data. '+e.message;});
+</script></body></html>
