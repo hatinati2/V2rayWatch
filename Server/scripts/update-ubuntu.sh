@@ -127,8 +127,13 @@ NEXT_DIR=""
 SWAPPED=1
 systemctl daemon-reload
 
-if ! systemctl start v2raywatch || ! systemctl is-active --quiet v2raywatch; then
-  echo "Updated service did not become active. Rolling back the application." >&2
+PORT="$(jq -r '.Server.Port' "$CONFIG_DIR/server.json")"
+BASE_PATH="$(jq -r '.Server.BasePath' "$CONFIG_DIR/server.json")"
+if ! systemctl start v2raywatch ||
+   ! systemctl is-active --quiet v2raywatch ||
+   ! curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 --max-time 5 \
+      "http://127.0.0.1:$PORT$BASE_PATH/login" -o /dev/null; then
+  echo "Updated service did not pass its local HTTP login-page health check. Rolling back the application." >&2
   journalctl -u v2raywatch -n 50 --no-pager >&2 || true
   systemctl stop v2raywatch >/dev/null 2>&1 || true
   mv "$APP_DIR" "$ROLLBACK_DIR/failed-app" 2>/dev/null || true
