@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-BRANCH="feature/linux-server"
+SOURCE_REF="v0.3.2"
 REPOSITORY="hatinati2/V2rayWatch"
 
 if [[ $EUID -ne 0 ]]; then
@@ -62,9 +62,9 @@ export PATH="/opt/dotnet:$PATH"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 export DOTNET_NOLOGO=1
 
-echo "[3/4] Downloading and building V2rayWatch Server ($BRANCH)..."
+echo "[3/4] Downloading and building V2rayWatch Server ($SOURCE_REF)..."
 curl --fail --silent --show-error --location --retry 3 \
-  "https://codeload.github.com/$REPOSITORY/tar.gz/refs/heads/$BRANCH" \
+  "https://codeload.github.com/$REPOSITORY/tar.gz/refs/tags/$SOURCE_REF" \
   -o "$WORK_DIR/source.tar.gz"
 mkdir "$WORK_DIR/source"
 tar -xzf "$WORK_DIR/source.tar.gz" --strip-components=1 -C "$WORK_DIR/source"
