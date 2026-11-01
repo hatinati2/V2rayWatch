@@ -42,9 +42,13 @@ apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl tar jq unzip iproute2 openssl
 
 echo "[2/4] Installing .NET 10 SDK..."
-curl --fail --silent --show-error --location --retry 3 \
-  https://dot.net/v1/dotnet-install.sh -o "$WORK_DIR/dotnet-install.sh"
-bash "$WORK_DIR/dotnet-install.sh" --channel 10.0 --install-dir /opt/dotnet
+if [[ ! -x /opt/dotnet/dotnet ]] || ! /opt/dotnet/dotnet --list-sdks | grep -q '^10\.'; then
+  curl --fail --silent --show-error --location --retry 3 \
+    https://dot.net/v1/dotnet-install.sh -o "$WORK_DIR/dotnet-install.sh"
+  bash "$WORK_DIR/dotnet-install.sh" --channel 10.0 --install-dir /opt/dotnet
+else
+  echo ".NET 10 SDK already installed; reusing it."
+fi
 export DOTNET_ROOT=/opt/dotnet
 export PATH="/opt/dotnet:$PATH"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
