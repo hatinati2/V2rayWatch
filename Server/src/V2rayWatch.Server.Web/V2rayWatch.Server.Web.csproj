@@ -4,6 +4,7 @@
     <ProjectReference Include="..\V2rayWatch.Server.Core\V2rayWatch.Server.Core.csproj" />
     <ProjectReference Include="..\V2rayWatch.Server.Engine\V2rayWatch.Server.Engine.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    <PackageReference Include="QRCoder" Version="1.8.1" />
   </ItemGroup>
   <ItemGroup><Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
 </Project>
