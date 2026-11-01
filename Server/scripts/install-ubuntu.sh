@@ -79,7 +79,7 @@ XRAY_BIN="$(find "$TMP_DIR/xray" -maxdepth 2 -type f -name xray -print -quit)"
 [[ -n "$XRAY_BIN" ]] || { echo "Xray executable was not found in the official archive." >&2; exit 1; }
 
 ADMIN_PASSWORD="$(openssl rand -hex 24)"
-PROFILE_KEY="$(openssl rand -base64 -A 32)"
+PROFILE_KEY="$(openssl rand -base64 32 | tr -d '\r\n')"
 id v2raywatch >/dev/null 2>&1 || useradd --system --home-dir /var/lib/v2raywatch --shell /usr/sbin/nologin --user-group v2raywatch
 
 install -d -o root -g root -m 0755 /opt/v2raywatch
