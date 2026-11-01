@@ -12,7 +12,7 @@ namespace V2rayWatch.Server.Engine;
 
 using V2rayWatch.Server.Core;
 
-public sealed class XrayDelayTester
+public sealed class XrayDelayTester : IProbeEngine
 {
     private static readonly SemaphoreSlim Concurrency = new(2, 2);
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> ProfileLocks = new();
