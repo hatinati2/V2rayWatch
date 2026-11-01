@@ -154,7 +154,7 @@ public sealed class SubscriptionClient
 
         if (address.AddressFamily == AddressFamily.InterNetworkV6)
         {
-            if (address.IsIPv6Loopback || address.IsIPv6LinkLocal ||
+            if (address.Equals(IPAddress.IPv6Loopback) || address.IsIPv6LinkLocal ||
                 address.IsIPv6SiteLocal || address.IsIPv6Multicast)
                 return false;
             var bytes = address.GetAddressBytes();
