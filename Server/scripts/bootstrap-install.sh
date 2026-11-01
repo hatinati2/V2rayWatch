@@ -14,10 +14,14 @@ if [[ ! -r /etc/os-release ]]; then
   exit 1
 fi
 . /etc/os-release
-if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "24.04" ]]; then
-  echo "V2rayWatch Server installer supports Ubuntu 24.04 only." >&2
-  exit 1
-fi
+case "${ID:-}:${VERSION_ID:-}:${VERSION_CODENAME:-}" in
+  ubuntu:24.04:noble|ubuntu:26.04:resolute) ;;
+  *)
+    echo "V2rayWatch Server supports Ubuntu 24.04 (noble) and 26.04 (resolute) only." >&2
+    echo "Detected: ${PRETTY_NAME:-unknown} (${VERSION_CODENAME:-unknown})." >&2
+    exit 1
+    ;;
+esac
 
 for tool in apt-get systemctl; do
   command -v "$tool" >/dev/null 2>&1 || {
