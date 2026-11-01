@@ -9,6 +9,8 @@ import com.linkwatch.app.uiError
 import com.linkwatch.app.core.ProxyLinkParser
 import com.linkwatch.app.core.XrayDelayTester
 import com.linkwatch.app.data.BackupRestoreResult
+import com.linkwatch.app.data.ConnectionHistoryRange
+import com.linkwatch.app.data.ConnectionHistorySummary
 import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.MonitorSettings
 import com.linkwatch.app.data.ProfileRepository
@@ -16,6 +18,7 @@ import com.linkwatch.app.data.ProxyProfile
 import com.linkwatch.app.data.reduceLinkCheck
 import com.linkwatch.app.monitor.MonitorController
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -34,6 +37,13 @@ data class LinkWatchUiState(
     val message: String? = null
 )
 
+data class ConnectionHistoryUiState(
+    val profileId: String,
+    val range: ConnectionHistoryRange,
+    val summary: ConnectionHistorySummary? = null,
+    val loading: Boolean = false
+)
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     @Volatile private var language: AppLanguage = AppLanguage.load(application)
     private fun message(fa: String, en: String) = if (language.isEnglish) en else fa
@@ -46,6 +56,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val monitoringFlow = MutableStateFlow(repository.isMonitoringEnabled())
     private val busyFlow = MutableStateFlow(false)
     private val messageFlow = MutableStateFlow<String?>(null)
+
+    private val _connectionHistory = MutableStateFlow<ConnectionHistoryUiState?>(null)
+    val connectionHistory: StateFlow<ConnectionHistoryUiState?> = _connectionHistory
+    private var historyRefreshJob: kotlinx.coroutines.Job? = null
 
     val uiState = combine(
         repository.profiles,
@@ -164,11 +178,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         monitoringFlow.value = enabled
         if (enabled) {
             MonitorController.start(getApplication())
-            messageFlow.value = message("پایش مداوم شروع شد", "Monitoring started")
+            messageFlow.value = message(
+                "پایش شروع شد؛ بررسی با صفحهٔ خاموش ادامه می‌یابد و ممکن است باتری بیشتری مصرف کند.",
+                "Monitoring started. Checks continue with the screen off and may use more battery."
+            )
         } else {
             MonitorController.stop(getApplication())
             messageFlow.value = message("پایش متوقف شد", "Monitoring stopped")
         }
+    }
+
+
+    fun refreshConnectionHistory(profileId: String, range: ConnectionHistoryRange) {
+        val current = _connectionHistory.value
+        if (current == null || current.profileId != profileId || current.range != range) {
+            _connectionHistory.value = ConnectionHistoryUiState(profileId, range, loading = true)
+        } else {
+            _connectionHistory.value = current.copy(loading = true)
+        }
+        historyRefreshJob?.cancel()
+        historyRefreshJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val summary = repository.connectionHistorySummary(profileId, range)
+                val selected = _connectionHistory.value
+                if (selected?.profileId == profileId && selected.range == range) {
+                    _connectionHistory.value = ConnectionHistoryUiState(
+                        profileId = profileId,
+                        range = range,
+                        summary = summary,
+                        loading = false
+                    )
+                }
+            } catch (_: Exception) {
+                val selected = _connectionHistory.value
+                if (selected?.profileId == profileId && selected.range == range) {
+                    _connectionHistory.value = selected.copy(loading = false)
+                }
+            }
+        }
+    }
+
+    fun clearConnectionHistorySelection() {
+        historyRefreshJob?.cancel()
+        historyRefreshJob = null
+        _connectionHistory.value = null
     }
 
     fun consumeMessage() {

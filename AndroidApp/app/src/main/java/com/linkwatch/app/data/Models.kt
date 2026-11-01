@@ -6,7 +6,7 @@ const val DEFAULT_CHECK_INTERVAL_SECONDS = 20
 const val DEFAULT_FAILURE_THRESHOLD = 2
 const val DEFAULT_PRIMARY_TEST_URL = "https://www.google.com/generate_204"
 const val DEFAULT_FALLBACK_TEST_URL = "https://www.gstatic.com/generate_204"
-const val UPTIME_HISTORY_LIMIT = 20
+const val UPTIME_HISTORY_LIMIT = 50
 
 enum class UptimeMark {
     UNKNOWN,

@@ -14,7 +14,7 @@ For each profile, the app starts a temporary Xray Core instance using that profi
 
 The app uses `CoreController.measureDelay(url)` from AndroidLibXrayLite. The default primary URL is `https://www.google.com/generate_204`; the fallback is `https://www.gstatic.com/generate_204`. Both URLs can be changed in Monitoring Settings.
 
-## Features
+## Features in development for version 0.3.2
 
 - Persian and English UI with persisted language selection.
 - Import one profile or multiple links on separate lines.
@@ -35,9 +35,21 @@ The app uses `CoreController.measureDelay(url)` from AndroidLibXrayLite. The def
 - An original approximately 5.6-second disconnect warning motif with an extended vibration pattern, plus a mellow approximately 4.9-second recovery melody with a separate, gentler vibration pattern.
 - An Android launcher icon matching the Windows stopwatch artwork and color palette, including a themed monochrome layer on Android 13+.
 
-## Uptime history
+## Uptime and long-term connection history
 
-Each profile retains its 20 most recent automatic monitoring results. The history is stored with the encrypted profile data and survives app restarts. Manual one-off tests do not add entries to this strip.
+Each profile keeps its 50 most recent automatic checks. The oldest result appears on the left and the newest on the right. Empty slots are gray, and one-off manual tests do not update this strip. The recent history is saved together with the encrypted profile data and remains available after app restarts.
+
+Open **Connection history** from a profile to inspect two ranges:
+
+- **Last 24 hours:** hourly chart, successful and failed check counts, success rate, and average/minimum/maximum successful delay.
+- **Last 7 days:** daily chart and the same statistics for each day.
+- Longest consecutive failed-check run and the observed time span between its first and last failed probe.
+
+Long-term samples are recorded only while monitoring has been manually started from the app. One-off manual tests are excluded, and periods when monitoring is stopped are left as no data rather than counted as downtime. Failure runs are never joined across separate monitoring sessions.
+
+Long-term records are kept in a local SQLite database inside the app's private storage. It stores only the profile ID, check time, result, and delay—not proxy links or credentials. Samples older than seven days are pruned automatically, and deleting a profile also deletes its long-term history.
+
+Long-term history is local to this installation and is not included in portable backup files. Backups continue to include each profile's available recent uptime results, up to the 50-check limit. After this feature is installed, long-term data starts accumulating from newly started monitoring sessions; older history is not reconstructed or estimated.
 
 ## Secure backup and restore
 
@@ -66,7 +78,9 @@ Disconnect and recovery alerts use separate Android notification channels. Both 
 - Some advanced transport options may require additional parser work.
 - At most two temporary Xray Core instances are tested concurrently.
 - Xray Core is started temporarily for each profile test and stopped afterward. This app does not yet create a full-device VPN/TUN tunnel.
-- Continuous monitoring uses an Android foreground service and a persistent notification. Battery optimizations and device-vendor restrictions may delay checks.
+- Continuous monitoring uses an Android foreground service, a persistent notification, and a timed partial wake lock so checks can continue while the screen is off. Keeping the CPU awake while monitoring is active increases battery use; the wake lock is released when monitoring stops.
+- Set the app's battery usage to **No restriction**. Battery Saver, device-vendor policies, and system resource pressure can still affect actual check timing.
+- If the user stops the app through Android's Task Manager (Android 13+) or uses **Force stop** in system settings, Android terminates the entire app and prevents automatic restart. Open the app and manually enable monitoring again. Simply removing the Activity from Recents should not stop the started service.
 - Monitoring is not automatically restarted after a device reboot; start it again from inside the app.
 - If another VPN is active, Android may route V2rayWatch's own test connection through that VPN.
 - Subscriptions are fetched over HTTPS only.

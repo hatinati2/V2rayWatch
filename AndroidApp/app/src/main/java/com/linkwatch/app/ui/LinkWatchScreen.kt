@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.QrCodeScanner
@@ -52,6 +53,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -80,6 +82,7 @@ import androidx.core.content.ContextCompat
 import com.linkwatch.app.AppLanguage
 import com.linkwatch.app.uiText
 import com.linkwatch.app.uiError
+import com.linkwatch.app.data.ConnectionHistoryRange
 import com.linkwatch.app.data.EncryptedBackupCodec
 import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.MonitorSettings
@@ -90,6 +93,7 @@ import com.linkwatch.app.data.UptimeMark
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -121,6 +125,24 @@ fun LinkWatchScreen(
     var pendingExportPassphrase by remember { mutableStateOf("") }
     var pendingImportPassphrase by remember { mutableStateOf("") }
     var importText by remember { mutableStateOf("") }
+    var historyProfile by remember { mutableStateOf<ProxyProfile?>(null) }
+    var historyRange by remember { mutableStateOf(ConnectionHistoryRange.LAST_24_HOURS) }
+    val historyState by viewModel.connectionHistory.collectAsState()
+
+    LaunchedEffect(historyProfile?.id, historyRange, state.monitoring) {
+        val selected = historyProfile
+        if (selected == null) {
+            viewModel.clearConnectionHistorySelection()
+        } else {
+            viewModel.refreshConnectionHistory(selected.id, historyRange)
+            if (state.monitoring) {
+                while (true) {
+                    delay(5_000L)
+                    viewModel.refreshConnectionHistory(selected.id, historyRange)
+                }
+            }
+        }
+    }
     val exportBackupLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/vnd.v2raywatch.backup")
     ) { uri ->
@@ -204,12 +226,26 @@ fun LinkWatchScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                ),
                 title = {
-                    Column {
-                        Text("V2rayWatch", fontWeight = FontWeight.Bold)
-                        Text(uiText(language, "پایش واقعی کانفیگ‌های پروکسی", "Real proxy config monitoring"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.size(38.dp).clip(RoundedCornerShape(13.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Outlined.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text("V2rayWatch", fontWeight = FontWeight.Bold)
+                            Text(uiText(language, "پایش واقعی کانفیگ‌های پروکسی", "Real proxy config monitoring"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 },
                 actions = {
@@ -239,7 +275,7 @@ fun LinkWatchScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
                 MonitoringCard(
@@ -289,18 +325,33 @@ fun LinkWatchScreen(
                     )
                 }
             } else {
+                item {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 2.dp)
+                    ) {
+                        UptimeLegend(language, Color(0xFF16A34A), "متصل", "Up")
+                        UptimeLegend(language, Color(0xFFDC2626), "قطع", "Down")
+                        UptimeLegend(language, Color(0xFFCBD5E1), "بدون سابقه", "No data")
+                    }
+                }
                 items(state.profiles, key = { it.id }) { profile ->
                     ProfileCard(
                         language = language,
                         profile = profile,
                         onTest = { viewModel.testNow(profile) },
+                        onHistory = {
+                            historyRange = ConnectionHistoryRange.LAST_24_HOURS
+                            historyProfile = profile
+                        },
                         onDelete = { viewModel.deleteProfile(profile) }
                     )
                 }
             }
             item {
                 Text(
-                    uiText(language, "برای پایش ۲۰ثانیه‌ای، اعلان دائمی سرویس روشن می‌ماند. محدودیت‌های باتری بعضی گوشی‌ها ممکن است فاصله واقعی بررسی‌ها را بیشتر کند.", "For 20-second monitoring, the service keeps a persistent notification active. Battery restrictions on some phones may increase the actual interval between checks."),
+                    uiText(language, "هنگام فعال‌بودن پایش، اعلان دائمی سرویس روشن می‌ماند. محدودیت‌های باتری بعضی گوشی‌ها ممکن است فاصلهٔ واقعی بررسی‌ها را بیشتر کند.", "While monitoring is active, the service keeps a persistent notification. Battery restrictions on some phones may increase the actual interval between checks."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
@@ -390,6 +441,26 @@ fun LinkWatchScreen(
             onSave = { viewModel.saveSettings(it); showSettings = false }
         )
     }
+
+    if (historyProfile != null) {
+        val selectedProfile = historyProfile!!
+        val selectedHistory = historyState?.takeIf {
+            it.profileId == selectedProfile.id && it.range == historyRange
+        }
+        ConnectionHistoryDialog(
+            language = language,
+            profile = selectedProfile,
+            range = historyRange,
+            summary = selectedHistory?.summary,
+            loading = selectedHistory?.loading ?: true,
+            onRangeChange = { historyRange = it },
+            onDismiss = {
+                historyProfile = null
+                viewModel.clearConnectionHistorySelection()
+            }
+        )
+    }
+
 }
 
 @Composable
@@ -405,9 +476,10 @@ private fun MonitoringCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        shape = RoundedCornerShape(22.dp)
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(42.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -428,6 +500,17 @@ private fun MonitoringCard(
                 Text(uiText(language, "فاصله تست", "Check interval"), style = MaterialTheme.typography.bodyMedium)
                 Text(uiText(language, "هر $interval ثانیه", "Every $interval sec"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
+            if (monitoring) {
+                Text(
+                    uiText(
+                        language,
+                        "برای ادامهٔ بررسی با صفحهٔ خاموش، پردازنده در زمان پایش بیدار نگه داشته می‌شود؛ مصرف باتری بیشتر خواهد بود.",
+                        "The CPU stays awake while monitoring so checks can continue with the screen off. This uses more battery."
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             TextButton(onClick = onSettings, modifier = Modifier.align(Alignment.End)) {
                 Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
@@ -439,14 +522,14 @@ private fun MonitoringCard(
 
 @Composable
 private fun StatPill(label: String, value: String, modifier: Modifier = Modifier, tint: Color = MaterialTheme.colorScheme.onSurface) {
-    Column(modifier.clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)).padding(10.dp)) {
+    Column(modifier.clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)).padding(8.dp)) {
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = tint)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: () -> Unit, onDelete: () -> Unit) {
+private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: () -> Unit, onHistory: () -> Unit, onDelete: () -> Unit) {
     val statusColor = when (profile.state) {
         LinkState.CONNECTED -> Color(0xFF16834F)
         LinkState.DISCONNECTED -> MaterialTheme.colorScheme.error
@@ -463,8 +546,12 @@ private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: ()
         LinkState.UNSUPPORTED -> uiText(language, "پشتیبانی‌نشده", "Unsupported")
         LinkState.UNKNOWN -> uiText(language, "تست نشده", "Not tested")
     }
-    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(10.dp).clip(CircleShape).background(statusColor))
                 Spacer(Modifier.width(8.dp))
@@ -487,12 +574,16 @@ private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: ()
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = onTest) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(uiText(language, "تست الآن", "Test Now"))
+                IconButton(
+                    onClick = onTest,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = uiText(language, "تست الآن", "Test Now"), modifier = Modifier.size(18.dp))
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = onHistory, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Outlined.History, contentDescription = uiText(language, "تاریخچهٔ بلندمدت", "Long-term history"), tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Outlined.DeleteOutline, contentDescription = uiText(language, "حذف", "Delete"), tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -506,10 +597,10 @@ private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
     val recentCount = history.takeLast(UPTIME_HISTORY_LIMIT).size
     val cells = uptimeHistorySlots(history)
 
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(
-                uiText(language, "تاریخچهٔ ۲۰ بررسی اخیر", "Last 20 checks"),
+                uiText(language, "۵۰ بررسی خودکار اخیر", "Last 50 automatic checks"),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.SemiBold,
@@ -521,7 +612,7 @@ private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth()) {
             cells.forEachIndexed { index, mark ->
                 val cellColor = when (mark) {
                     UptimeMark.CONNECTED -> Color(0xFF16A34A)
@@ -536,17 +627,12 @@ private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(11.dp)
+                        .height(8.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(cellColor)
                         .semantics { contentDescription = "${index + 1}: $description" }
                 )
             }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            UptimeLegend(language, Color(0xFF16A34A), "متصل", "Up")
-            UptimeLegend(language, Color(0xFFDC2626), "قطع", "Down")
-            UptimeLegend(language, Color(0xFFCBD5E1), "بدون سابقه", "No data")
         }
     }
 }
@@ -596,8 +682,8 @@ private fun BackupDialog(
                 Text(
                     uiText(
                         language,
-                        "فایل پشتیبان شامل کانفیگ‌ها، تنظیمات و تاریخچهٔ ۲۰تایی است و با رمز عبور خودت رمزگذاری می‌شود. این رمز را فراموش نکن؛ بازیابی بدون آن ممکن نیست.",
-                        "The backup contains profiles, settings, and 20-check history. It is encrypted with your own passphrase. Keep that passphrase safe; the backup cannot be restored without it."
+                        "فایل پشتیبان شامل کانفیگ‌ها، تنظیمات و تا ۵۰ نتیجهٔ اخیر است و با رمز عبور خودت رمزگذاری می‌شود. تاریخچهٔ بلندمدت جداگانه و فقط روی همین دستگاه نگهداری می‌شود.",
+                        "The backup contains profiles, settings, and up to 50 recent checks. Long-term history is stored separately on this device and is not included in the portable backup."
                     ),
                     style = MaterialTheme.typography.bodySmall
                 )

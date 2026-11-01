@@ -40,8 +40,8 @@ class ProfileBackupMergerTest {
     }
 
     @Test
-    fun restoreResetsLiveStateButKeepsNewestTwentyHistoryMarks() {
-        val history = (1..25).map {
+    fun restoreResetsLiveStateButKeepsNewestFiftyHistoryMarks() {
+        val history = (1..65).map {
             if (it % 2 == 0) UptimeMark.CONNECTED else UptimeMark.DISCONNECTED
         }
         val imported = profile("from-backup", "vless://new", history = history)
@@ -51,6 +51,7 @@ class ProfileBackupMergerTest {
 
         assertEquals(1, result.addedCount)
         assertEquals(0, result.skippedCount)
+        assertEquals(UPTIME_HISTORY_LIMIT, restored.uptimeHistory.size)
         assertEquals(LinkState.UNKNOWN, restored.state)
         assertEquals(-1L, restored.delayMs)
         assertEquals(0L, restored.lastCheckedAt)

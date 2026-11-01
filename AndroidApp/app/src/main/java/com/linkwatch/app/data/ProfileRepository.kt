@@ -33,6 +33,7 @@ class ProfileRepository private constructor(context: Context) {
     private val settingsPrefs: SharedPreferences = appContext.getSharedPreferences("linkwatch_settings", Context.MODE_PRIVATE)
     private val gson = Gson()
     private val alias = "linkwatch.profile.aes.v1"
+    private val connectionHistory = ConnectionHistoryStore(appContext)
     private val _profiles = MutableStateFlow(loadProfiles())
     val profiles: StateFlow<List<ProxyProfile>> = _profiles
 
@@ -66,11 +67,49 @@ class ProfileRepository private constructor(context: Context) {
     @Synchronized
     fun remove(id: String) {
         persist(_profiles.value.filterNot { it.id == id })
+        connectionHistory.deleteProfile(id)
     }
 
     @Synchronized
     fun clear() {
         persist(emptyList())
+        connectionHistory.deleteAll()
+    }
+
+
+    fun recordMonitoringCheck(
+        profileId: String,
+        sessionId: String,
+        checkedAtEpochMs: Long,
+        success: Boolean,
+        delayMs: Long?
+    ) {
+        connectionHistory.record(
+            ConnectionHistorySample(
+                sessionId = sessionId,
+                checkedAtEpochMs = checkedAtEpochMs,
+                success = success,
+                delayMs = delayMs
+            ),
+            profileId
+        )
+    }
+
+    fun connectionHistorySummary(
+        profileId: String,
+        range: ConnectionHistoryRange,
+        nowEpochMs: Long = System.currentTimeMillis()
+    ): ConnectionHistorySummary {
+        val samples = connectionHistory.read(
+            profileId = profileId,
+            fromEpochMs = nowEpochMs - range.durationMs,
+            toEpochMs = nowEpochMs
+        )
+        return analyzeConnectionHistory(samples, range, nowEpochMs)
+    }
+
+    fun deleteConnectionHistory(profileId: String) {
+        connectionHistory.deleteProfile(profileId)
     }
 
     fun settings(): MonitorSettings = MonitorSettings(

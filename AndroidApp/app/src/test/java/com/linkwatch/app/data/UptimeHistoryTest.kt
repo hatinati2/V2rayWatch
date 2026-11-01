@@ -5,7 +5,7 @@ import org.junit.Test
 
 class UptimeHistoryTest {
     @Test
-    fun emptyHistoryRendersTwentyUnknownCells() {
+    fun emptyHistoryRendersFiftyUnknownCells() {
         val slots = uptimeHistorySlots(emptyList())
         assertEquals(UPTIME_HISTORY_LIMIT, slots.size)
         assertEquals(List(UPTIME_HISTORY_LIMIT) { UptimeMark.UNKNOWN }, slots)
@@ -26,8 +26,8 @@ class UptimeHistoryTest {
     }
 
     @Test
-    fun historyKeepsOnlyTheTwentyMostRecentResultsInOrder() {
-        val source = (1..25).map {
+    fun historyKeepsOnlyTheFiftyMostRecentResultsInOrder() {
+        val source = (1..65).map {
             if (it % 2 == 0) UptimeMark.CONNECTED else UptimeMark.DISCONNECTED
         }
         val history = source.fold(emptyList<UptimeMark>()) { acc, mark ->

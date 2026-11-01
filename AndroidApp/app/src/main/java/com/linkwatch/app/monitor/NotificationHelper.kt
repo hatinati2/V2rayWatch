@@ -100,6 +100,11 @@ object NotificationHelper {
         .setSmallIcon(android.R.drawable.stat_notify_sync)
         .setContentTitle(uiText(lang(context), "V2rayWatch در حال پایش است", "V2rayWatch is monitoring"))
         .setContentText(uiText(lang(context), "$checked از $total لینک بررسی شده‌اند", "$checked of $total links checked"))
+        .setSubText(uiText(
+            lang(context),
+            "بررسی با صفحهٔ خاموش فعال است؛ مصرف باتری بیشتر می‌شود",
+            "Screen-off checks are active; battery use may increase"
+        ))
         .setContentIntent(openAppIntent(context))
         .setOngoing(true)
         .setOnlyAlertOnce(true)
