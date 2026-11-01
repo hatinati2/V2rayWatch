@@ -18,3 +18,4 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet restore Server/V2rayWatch.Server.sln
       - run: dotnet build Server/V2rayWatch.Server.sln -c Release --no-restore
+      - run: dotnet test Server/V2rayWatch.Server.sln -c Release --no-build
