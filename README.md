@@ -31,7 +31,7 @@ Custom port example:
 curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6200
 ```
 
-The panel currently uses HTTP. Restrict its TCP port to trusted IP addresses with your firewall; HTTP does not encrypt passwords or session cookies in transit.
+The Linux dashboard now includes the Windows-inspired profile table, search, test-one/test-all actions, persistent background monitoring, 50 recent automatic checks, 24-hour/7-day history data, saved monitor settings, and HTTPS subscription add/refresh/delete. The UI supports Persian/English and dark/light themes. QR and encrypted cross-platform backup/restore are not yet implemented on Linux. The panel currently uses HTTP. Restrict its TCP port to trusted IP addresses with your firewall; HTTP does not encrypt passwords or session cookies in transit. The installer uses disk-backed `/var/tmp`, reuses an existing .NET 10 SDK, and warns about stale `focal`/`jammy` APT sources without rewriting them.
 
 ## Shared encrypted backup
 
