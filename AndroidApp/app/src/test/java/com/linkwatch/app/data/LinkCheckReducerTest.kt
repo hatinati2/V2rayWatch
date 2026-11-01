@@ -100,7 +100,7 @@ class LinkCheckReducerTest {
     }
 
     @Test
-    fun historyRemainsBoundedToTwentyEntries() {
+    fun historyRemainsBoundedToFiftyEntries() {
         val full = profile.copy(
             uptimeHistory = List(UPTIME_HISTORY_LIMIT) { UptimeMark.CONNECTED }
         )
