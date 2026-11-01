@@ -257,6 +257,22 @@ public sealed class SqliteServerStateRepository
         return result;
     }
 
+    public async Task RefreshSubscriptionCountsAsync(
+        SqliteProfileRepository profilesRepository,
+        CancellationToken cancellationToken = default)
+    {
+        var profiles = await profilesRepository.ListAsync(cancellationToken).ConfigureAwait(false);
+        var sources = await ListSubscriptionsAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var source in sources)
+        {
+            var count = profiles.Count(p =>
+                string.Equals(p.SourceSubscriptionId, source.Id, StringComparison.Ordinal));
+            if (source.ProfileCount == count) continue;
+            source.ProfileCount = count;
+            await SaveSubscriptionRecordAsync(source, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     public async Task DeleteProfileHistoryAsync(Guid profileId, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
