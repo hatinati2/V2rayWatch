@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.linkwatch.app.AppLanguage
@@ -129,7 +130,8 @@ fun ConnectionHistoryDialog(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            ConnectionHistoryChart(language, summary.buckets, range)
+                            ConnectionHistoryChart(summary.buckets, range, language)
+                            HistoryAxisLabels(summary.buckets, range, language)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -248,9 +250,9 @@ private fun HistoryMetric(
 
 @Composable
 private fun ConnectionHistoryChart(
-    language: AppLanguage,
     buckets: List<ConnectionHistoryBucket>,
-    range: ConnectionHistoryRange
+    range: ConnectionHistoryRange,
+    language: AppLanguage
 ) {
     val successColor = Color(0xFF16A34A)
     val failureColor = Color(0xFFDC2626)
@@ -295,6 +297,35 @@ private fun ConnectionHistoryChart(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HistoryAxisLabels(
+    buckets: List<ConnectionHistoryBucket>,
+    range: ConnectionHistoryRange,
+    language: AppLanguage
+) {
+    val locale = if (language.isEnglish) Locale.US else Locale("fa", "IR")
+    Row(modifier = Modifier.fillMaxWidth()) {
+        buckets.forEachIndexed { index, bucket ->
+            val label = when (range) {
+                ConnectionHistoryRange.LAST_24_HOURS ->
+                    if (index % 4 == 0 || index == buckets.lastIndex) {
+                        SimpleDateFormat("HH", locale).format(Date(bucket.startEpochMs))
+                    } else ""
+                ConnectionHistoryRange.LAST_7_DAYS ->
+                    SimpleDateFormat("EEE", locale).format(Date(bucket.startEpochMs))
+            }
+            Text(
+                label,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
         }
     }
 }
