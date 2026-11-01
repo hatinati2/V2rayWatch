@@ -838,6 +838,7 @@ public partial class MainWindow : Window
     {
         FlowDirection = _english ? System.Windows.FlowDirection.LeftToRight : System.Windows.FlowDirection.RightToLeft;
         foreach (var profile in _profiles) profile.English = _english;
+        ProfilesGrid.Items.Refresh();
         LanguageButton.Content = _english ? "EN / FA" : "FA / EN";
         ThemeButton.Content = _data.LightTheme ? (_english ? "Dark theme" : "تم تیره") : (_english ? "Light theme" : "تم روشن");
         HeaderSubtitle.Text = _english ? "Real proxy profile testing and monitoring" : "پایش و تست واقعی لینک‌های پروکسی";
