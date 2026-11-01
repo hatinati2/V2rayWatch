@@ -79,18 +79,27 @@ public sealed class ServerStateRepositoryTests
             Url = "https://example.com/subscription"
         };
 
+        var importedProfile = ServerProfileParser.ParseOne(
+            "vless://00000000-0000-0000-0000-000000000001@edge.example:443?security=tls&sni=edge.example#Example");
         var result = await state.SaveSubscriptionAsync(
-            source, Array.Empty<ServerProfile>(), profiles, replaceExisting: false);
+            source, [importedProfile], profiles, replaceExisting: false);
 
-        Assert.Equal(0, result.Imported);
-        Assert.Equal(0, result.Owned);
+        Assert.Equal(1, result.Imported);
+        Assert.Equal(1, result.Owned);
         var saved = Assert.Single(await state.ListSubscriptionsAsync());
         Assert.Equal(source.Id, saved.Id);
         Assert.Equal(source.Url, saved.Url);
+        Assert.Equal(1, saved.ProfileCount);
 
         var reopened = await state.GetSubscriptionAsync(source.Id);
         Assert.NotNull(reopened);
         Assert.Equal(source.Name, reopened!.Name);
+
+        var savedProfile = Assert.Single(await profiles.ListAsync());
+        await profiles.DeleteAsync(savedProfile.Id);
+        await state.RefreshSubscriptionCountsAsync(profiles);
+        var refreshed = Assert.Single(await state.ListSubscriptionsAsync());
+        Assert.Equal(0, refreshed.ProfileCount);
     }
 
     [Theory]
