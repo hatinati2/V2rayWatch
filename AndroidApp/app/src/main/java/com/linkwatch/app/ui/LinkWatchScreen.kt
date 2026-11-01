@@ -275,7 +275,7 @@ fun LinkWatchScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
                 MonitoringCard(
@@ -325,6 +325,17 @@ fun LinkWatchScreen(
                     )
                 }
             } else {
+                item {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 2.dp)
+                    ) {
+                        UptimeLegend(language, Color(0xFF16A34A), "متصل", "Up")
+                        UptimeLegend(language, Color(0xFFDC2626), "قطع", "Down")
+                        UptimeLegend(language, Color(0xFFCBD5E1), "بدون سابقه", "No data")
+                    }
+                }
                 items(state.profiles, key = { it.id }) { profile ->
                     ProfileCard(
                         language = language,
@@ -468,7 +479,7 @@ private fun MonitoringCard(
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(42.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -511,7 +522,7 @@ private fun MonitoringCard(
 
 @Composable
 private fun StatPill(label: String, value: String, modifier: Modifier = Modifier, tint: Color = MaterialTheme.colorScheme.onSurface) {
-    Column(modifier.clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)).padding(10.dp)) {
+    Column(modifier.clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)).padding(8.dp)) {
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = tint)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -540,7 +551,7 @@ private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: ()
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(10.dp).clip(CircleShape).background(statusColor))
                 Spacer(Modifier.width(8.dp))
@@ -563,15 +574,16 @@ private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: ()
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = onTest) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(uiText(language, "تست الآن", "Test Now"))
+                IconButton(
+                    onClick = onTest,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = uiText(language, "تست الآن", "Test Now"), modifier = Modifier.size(18.dp))
                 }
-                IconButton(onClick = onHistory, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = onHistory, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Outlined.History, contentDescription = uiText(language, "تاریخچهٔ بلندمدت", "Long-term history"), tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Outlined.DeleteOutline, contentDescription = uiText(language, "حذف", "Delete"), tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -585,7 +597,7 @@ private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
     val recentCount = history.takeLast(UPTIME_HISTORY_LIMIT).size
     val cells = uptimeHistorySlots(history)
 
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(
                 uiText(language, "۵۰ بررسی خودکار اخیر", "Last 50 automatic checks"),
@@ -615,17 +627,12 @@ private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(11.dp)
+                        .height(8.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(cellColor)
                         .semantics { contentDescription = "${index + 1}: $description" }
                 )
             }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            UptimeLegend(language, Color(0xFF16A34A), "متصل", "Up")
-            UptimeLegend(language, Color(0xFFDC2626), "قطع", "Down")
-            UptimeLegend(language, Color(0xFFCBD5E1), "بدون سابقه", "No data")
         }
     }
 }
