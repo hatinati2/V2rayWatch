@@ -390,7 +390,7 @@ function closeQr(){
 function saveQrImage(){
  if(!qrObjectUrl)return;
  const profile=profiles.find(p=>p.id===selectedId);
- const safe=(profile?.name||"V2rayWatch-QR").replace(/[^\\p{L}\\p{N}_-]+/gu,"-").replace(/^-+|-+$/g,"")||"V2rayWatch-QR";
+ const safe=(profile?.name||"V2rayWatch-QR").replace(/[^A-Za-z0-9_-]+/g,"-").replace(/^-+|-+$/g,"")||"V2rayWatch-QR";
  const link=document.createElement("a");link.href=qrObjectUrl;link.download=safe+".png";link.click();
 }
 function openBackup(mode,file=null){
