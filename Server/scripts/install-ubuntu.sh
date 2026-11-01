@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-PORT=6000
+PORT=6100
 ADMIN_PATH=""
 DIR="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 PUBLISH_DIR="$DIR/publish"
