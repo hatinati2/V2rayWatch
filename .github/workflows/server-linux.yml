@@ -16,7 +16,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Validate installer scripts\n        run: bash -n Server/scripts/bootstrap-install.sh Server/scripts/install-ubuntu.sh Server/scripts/publish-linux.sh\n      - run: dotnet restore Server/V2rayWatch.Server.sln
+      - name: Validate installer scripts
+        run: bash -n Server/scripts/bootstrap-install.sh Server/scripts/install-ubuntu.sh Server/scripts/publish-linux.sh
+      - run: dotnet restore Server/V2rayWatch.Server.sln
       - run: dotnet build Server/V2rayWatch.Server.sln -c Release --no-restore
       - run: dotnet test Server/V2rayWatch.Server.sln -c Release --no-build
       - name: Validate Hysteria2 configs with Xray Core
