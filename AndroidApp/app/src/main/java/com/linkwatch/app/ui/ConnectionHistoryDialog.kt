@@ -130,7 +130,7 @@ fun ConnectionHistoryDialog(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            ConnectionHistoryChart(summary.buckets, range, language)
+                            ConnectionHistoryChart(summary.buckets)
                             HistoryAxisLabels(summary.buckets, range, language)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -249,11 +249,7 @@ private fun HistoryMetric(
 }
 
 @Composable
-private fun ConnectionHistoryChart(
-    buckets: List<ConnectionHistoryBucket>,
-    range: ConnectionHistoryRange,
-    language: AppLanguage
-) {
+private fun ConnectionHistoryChart(buckets: List<ConnectionHistoryBucket>) {
     val successColor = Color(0xFF16A34A)
     val failureColor = Color(0xFFDC2626)
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
