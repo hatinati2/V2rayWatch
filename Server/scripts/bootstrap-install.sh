@@ -23,7 +23,7 @@ case "${ID:-}:${VERSION_ID:-}:${VERSION_CODENAME:-}" in
     ;;
 esac
 
-apt_source_matches="$(grep -RniE '\\b(focal|jammy)(-security|-updates|-backports)?\\b' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | head -n 8 || true)"
+apt_source_matches="$(grep -RniE '(^|[[:space:]/])(focal|jammy)(-[[:alnum:]]+)?([[:space:]/]|$)' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | head -n 8 || true)"
 if [[ -n "$apt_source_matches" ]]; then
   echo "WARNING: this Ubuntu release has active focal/jammy APT source entries."
   echo "$apt_source_matches"
