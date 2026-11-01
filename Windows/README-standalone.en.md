@@ -2,7 +2,7 @@
 
 This branch builds an independent Windows version of V2rayWatch. Its purpose is to import proxy profiles and test each link independently, not to manage a system VPN or route all Windows traffic. It does not use the v2rayN application UI, settings, view models, or client orchestration.
 
-## Preview features
+## Features in version 0.3.2
 
 - Import one link, multiple links, clipboard text, text/config files, and Xray JSON
 - Import HTTPS subscriptions with a real Fetch and add links action
@@ -11,7 +11,7 @@ This branch builds an independent Windows version of V2rayWatch. Its purpose is 
 - Preserve manually imported profiles when a subscription is updated; only profiles owned by that source are synchronized
 - Test one profile or all profiles using a temporary Xray Core process and an HTTPS request through that profile's own outbound
 - Scheduled monitoring with configurable 1–9999-second intervals, a 1–9999 consecutive-failure threshold, and configurable timeouts
-- Per-profile status, latest delay, last-check time, and a 20-check automatic uptime strip
+- Per-profile status, latest delay, last-check time, and a strip of the 50 most recent automatic checks
 - Per-profile long-term history with 24-hour and 7-day views, successful-check percentage, failure count, average/min/max delay, and a time-bucket chart
 - Long-term samples are collected only while the user has manually started monitoring. One-off manual tests and periods with monitoring stopped are excluded; unobserved time is shown as no data, not downtime
 - The latest seven days are kept locally in a separate SQLite database; older records are pruned automatically
@@ -48,7 +48,7 @@ On update:
 - Windows-only subscription source URLs and UI preferences are not part of the shared backup; profiles and monitoring/notification settings are transferred.
 - Windows long-term history is device-local and is not included in the shared Android/Windows backup.
 - QR scanning from image files is supported; live webcam scanning is not implemented yet.
-- This preview still requires live testing on Windows 10/11. Passing CI does not replace testing real profiles and real subscription providers.
+- Probe results depend on network reachability, the configured test URLs, and compatibility between each profile and the bundled Xray version. For a particular link, review its error message and last-check time.
 
 ## Build from source
 
