@@ -2,18 +2,18 @@
 
 V2rayWatch is a cross-platform tool for importing proxy profiles and monitoring each profile through its own Xray outbound connection. It is a link-health monitor, not a replacement for v2rayNG/v2rayN and not a full-device VPN client.
 
-## Latest release — V2rayWatch 0.3.1
+## Latest release — V2rayWatch 0.3.2
 
 Android and Windows are published together under one shared release tag.
 
-- **Android 0.3.1:** signed sideload APK with background monitoring, encrypted profile storage, QR import, and encrypted portable backup.
-  - [Download Android APK](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.1/V2rayWatch-Android-0.3.1-release.apk)
-  - [Android SHA-256 manifest](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.1/V2rayWatch-Android-0.3.1-SHA256SUMS.txt)
-- **Windows 0.3.1:** standalone Windows 10/11 x64 Portable package with profile monitoring, encrypted cross-platform backup/restore, QR display, and QR image import.
-  - [Download Windows ZIP](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.1/V2rayWatch-Windows-0.3.1-win-x64.zip)
-  - [Windows SHA-256 manifest](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.1/V2rayWatch-Windows-0.3.1-SHA256SUMS.txt)
+- **Android 0.3.2:** signed sideload APK with 50 recent automatic checks, 24-hour and 7-day local connection history, compact refreshed UI, screen-off monitoring support, encrypted profile storage, QR import, and encrypted portable backup.
+  - [Download Android APK](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.2/V2rayWatch-Android-0.3.2-release.apk)
+  - [Android SHA-256 manifest](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.2/V2rayWatch-Android-0.3.2-SHA256SUMS.txt)
+- **Windows 0.3.2:** standalone Windows 10/11 x64 Portable package with 50 recent automatic checks, 24-hour and 7-day local connection history, profile monitoring, encrypted cross-platform backup/restore, QR display, and QR image import.
+  - [Download Windows ZIP](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.2/V2rayWatch-Windows-0.3.2-win-x64.zip)
+  - [Windows SHA-256 manifest](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.2/V2rayWatch-Windows-0.3.2-SHA256SUMS.txt)
 
-See the [combined V2rayWatch 0.3.1 release](https://github.com/hatinati2/V2rayWatch/releases/tag/v0.3.1) for both packages and the combined checksum manifest.
+See the [combined V2rayWatch 0.3.2 release](https://github.com/hatinati2/V2rayWatch/releases/tag/v0.3.2) for both packages and the combined checksum manifest.
 
 ## Shared encrypted backup
 
