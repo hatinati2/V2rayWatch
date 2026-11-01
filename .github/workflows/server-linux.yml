@@ -21,13 +21,26 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Validate installer scripts and profile-key generation
+      - name: Validate installer scripts, profile key and dashboard JavaScript
         shell: bash
         run: |
           set -euo pipefail
           bash -n Server/scripts/bootstrap-install.sh Server/scripts/install-ubuntu.sh Server/scripts/publish-linux.sh
           profile_key="$(openssl rand -base64 32 | tr -d '\r\n')"
           test "$(printf '%s' "$profile_key" | base64 --decode | wc -c)" -eq 32
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path("Server/src/V2rayWatch.Server.Web/wwwroot")
+          for name in ("index.html", "login.html"):
+              html = (root / name).read_text(encoding="utf-8")
+              scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+              if not scripts:
+                  raise SystemExit(f"No inline script found in {name}")
+              Path(f"/tmp/{name}.js").write_text("\\n".join(scripts), encoding="utf-8")
+          PY
+          node --check /tmp/index.html.js
+          node --check /tmp/login.html.js
       - run: dotnet restore Server/V2rayWatch.Server.sln
       - run: dotnet build Server/V2rayWatch.Server.sln -c Release --no-restore
       - run: dotnet test Server/V2rayWatch.Server.sln -c Release --no-build
