@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build-android:
-    if: github.ref_type == 'tag' || startsWith(github.ref, 'refs/heads/release-trigger/') || contains(github.event.head_commit.message, 'bootstrap-combined-release-v0.3.0')
+    if: github.ref_type == 'tag' || startsWith(github.ref, 'refs/heads/release-trigger/') || contains(github.event.head_commit.message, 'bootstrap-combined-release-v0.3.0') || contains(github.event.head_commit.message, 'release-linux-v0.3.2')
     name: Build and sign Android APK
     runs-on: ubuntu-latest
     steps:
@@ -29,7 +29,12 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
-            release_version="0.3.0"
+            commit_message="$(jq -r '.head_commit.message // ""' "$GITHUB_EVENT_PATH")"
+            if [[ "$commit_message" == *"release-linux-v0.3.2"* ]]; then
+              release_version="0.3.2"
+            else
+              release_version="0.3.0"
+            fi
           elif [[ "$GITHUB_REF" == refs/heads/release-trigger/* ]]; then
             release_ref="${GITHUB_REF#refs/heads/release-trigger/}"
             if [[ ! "$release_ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -125,7 +130,7 @@ jobs:
           retention-days: 7
 
   build-windows:
-    if: github.ref_type == 'tag' || startsWith(github.ref, 'refs/heads/release-trigger/') || contains(github.event.head_commit.message, 'bootstrap-combined-release-v0.3.0')
+    if: github.ref_type == 'tag' || startsWith(github.ref, 'refs/heads/release-trigger/') || contains(github.event.head_commit.message, 'bootstrap-combined-release-v0.3.0') || contains(github.event.head_commit.message, 'release-linux-v0.3.2')
     name: Build and test Windows Portable
     runs-on: windows-latest
     steps:
@@ -137,7 +142,12 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           if ($env:GITHUB_REF -eq "refs/heads/main") {
-            $releaseVersion = "0.3.0"
+            $event = Get-Content $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
+            if ([string]$event.head_commit.message -like "*release-linux-v0.3.2*") {
+              $releaseVersion = "0.3.2"
+            } else {
+              $releaseVersion = "0.3.0"
+            }
           } elseif ($env:GITHUB_REF.StartsWith("refs/heads/release-trigger/")) {
             $releaseRef = $env:GITHUB_REF.Substring("refs/heads/release-trigger/".Length)
             if ($releaseRef -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
@@ -238,12 +248,104 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  build-linux:
+    if: github.ref_type == 'tag' || startsWith(github.ref, 'refs/heads/release-trigger/') || contains(github.event.head_commit.message, 'bootstrap-combined-release-v0.3.0') || contains(github.event.head_commit.message, 'release-linux-v0.3.2')
+    name: Build and test Linux Server (Ubuntu ${{ matrix.ubuntu-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu-version: ["24.04", "26.04"]
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v4
+
+      - name: Validate Linux Server release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            commit_message="$(jq -r '.head_commit.message // ""' "$GITHUB_EVENT_PATH")"
+            if [[ "$commit_message" == *"release-linux-v0.3.2"* ]]; then
+              release_version="0.3.2"
+            else
+              release_version="0.3.0"
+            fi
+          elif [[ "$GITHUB_REF" == refs/heads/release-trigger/* ]]; then
+            release_ref="${GITHUB_REF#refs/heads/release-trigger/}"
+            release_version="${release_ref#v}"
+          else
+            release_version="${GITHUB_REF_NAME#v}"
+          fi
+          server_version="$(sed -nE 's/.*<Version>([^<]+)<\/Version>.*/\1/p' Server/src/V2rayWatch.Server.Web/V2rayWatch.Server.Web.csproj | head -n 1)"
+          if [[ "$server_version" != "$release_version" ]]; then
+            echo "::error::Linux Server version $server_version does not match release tag $release_version."
+            exit 1
+          fi
+          echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+
+      - name: Validate Linux scripts, dashboard JavaScript and shared icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n Server/scripts/bootstrap-install.sh Server/scripts/install-ubuntu.sh Server/scripts/update-ubuntu.sh Server/scripts/publish-linux.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import xml.etree.ElementTree as ET
+
+          web = Path("Server/src/V2rayWatch.Server.Web/wwwroot")
+          ET.parse(web / "favicon.svg")
+          for name in ("index.html", "login.html"):
+              html = (web / name).read_text(encoding="utf-8")
+              if 'href="./favicon.svg"' not in html or 'src="./favicon.svg"' not in html:
+                  raise SystemExit(f"Shared favicon is not linked from {name}")
+              scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+              if not scripts:
+                  raise SystemExit(f"No inline script found in {name}")
+              Path(f"/tmp/{name}.js").write_text("\n".join(scripts), encoding="utf-8")
+          PY
+          node --check /tmp/index.html.js
+          node --check /tmp/login.html.js
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore, build and test Linux Server
+        run: |
+          dotnet restore Server/V2rayWatch.Server.sln
+          dotnet build Server/V2rayWatch.Server.sln --configuration Release --no-restore
+          dotnet test Server/V2rayWatch.Server.sln --configuration Release --no-build
+
+      - name: Package Linux Server source and checksum
+        if: matrix.ubuntu-version == '24.04'
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset="V2rayWatch-Linux-Server-${RELEASE_VERSION}-source.tar.gz"
+          tar -czf "$asset" Server/
+          sha256sum "$asset" > "V2rayWatch-Linux-Server-${RELEASE_VERSION}-SHA256SUMS.txt"
+
+      - name: Upload Linux Server release assets
+        if: matrix.ubuntu-version == '24.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: V2rayWatch-Linux-Server-release-assets
+          path: |
+            V2rayWatch-Linux-Server-${{ env.RELEASE_VERSION }}-source.tar.gz
+            V2rayWatch-Linux-Server-${{ env.RELEASE_VERSION }}-SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
+
   publish-release:
-    if: github.ref_type == 'tag' || startsWith(github.ref, 'refs/heads/release-trigger/') || contains(github.event.head_commit.message, 'bootstrap-combined-release-v0.3.0')
-    name: Publish one combined Android + Windows Release
+    if: github.ref_type == 'tag' || startsWith(github.ref, 'refs/heads/release-trigger/') || contains(github.event.head_commit.message, 'bootstrap-combined-release-v0.3.0') || contains(github.event.head_commit.message, 'release-linux-v0.3.2')
+    name: Publish one combined Android + Windows + Linux Server Release
     needs:
       - build-android
       - build-windows
+      - build-linux
     runs-on: ubuntu-latest
     steps:
       - name: Determine combined release metadata
@@ -252,8 +354,14 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
-            release_tag="v0.3.0"
-            release_version="0.3.0"
+            commit_message="$(jq -r '.head_commit.message // ""' "$GITHUB_EVENT_PATH")"
+            if [[ "$commit_message" == *"release-linux-v0.3.2"* ]]; then
+              release_tag="v0.3.2"
+              release_version="0.3.2"
+            else
+              release_tag="v0.3.0"
+              release_version="0.3.0"
+            fi
           elif [[ "$GITHUB_REF" == refs/heads/release-trigger/* ]]; then
             release_tag="${GITHUB_REF#refs/heads/release-trigger/}"
             release_version="${release_tag#v}"
@@ -276,31 +384,58 @@ jobs:
           name: V2rayWatch-Windows-release-assets
           path: release-assets
 
+      - name: Download Linux Server release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: V2rayWatch-Linux-Server-release-assets
+          path: release-assets
+
       - name: Create combined SHA-256 manifest
         shell: bash
         run: |
           set -euo pipefail
-          cat release-assets/V2rayWatch-Android-*-SHA256SUMS.txt release-assets/V2rayWatch-Windows-*-SHA256SUMS.txt > "release-assets/V2rayWatch-${{ steps.release.outputs.version }}-SHA256SUMS.txt"
+          cat release-assets/V2rayWatch-Android-*-SHA256SUMS.txt release-assets/V2rayWatch-Windows-*-SHA256SUMS.txt release-assets/V2rayWatch-Linux-Server-*-SHA256SUMS.txt > "release-assets/V2rayWatch-${{ steps.release.outputs.version }}-SHA256SUMS.txt"
+
+      - name: Point v0.3.2 tag at the fully tested release source
+        if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'release-linux-v0.3.2')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.git.updateRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "tags/v0.3.2",
+              sha: context.sha,
+              force: true
+            });
 
       - name: Publish combined GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release.outputs.tag }}
           target_commitish: main
-          name: V2rayWatch ${{ steps.release.outputs.tag }} — Android + Windows
+          name: V2rayWatch ${{ steps.release.outputs.tag }} — Android + Windows + Linux Server
           draft: false
           prerelease: false
           make_latest: true
           generate_release_notes: false
           fail_on_unmatched_files: true
+          overwrite_files: true
           body: |
-            ## V2rayWatch ${{ steps.release.outputs.tag }} — Android + Windows
+            ## V2rayWatch ${{ steps.release.outputs.tag }} — Android + Windows + Linux Server
 
             این انتشار، نسخهٔ مشترک هر دو پلتفرم است. از این پس هر Release رسمی با یک تگ مشترک ساخته می‌شود و انتشار مستقل Android یا Windows انجام نخواهد شد.
 
             ### فایل‌های دریافت
             - Android: فایل APK امضاشده با کلید پایدار پروژه؛ قابل نصب به‌روزرسانی روی نسخه قبلی. این APK برای نصب مستقیم است و انتشار Google Play نیست.
             - Windows: بستهٔ Portable مستقل برای Windows 10/11 x64؛ ZIP را استخراج کنید و V2rayWatch.exe را اجرا کنید.
+            - Linux Server: بستهٔ سورس و اسکریپت‌های نصب Native برای Ubuntu 24.04/26.04 روی x86_64 و ARM64؛ نصب‌کننده نسخهٔ تگ‌شده را دریافت و روی سرور build می‌کند.
+
+            نصب تازه Linux:
+            `curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/bootstrap-install.sh | sudo bash`
+
+            به‌روزرسانی نصب موجود:
+            `curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/update-ubuntu.sh | sudo bash`
 
             ### نسخه اجزای برنامه
             - Android versionName مطابق تگ مشترک و versionCode افزایش‌یافته است.
@@ -310,19 +445,21 @@ jobs:
             - نوار تاریخچهٔ کوتاه‌مدت هر پروفایل در هر دو پلتفرم، شامل ۵۰ بررسی خودکار اخیر.
             - تاریخچهٔ بلندمدت ۲۴ساعته و ۷روزه با نمودار، نرخ موفقیت، تعداد شکست‌ها و آمار تأخیر؛ داده‌ها محلی نگهداری می‌شوند.
             - Android: رابط فشرده‌تر و بازطراحی‌شده، تم روشن/تیرهٔ هماهنگ با سیستم و ادامهٔ پایش با صفحهٔ خاموش از طریق Foreground Service و Partial Wake Lock زمان‌دار.
-            - پشتیبان رمزگذاری‌شده بین Android و Windows با فرمت مشترک V2VWBAK1؛ فایل پشتیبان با همان عبارت عبور در هر دو برنامه قابل بازیابی است.
+            - پشتیبان رمزگذاری‌شده بین Android، Windows و Linux با فرمت مشترک V2VWBAK1؛ فایل پشتیبان با همان عبارت عبور در هر سه پلتفرم قابل بازیابی است.
             - بازیابی غیرمخرب: پروفایل‌های موجود حفظ و لینک‌های تکراری رد می‌شوند.
             - نمایش و ذخیره QR پروفایل در Windows و واردکردن لینک با خواندن QR از فایل تصویر.
             - تنظیمات هشدار قطع و بازیابی در Windows قابل ذخیره و انتقال‌اند.
+            - Linux: پنل وب با پایش systemd در پس‌زمینه، هشدار Gmail برای قطع/بازیابی، مدیریت Subscription، QR و بکاپ رمزگذاری‌شده. هویت بصری داشبورد و صفحه ورود با آیکون Android و Windows یکسان است.
 
             ### نکات
             - Windows System Proxy و TUN را تغییر نمی‌دهد.
             - امضای APK با کلید دائمی Android انجام می‌شود؛ فایل اجرایی Windows هنوز امضای کد ناشر ندارد.
             - پایش Windows فقط تا زمان باز بودن برنامه (از جمله System Tray) اجرا می‌شود.
             - QR شامل اطلاعات ورود پروکسی است؛ فایل/تصویر آن را خصوصی به اشتراک بگذارید.
-            - فایل manifest شامل SHA-256 هر دو بسته است.
+            - پنل Linux فقط HTTP است؛ فایروال را فقط برای IPهای مورد اعتماد باز کنید. ایمیل Gmail از SMTP STARTTLS خروجی روی پورت 587 استفاده می‌کند و پورت ورودی جدیدی باز نمی‌کند.
+            - فایل manifest شامل SHA-256 هر سه بسته است.
 
             ### روند انتشار
-            برای انتشار بعدی، versionName و versionCode اندروید و Version ویندوز را هماهنگ افزایش دهید و یک تگ نسخهٔ مشترک بسازید. همین workflow هر دو بسته را تست و در یک Release پایدار منتشر می‌کند.
+            برای انتشار بعدی، نسخهٔ Android، Windows و Linux Server را هماهنگ افزایش دهید و یک تگ نسخهٔ مشترک بسازید. همین workflow هر سه پلتفرم را تست و در یک Release پایدار منتشر می‌کند.
           files: |
             release-assets/*
