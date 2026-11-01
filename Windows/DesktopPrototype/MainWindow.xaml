@@ -88,7 +88,7 @@
           <Button x:Name="AddLinksButton" Content="افزودن لینک" Click="AddLinks_Click"/>
           <Button x:Name="AddSubscriptionButton" Content="افزودن Subscription" Click="AddSubscription_Click"/>
           <Button x:Name="TestAllButton" Style="{StaticResource PrimaryButton}" Content="تست همه لینک‌ها" Click="TestAll_Click"/>
-          <Button x:Name="MonitorButton" Content="شروع پایش خودکار" Click="Monitor_Click"/>
+          <Button x:Name="MonitorButton" Content="شروع پایش" Click="Monitor_Click"/>
         </StackPanel>
       </DockPanel>
     </Border>
@@ -125,6 +125,7 @@
                 <TextBox x:Name="SearchInput" Width="180" Style="{StaticResource DarkTextBox}" VerticalContentAlignment="Center"
                          TextChanged="SearchInput_TextChanged" ToolTip="جست‌وجوی نام، میزبان یا پروتکل"/>
                 <Button x:Name="TestSelectedButton" Content="تست انتخاب‌شده" Click="TestSelected_Click"/>
+                <Button x:Name="LongTermHistoryButton" Content="تاریخچهٔ بلندمدت" Click="LongTermHistory_Click" IsEnabled="False"/>
                 <Button x:Name="RemoveSelectedButton" Content="حذف" Click="RemoveSelected_Click"/>
                 <Button x:Name="DeleteAllProfilesButton" Content="حذف همه لینک‌ها" Click="RemoveAllProfiles_Click"/>
               </StackPanel>
@@ -148,7 +149,7 @@
                 <DataTemplate>
                   <Grid Margin="9,3,9,7">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="135"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <TextBlock Text="۲۰ بررسی خودکار اخیر" Foreground="{DynamicResource ThemeMutedBrush}" FontSize="10" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding RecentChecksLabel}" Foreground="{DynamicResource ThemeMutedBrush}" FontSize="10" VerticalAlignment="Center"/>
                     <ItemsControl Grid.Column="1" ItemsSource="{Binding UptimeHistory}">
                       <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" Columns="20"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>

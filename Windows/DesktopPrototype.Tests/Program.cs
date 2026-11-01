@@ -227,6 +227,89 @@ System.Security.Cryptography.CryptographicOperations.ZeroMemory(modifiedBackup);
 Array.Clear(backupPassphrase, 0, backupPassphrase.Length);
 Array.Clear(restorePassphrase, 0, restorePassphrase.Length);
 
+// Long-term Windows monitoring history: persistence, aggregation, manual-session boundaries, and retention.
+var historyDbPath = Path.Combine(Path.GetTempPath(), "v2vw-history-" + Guid.NewGuid().ToString("N") + ".sqlite");
+var historyProfileId = Guid.NewGuid();
+var monitoringSessionA = Guid.NewGuid();
+var monitoringSessionB = Guid.NewGuid();
+var monitoringSessionC = Guid.NewGuid();
+var historyBase = DateTimeOffset.UtcNow.AddHours(-3);
+try
+{
+    using (var historyStore = new LongTermHistoryStore(historyDbPath))
+    {
+        historyStore.RecordProbe(historyProfileId, monitoringSessionA, historyBase, true, 120);
+        historyStore.RecordProbe(historyProfileId, monitoringSessionA, historyBase.AddSeconds(20), false, null);
+        historyStore.RecordProbe(historyProfileId, monitoringSessionA, historyBase.AddSeconds(40), true, 160);
+        historyStore.RecordProbe(historyProfileId, monitoringSessionA, historyBase.AddSeconds(60), false, null);
+        historyStore.RecordProbe(historyProfileId, monitoringSessionA, historyBase.AddSeconds(80), false, null);
+        historyStore.RecordProbe(historyProfileId, monitoringSessionA, historyBase.AddSeconds(100), false, null);
+        historyStore.RecordProbe(historyProfileId, monitoringSessionA, historyBase.AddSeconds(120), true, 200);
+
+        // Failed and successful checks from different manual sessions must never be joined into one outage.
+        historyStore.RecordProbe(historyProfileId, monitoringSessionB, historyBase.AddHours(1), false, null);
+        historyStore.RecordProbe(historyProfileId, monitoringSessionC, historyBase.AddHours(1).AddMinutes(1), true, 140);
+
+        var restoredSamples = historyStore.ReadSamples(
+            historyProfileId,
+            historyBase.AddMinutes(-1),
+            historyBase.AddHours(2));
+        Check(restoredSamples.Count == 9, "long-term history is persisted and all probes are recovered");
+        Check(restoredSamples.Count(sample => sample.Success) == 4 &&
+              restoredSamples.Count(sample => !sample.Success) == 5,
+            "long-term history preserves each success/failure outcome");
+        Check(restoredSamples.Where(sample => sample.Success).Select(sample => sample.DelayMs)
+            .SequenceEqual(new long?[] { 120, 160, 200, 140 }),
+            "long-term history preserves successful probe delays");
+
+        var summary = LongTermHistoryAnalytics.Analyze(
+            restoredSamples,
+            historyBase.AddMinutes(-1),
+            historyBase.AddHours(2),
+            sevenDays: false,
+            english: true);
+        Check(summary.TotalChecks == 9 && summary.SuccessCount == 4 && summary.FailureCount == 5,
+            "24-hour history summary counts probes accurately");
+        Check(Math.Abs(summary.SuccessRatePercent!.Value - (4d / 9d * 100d)) < 0.001,
+            "history availability is based on observed checks, not unmonitored wall-clock time");
+        Check(Math.Abs(summary.AverageDelayMs!.Value - 155d) < 0.001,
+            "history summary averages only successful probe delays");
+        Check(summary.LongestConsecutiveFailures == 3 &&
+              Math.Abs(summary.LongestObservedFailureSpan.TotalSeconds - 60d) < 0.001,
+            "longest consecutive failure run is measured only within one manual session");
+        Check(summary.Timeline.Count == 24 &&
+              summary.Timeline.Sum(bucket => bucket.TotalChecks) == summary.TotalChecks,
+            "24-hour timeline aggregates every observed check into an hourly bucket");
+
+        var sevenDaySummary = LongTermHistoryAnalytics.Analyze(
+            restoredSamples,
+            historyBase.AddDays(-7),
+            historyBase.AddHours(2),
+            sevenDays: true,
+            english: false);
+        Check(sevenDaySummary.Timeline.Count == 7 &&
+              sevenDaySummary.Timeline.Sum(bucket => bucket.TotalChecks) == sevenDaySummary.TotalChecks,
+            "seven-day timeline aggregates every observed check into a daily bucket");
+
+        var oldTimestamp = DateTimeOffset.UtcNow.AddDays(-8);
+        historyStore.RecordProbe(historyProfileId, Guid.NewGuid(), oldTimestamp, false, null);
+        historyStore.PruneExpired(DateTimeOffset.UtcNow.AddDays(-7));
+        Check(historyStore.ReadSamples(historyProfileId, oldTimestamp.AddMinutes(-1), oldTimestamp.AddMinutes(1)).Count == 0,
+            "history older than seven days is pruned");
+
+        historyStore.DeleteProfile(historyProfileId);
+        Check(historyStore.ReadSamples(historyProfileId, historyBase.AddDays(-1), DateTimeOffset.UtcNow).Count == 0,
+            "deleting a profile also deletes its long-term history");
+    }
+}
+finally
+{
+    foreach (var suffix in new[] { "", "-wal", "-shm" })
+    {
+        try { File.Delete(historyDbPath + suffix); } catch { }
+    }
+}
+
 // QR PNG generation and image-file decoding round trip.
 var qrPng = QrCodeService.GeneratePng(vlessRaw);
 Check(qrPng.Length > 100, "QR code PNG image generated");

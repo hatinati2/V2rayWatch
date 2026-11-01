@@ -14,17 +14,20 @@ public partial class MainWindow : Window
     private readonly ServerProfileStore _store = new();
     private readonly SubscriptionClient _subscriptionClient = new();
     private readonly XrayDelayTester _tester = new();
+    private readonly LongTermHistoryStore? _historyStore;
     private readonly AppData _data;
     private readonly ObservableCollection<ServerProfile> _profiles;
     private readonly ObservableCollection<SubscriptionSource> _subscriptions;
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _monitorCancellation;
+    private Guid? _monitorSessionId;
     private Task? _monitorTask;
     private Forms.NotifyIcon? _tray;
     private bool _english;
     private bool _busy;
     private bool _closeCompleted;
     private bool _storageUnavailable;
+    private bool _historyStorageWarningShown;
 
     public MainWindow()
     {
@@ -37,17 +40,47 @@ public partial class MainWindow : Window
             _data = new AppData();
         }
         _data.Settings ??= new MonitorSettings();
+        // Every application launch requires an explicit user action to start monitoring.
+        // This also prevents a stale persisted flag after a crash from resuming probes.
+        _data.MonitorEnabled = false;
+        try
+        {
+            _historyStore = new LongTermHistoryStore();
+            _historyStore.PruneExpired(DateTimeOffset.UtcNow.AddDays(-7));
+        }
+        catch (Exception ex)
+        {
+            _historyStore = null;
+            System.Windows.MessageBox.Show(
+                (_data.English ? "Long-term history storage is unavailable: " : "ذخیرهٔ تاریخچهٔ بلندمدت در دسترس نیست: ") + ex.Message,
+                "V2rayWatch",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+        }
         AppTheme.Apply(_data.LightTheme);
         var appIconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "V2rayWatch.ico");
         if (File.Exists(appIconPath))
         {
             try
             {
-                var image = new System.Windows.Media.Imaging.BitmapImage();
-                image.BeginInit(); image.UriSource = new Uri(appIconPath); image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad; image.EndInit(); image.Freeze();
-                Icon = image; LogoImage.Source = image;
+                // Build the WPF Window.Icon from a native Windows HICON. This makes
+                // the icon available to both the title bar and the taskbar button;
+                // displaying the bitmap in LogoImage alone is not sufficient.
+                using var nativeIcon = new Drawing.Icon(appIconPath);
+                var windowIcon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                    nativeIcon.Handle,
+                    System.Windows.Int32Rect.Empty,
+                    System.Windows.Media.Imaging.BitmapSizeOptions.FromWidthAndHeight(32, 32));
+                windowIcon.Freeze();
+                Icon = windowIcon;
+                LogoImage.Source = windowIcon;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                SetStatus(
+                    (_english ? "Could not load the application icon: " : "بارگذاری آیکون برنامه ناموفق بود: ") + ex.Message,
+                    true);
+            }
         }
         _data.Profiles ??= [];
         _data.Subscriptions ??= [];
@@ -95,7 +128,6 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() => { Show(); WindowState = WindowState.Normal; Activate(); }));
         menu.Items.Add(_english ? "Exit" : "خروج", null, (_, _) => Dispatcher.Invoke(Close));
         _tray.ContextMenuStrip = menu;
-        if (_data.MonitorEnabled) StartMonitoring();
     }
 
     private async void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -106,7 +138,11 @@ public partial class MainWindow : Window
         _monitorCancellation?.Cancel();
         _lifetime.Cancel();
         try { if (_monitorTask is not null) await _monitorTask; } catch (OperationCanceledException) { }
+        _monitorSessionId = null;
+        _monitorCancellation?.Dispose();
+        _monitorCancellation = null;
         SaveData();
+        _historyStore?.Dispose();
         _tray?.Dispose();
         _tray = null;
         _closeCompleted = true;
@@ -479,6 +515,29 @@ public partial class MainWindow : Window
         await TestProfileAsync(profile, false, _lifetime.Token);
     }
 
+    private void LongTermHistory_Click(object sender, RoutedEventArgs e)
+    {
+        if (ProfilesGrid.SelectedItem is not ServerProfile profile)
+        {
+            SetStatus(_english ? "Select a profile first." : "ابتدا یک پروفایل را انتخاب کن.", true);
+            return;
+        }
+        if (_historyStore is null)
+        {
+            SetStatus(_english ? "Long-term history storage is unavailable." : "ذخیرهٔ تاریخچهٔ بلندمدت در دسترس نیست.", true);
+            return;
+        }
+
+        try
+        {
+            new HistoryWindow(profile.Name, profile.Id, _historyStore, _english) { Owner = this }.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            SetStatus((_english ? "Could not read long-term history: " : "خواندن تاریخچهٔ بلندمدت ناموفق بود: ") + ex.Message, true);
+        }
+    }
+
     private async void TestAll_Click(object sender, RoutedEventArgs e)
     {
         if (_profiles.Count == 0) { SetStatus(_english ? "No profiles to test." : "پروفایلی برای تست وجود ندارد.", true); return; }
@@ -509,7 +568,23 @@ public partial class MainWindow : Window
         await Dispatcher.InvokeAsync(() =>
         {
             if (!_profiles.Contains(profile)) return;
-            ApplyTestResult(profile, result, fromMonitor, previousStatus);
+            var checkedAtUtc = DateTimeOffset.UtcNow;
+            if (fromMonitor && _monitorSessionId is Guid sessionId && _historyStore is not null)
+            {
+                try
+                {
+                    _historyStore.RecordProbe(profile.Id, sessionId, checkedAtUtc, result.Success, result.DelayMs);
+                }
+                catch (Exception ex)
+                {
+                    if (!_historyStorageWarningShown)
+                    {
+                        _historyStorageWarningShown = true;
+                        SetStatus((_english ? "Long-term history could not be saved: " : "ذخیرهٔ تاریخچهٔ بلندمدت ناموفق بود: ") + ex.Message, true);
+                    }
+                }
+            }
+            ApplyTestResult(profile, result, fromMonitor, previousStatus, checkedAtUtc);
             RefreshSummary();
             if (!fromMonitor)
             {
@@ -521,9 +596,14 @@ public partial class MainWindow : Window
         });
     }
 
-    private void ApplyTestResult(ServerProfile profile, DelayTestResult result, bool fromMonitor, string previousStatus)
+    private void ApplyTestResult(
+        ServerProfile profile,
+        DelayTestResult result,
+        bool fromMonitor,
+        string previousStatus,
+        DateTimeOffset checkedAtUtc)
     {
-        profile.LastCheckedUtc = DateTimeOffset.UtcNow;
+        profile.LastCheckedUtc = checkedAtUtc;
         if (result.Success)
         {
             profile.DelayMs = result.DelayMs;
@@ -568,11 +648,27 @@ public partial class MainWindow : Window
     {
         if (_monitorCancellation is not null) return;
         if (_profiles.Count == 0) { SetStatus(_english ? "Add profiles before starting monitoring." : "قبل از شروع پایش، لینک‌ها را اضافه کن.", true); return; }
+        var historyReady = _historyStore is not null;
+        _monitorSessionId = historyReady ? Guid.NewGuid() : null;
+        if (_historyStore is not null)
+        {
+            try { _historyStore.PruneExpired(DateTimeOffset.UtcNow.AddDays(-7)); }
+            catch (Exception ex)
+            {
+                historyReady = false;
+                _monitorSessionId = null;
+                SetStatus((_english ? "History cleanup failed: " : "پاک‌سازی تاریخچه ناموفق بود: ") + ex.Message, true);
+            }
+        }
         _monitorCancellation = new CancellationTokenSource();
         _data.MonitorEnabled = true;
         SaveData();
-        MonitorButton.Content = _english ? "Stop monitoring" : "توقف پایش خودکار";
-        SetStatus(_english ? "Automatic monitoring started." : "پایش خودکار شروع شد.", false);
+        MonitorButton.Content = _english ? "Stop monitoring" : "توقف پایش";
+        SetStatus(
+            historyReady
+                ? (_english ? "Monitoring started. Long-term history is recording." : "پایش شروع شد؛ تاریخچهٔ بلندمدت ثبت می‌شود.")
+                : (_english ? "Monitoring started; long-term history is unavailable." : "پایش شروع شد؛ ذخیرهٔ تاریخچهٔ بلندمدت در دسترس نیست."),
+            !historyReady);
         _monitorTask = MonitorLoopAsync(_monitorCancellation.Token);
     }
 
@@ -583,11 +679,12 @@ public partial class MainWindow : Window
         _monitorCancellation = null;
         cts.Cancel();
         try { if (_monitorTask is not null) await _monitorTask; } catch (OperationCanceledException) { }
+        _monitorSessionId = null;
         cts.Dispose();
         _data.MonitorEnabled = false;
         SaveData();
-        MonitorButton.Content = _english ? "Start monitoring" : "شروع پایش خودکار";
-        SetStatus(_english ? "Automatic monitoring stopped." : "پایش خودکار متوقف شد.", false);
+        MonitorButton.Content = _english ? "Start monitoring" : "شروع پایش";
+        SetStatus(_english ? "Monitoring stopped." : "پایش متوقف شد.", false);
     }
 
     private async Task MonitorLoopAsync(CancellationToken cancellationToken)
@@ -665,7 +762,9 @@ public partial class MainWindow : Window
             "V2rayWatch",System.Windows.MessageBoxButton.YesNo,System.Windows.MessageBoxImage.Warning);
         if(answer!=System.Windows.MessageBoxResult.Yes)return;
         if(_monitorCancellation is not null)await StopMonitoringAsync();
-        SearchInput.Clear();_profiles.Clear();SaveData();RefreshSummary();
+        SearchInput.Clear();
+        foreach (var profile in _profiles) _historyStore?.DeleteProfile(profile.Id);
+        _profiles.Clear();SaveData();RefreshSummary();
         SetStatus(_english?"All profiles removed; subscription URLs were kept.":"همهٔ لینک‌ها حذف شدند؛ آدرس اشتراک‌ها باقی ماندند.",false);
     }
 
@@ -678,7 +777,11 @@ public partial class MainWindow : Window
             "V2rayWatch",System.Windows.MessageBoxButton.YesNo,System.Windows.MessageBoxImage.Warning);
         if(answer!=System.Windows.MessageBoxResult.Yes)return;
         if(_monitorCancellation is not null)await StopMonitoringAsync();
-        foreach(var profile in _profiles.Where(p=>!string.IsNullOrWhiteSpace(p.SourceSubscriptionId)).ToList())_profiles.Remove(profile);
+        foreach(var profile in _profiles.Where(p=>!string.IsNullOrWhiteSpace(p.SourceSubscriptionId)).ToList())
+        {
+            _historyStore?.DeleteProfile(profile.Id);
+            _profiles.Remove(profile);
+        }
         _subscriptions.Clear();SearchInput.Clear();SaveData();RefreshSummary();
         SetStatus(_english?"All subscription URLs and their profiles were removed.":"همهٔ اشتراک‌ها و لینک‌های متعلق به آن‌ها حذف شدند.",false);
     }
@@ -690,6 +793,7 @@ public partial class MainWindow : Window
             "V2rayWatch", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
         if (answer != System.Windows.MessageBoxResult.Yes) return;
         _profiles.Remove(profile);
+        _historyStore?.DeleteProfile(profile.Id);
         SaveData();
         RefreshSummary();
         SetStatus(_english ? "Profile removed." : "پروفایل حذف شد.", false);
@@ -699,6 +803,7 @@ public partial class MainWindow : Window
     {
         var selected = ProfilesGrid.SelectedItem is ServerProfile;
         TestSelectedButton.IsEnabled = selected && !_busy;
+        LongTermHistoryButton.IsEnabled = selected && !_busy && _historyStore is not null;
         RemoveSelectedButton.IsEnabled = selected && !_busy;
         ShowQrButton.IsEnabled = selected && !_busy;
     }
@@ -733,13 +838,14 @@ public partial class MainWindow : Window
     {
         FlowDirection = _english ? System.Windows.FlowDirection.LeftToRight : System.Windows.FlowDirection.RightToLeft;
         foreach (var profile in _profiles) profile.English = _english;
+        ProfilesGrid.Items.Refresh();
         LanguageButton.Content = _english ? "EN / FA" : "FA / EN";
         ThemeButton.Content = _data.LightTheme ? (_english ? "Dark theme" : "تم تیره") : (_english ? "Light theme" : "تم روشن");
         HeaderSubtitle.Text = _english ? "Real proxy profile testing and monitoring" : "پایش و تست واقعی لینک‌های پروکسی";
         AddLinksButton.Content = _english ? "Add links" : "افزودن لینک";
         AddSubscriptionButton.Content = _english ? "Add subscription" : "افزودن Subscription";
         TestAllButton.Content = _english ? "Test all links" : "تست همه لینک‌ها";
-        MonitorButton.Content = _monitorCancellation is null ? (_english ? "Start monitoring" : "شروع پایش خودکار") : (_english ? "Stop monitoring" : "توقف پایش خودکار");
+        MonitorButton.Content = _monitorCancellation is null ? (_english ? "Start monitoring" : "شروع پایش") : (_english ? "Stop monitoring" : "توقف پایش");
         TotalLabel.Text = _english ? "All profiles" : "کل پروفایل‌ها";
         ConnectedLabel.Text = _english ? "Connected" : "متصل";
         DisconnectedLabel.Text = _english ? "Disconnected" : "قطع";
@@ -747,9 +853,10 @@ public partial class MainWindow : Window
         ProfilesTitle.Text = _english ? "Profiles and test results" : "پروفایل‌ها و نتیجهٔ تست";
         ProfilesHint.Text = _english ? "Each profile is tested independently of Windows proxy and VPN settings." : "هر پروفایل مستقل از پراکسی و تنظیمات شبکهٔ ویندوز تست می‌شود.";
         TestSelectedButton.Content = _english ? "Test selected" : "تست انتخاب‌شده";
+        LongTermHistoryButton.Content = _english ? "Long-term history" : "تاریخچهٔ بلندمدت";
         RemoveSelectedButton.Content = _english ? "Remove" : "حذف";
         DeleteAllProfilesButton.Content = _english ? "Remove all links" : "حذف همه لینک‌ها";
-        GridFooter.Text = _english ? "Manual tests do not change automatic monitoring history." : "تست دستی، تاریخچهٔ پایش خودکار را تغییر نمی‌دهد.";
+        GridFooter.Text = _english ? "Manual tests are not added to the 20-check or long-term history." : "تست دستی وارد نوار ۲۰ بررسی و تاریخچهٔ بلندمدت نمی‌شود.";
         ImportClipboardButton.Content = _english ? "Paste from clipboard" : "چسباندن از Clipboard";
         ImportFileButton.Content = _english ? "Import file" : "ورود از فایل";
         ExportBackupButton.Content = _english ? "Export backup" : "پشتیبان‌گیری";
@@ -839,6 +946,7 @@ public partial class MainWindow : Window
         TestAllButton.IsEnabled = !busy;
         MonitorButton.IsEnabled = !busy || _monitorCancellation is not null;
         TestSelectedButton.IsEnabled = !busy && ProfilesGrid.SelectedItem is ServerProfile;
+        LongTermHistoryButton.IsEnabled = !busy && _historyStore is not null && ProfilesGrid.SelectedItem is ServerProfile;
         RemoveSelectedButton.IsEnabled = !busy && ProfilesGrid.SelectedItem is ServerProfile;
         ShowQrButton.IsEnabled = !busy && ProfilesGrid.SelectedItem is ServerProfile;
         ExportBackupButton.IsEnabled = !busy;

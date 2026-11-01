@@ -28,6 +28,8 @@ public sealed class ServerProfile
     public string Endpoint => Port > 0 ? $"{Host}:{Port}" : Host;
     public string DelayDisplay => DelayMs is null ? "—" : $"{DelayMs.Value} ms";
     public string LastCheckedDisplay => LastCheckedUtc?.ToLocalTime().ToString("HH:mm:ss") ?? "—";
+    public string RecentChecksLabel => English ? "Last 20 automatic checks" : "۲۰ بررسی خودکار اخیر";
+
     public string StatusDisplay => Status switch
     {
         "Connected" => English ? "Connected" : "متصل",
