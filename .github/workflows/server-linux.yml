@@ -10,7 +10,12 @@ permissions:
   contents: read
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    name: Build and test (Ubuntu ${{ matrix.ubuntu-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu-version: ["24.04", "26.04"]
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
