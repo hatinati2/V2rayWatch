@@ -19,7 +19,7 @@ See the [combined V2rayWatch 0.3.2 release](https://github.com/hatinati2/V2rayWa
 
 The native Linux Server installer supports **Ubuntu 24.04 LTS (Noble)** and **Ubuntu 26.04 LTS (Resolute)** on x86_64 and ARM64. The server implementation is currently on the [draft Linux Server pull request](https://github.com/hatinati2/V2rayWatch/pull/16) and is not part of the stable 0.3.2 release yet.
 
-Fresh install (default panel port 6000):
+Fresh install (default panel port 6100; Firefox blocks port 6000):
 
 ```bash
 sudo apt-get update && sudo apt-get install -y curl && curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash
@@ -28,7 +28,7 @@ sudo apt-get update && sudo apt-get install -y curl && curl -fsSL https://raw.gi
 Custom port example:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6100
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6200
 ```
 
 The panel currently uses HTTP. Restrict its TCP port to trusted IP addresses with your firewall; HTTP does not encrypt passwords or session cookies in transit.
