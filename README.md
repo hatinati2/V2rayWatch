@@ -4,7 +4,7 @@ V2rayWatch is a cross-platform tool for importing proxy profiles and monitoring 
 
 ## Latest release — V2rayWatch 0.3.2
 
-Android and Windows are published together under one shared release tag.
+Android, Windows and Linux Server are published together under the shared `v0.3.2` release tag.
 
 - **Android 0.3.2:** signed sideload APK with 50 recent automatic checks, 24-hour and 7-day local connection history, compact refreshed UI, screen-off monitoring support, encrypted profile storage, QR import, and encrypted portable backup.
   - [Download Android APK](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.2/V2rayWatch-Android-0.3.2-release.apk)
@@ -12,12 +12,35 @@ Android and Windows are published together under one shared release tag.
 - **Windows 0.3.2:** standalone Windows 10/11 x64 Portable package with 50 recent automatic checks, 24-hour and 7-day local connection history, profile monitoring, encrypted cross-platform backup/restore, QR display, and QR image import.
   - [Download Windows ZIP](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.2/V2rayWatch-Windows-0.3.2-win-x64.zip)
   - [Windows SHA-256 manifest](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.2/V2rayWatch-Windows-0.3.2-SHA256SUMS.txt)
+- **Linux Server 0.3.2:** native .NET 10 web panel and systemd service for Ubuntu 24.04/26.04 on x86_64 and ARM64, with encrypted profile storage, background monitoring, Gmail alerts, HTTPS subscription fetching and encrypted portable backup/restore.
+  - [Linux Server source bundle](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.2/V2rayWatch-Linux-Server-0.3.2-source.tar.gz)
+  - [Linux Server SHA-256 manifest](https://github.com/hatinati2/V2rayWatch/releases/download/v0.3.2/V2rayWatch-Linux-Server-0.3.2-SHA256SUMS.txt)
+  - Install: `curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/bootstrap-install.sh | sudo bash`
+  - Update existing installation: `curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/update-ubuntu.sh | sudo bash`
 
 See the [combined V2rayWatch 0.3.2 release](https://github.com/hatinati2/V2rayWatch/releases/tag/v0.3.2) for both packages and the combined checksum manifest.
 
+## Linux Server 0.3.2
+
+The native Linux Server release supports **Ubuntu 24.04 LTS (Noble)** and **Ubuntu 26.04 LTS (Resolute)** on x86_64 and ARM64. It uses .NET 10 and systemd, without Docker. The browser dashboard remains HTTP-only; restrict its configurable panel port (default 6100) to trusted IP addresses. Gmail SMTP uses outbound STARTTLS on port 587 and does not open an inbound port.
+
+Fresh install (release-pinned):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/bootstrap-install.sh | sudo bash
+```
+
+Update an existing installation without deleting profiles, settings or credentials:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/v0.3.2/Server/scripts/update-ubuntu.sh | sudo bash
+```
+
+The Linux dashboard uses the same V2rayWatch stopwatch identity as Android and Windows, and includes persistent background monitoring, 50 recent checks, 24-hour/7-day history, Gmail disconnect/recovery alerts, QR display, HTTPS subscription management, and encrypted portable backup/restore. QR image scanning and browser push while the dashboard is closed are not included in this release. The installer does not change firewall rules or occupy tunnel ports.
+
 ## Shared encrypted backup
 
-Android and Windows use the same authenticated backup format (`V2VWBAK1`). A `.v2vwbackup` file can be exported on either platform and restored on the other with the same passphrase. The payload contains profiles, monitoring settings, notification preferences, and uptime history. Existing profiles are preserved during restore and duplicate links are skipped.
+Android, Windows and Linux share the authenticated backup format (`V2VWBAK1`). A `.v2vwbackup` file can be exported on any of these platforms and restored on another with the same passphrase. Linux imports profiles non-destructively and keeps existing profiles; background monitoring is left disabled after restore. The payload contains profiles, monitoring settings, notification preferences, and uptime history. Existing profiles are preserved during restore and duplicate links are skipped.
 
 Use a unique passphrase of at least 12 characters and keep it separately from the backup file. Do not share backup files publicly: they contain proxy credentials.
 

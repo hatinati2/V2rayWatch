@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fa" dir="rtl" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0D2036">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<title>V2rayWatch · ورود مدیر</title>
+<style>
+:root{font-family:"Segoe UI",Tahoma,Arial,sans-serif;color-scheme:dark;--bg:#0b1220;--panel:#121d30;--line:#263752;--line2:#344763;--text:#e5edf8;--muted:#9fb0c8;--strong:#f5f8ff;--accent:#5b8def;--soft:#17253b;--bad:#ff9292}
+html[data-theme="light"]{color-scheme:light;--bg:#eef2f8;--panel:#fff;--line:#dce3ee;--line2:#c8d2e1;--text:#273449;--muted:#65748a;--strong:#111d31;--accent:#326ed0;--soft:#f3f6fb;--bad:#c73f3b}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);display:grid;place-items:center;padding:20px}
+main{width:min(100%,430px);padding:30px;background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 80px #0004}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:26px}.brand{display:flex;align-items:center;gap:10px}.logo{width:44px;height:44px;display:block;object-fit:contain;flex:none}.brand strong{font-size:16px;color:var(--strong)}.brand small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+button{border:1px solid var(--line2);border-radius:9px;padding:9px 12px;background:var(--soft);color:var(--text);cursor:pointer}
+h1{font-size:23px;margin:0 0 7px;color:var(--strong)}p{margin:0;color:var(--muted);font-size:12px;line-height:1.8}
+label{display:block;color:var(--muted);font-size:12px;font-weight:650;margin:22px 0 7px}
+input{width:100%;padding:13px 14px;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:9px;font:inherit;outline:none;direction:ltr;text-align:left}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 20%,transparent)}
+.submit{width:100%;margin-top:16px;background:var(--accent);border-color:var(--accent);color:white;font-weight:750;padding:12px}
+.submit:disabled{opacity:.5;cursor:not-allowed}#error{min-height:22px;color:var(--bad);font-size:11px;margin-top:10px}
+.footer{margin-top:20px;border-top:1px solid var(--line);padding-top:13px;color:var(--muted);font-size:10px;line-height:1.8}
+</style></head>
+<body><main>
+<div class="top"><div class="brand"><img class="logo" src="./favicon.svg" alt="V2rayWatch"><div><strong>V2rayWatch</strong><small>Linux Server · Link Monitor</small></div></div><div><button id="lang">FA / EN</button><button id="theme" aria-label="Theme">◐</button></div></div>
+<h1 id="title">ورود مدیر</h1><p id="hint">برای دسترسی به پروفایل‌ها، پایش و تنظیمات سرور، رمز عبور مدیر را وارد کن.</p>
+<form id="form"><label id="passwordLabel" for="password">رمز عبور مدیر</label><input id="password" type="password" autocomplete="current-password" required autofocus>
+<button class="submit" id="submit" type="submit">ورود به پنل</button><div id="error" role="alert"></div></form>
+<div class="footer" id="footer">اطلاعات ورود در زمان نصب تولید شده است. برای امنیت بیشتر، پورت پنل را فقط برای IPهای مورد اعتماد باز نگه دار.</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let lang=localStorage.getItem("v2vw-lang")||"fa",theme=localStorage.getItem("v2vw-theme")||"dark";
+const texts={
+fa:{title:"ورود مدیر",hint:"برای دسترسی به پروفایل‌ها، پایش و تنظیمات سرور، رمز عبور مدیر را وارد کن.",label:"رمز عبور مدیر",submit:"ورود به پنل",footer:"اطلاعات ورود در زمان نصب تولید شده است. برای امنیت بیشتر، پورت پنل را فقط برای IPهای مورد اعتماد باز نگه دار.",invalid:"رمز عبور نادرست است.",limited:"تعداد تلاش‌ها بیش از حد مجاز است. پنج دقیقه بعد دوباره تلاش کن.",failed:"ارتباط با سرور برقرار نشد."},
+en:{title:"Administrator sign in",hint:"Enter the administrator password to manage profiles, monitoring and server settings.",label:"Administrator password",submit:"Sign in",footer:"Credentials were generated during installation. For better security, allow the panel port only from trusted IP addresses.",invalid:"Incorrect password.",limited:"Too many attempts. Try again in five minutes.",failed:"Unable to contact the server."}
+};
+function apply(){const x=texts[lang];document.documentElement.lang=lang;document.documentElement.dir=lang==="fa"?"rtl":"ltr";$("title").textContent=x.title;$("hint").textContent=x.hint;$("passwordLabel").textContent=x.label;$("submit").textContent=x.submit;$("footer").textContent=x.footer;document.title="V2rayWatch · "+x.title;document.documentElement.dataset.theme=theme;}
+$("lang").addEventListener("click",()=>{lang=lang==="fa"?"en":"fa";localStorage.setItem("v2vw-lang",lang);apply();});
+$("theme").addEventListener("click",()=>{theme=theme==="dark"?"light":"dark";localStorage.setItem("v2vw-theme",theme);apply();});
+$("form").addEventListener("submit",async event=>{event.preventDefault();$("error").textContent="";$("submit").disabled=true;try{const response=await fetch("./api/v1/login",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({password:$("password").value})});if(!response.ok){$("error").textContent=response.status===429?texts[lang].limited:texts[lang].invalid;return;}location.href="./";}catch{$("error").textContent=texts[lang].failed;}finally{$("submit").disabled=false;}});
+apply();
+</script></body></html>
