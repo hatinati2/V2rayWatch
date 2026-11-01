@@ -489,6 +489,17 @@ private fun MonitoringCard(
                 Text(uiText(language, "فاصله تست", "Check interval"), style = MaterialTheme.typography.bodyMedium)
                 Text(uiText(language, "هر $interval ثانیه", "Every $interval sec"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
+            if (monitoring) {
+                Text(
+                    uiText(
+                        language,
+                        "برای ادامهٔ بررسی با صفحهٔ خاموش، پردازنده در زمان پایش بیدار نگه داشته می‌شود؛ مصرف باتری بیشتر خواهد بود.",
+                        "The CPU stays awake while monitoring so checks can continue with the screen off. This uses more battery."
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             TextButton(onClick = onSettings, modifier = Modifier.align(Alignment.End)) {
                 Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
