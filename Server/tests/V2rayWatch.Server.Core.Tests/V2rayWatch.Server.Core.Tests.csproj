@@ -5,6 +5,7 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />
   </ItemGroup>
-  <ItemGroup><ProjectReference Include="..\..\src\V2rayWatch.Server.Core\V2rayWatch.Server.Core.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="..\..\src\V2rayWatch.Server.Core\V2rayWatch.Server.Core.csproj" />
+    <ProjectReference Include="..\..\src\V2rayWatch.Server.Web\V2rayWatch.Server.Web.csproj" /></ItemGroup>
   <ItemGroup><None Update="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>
