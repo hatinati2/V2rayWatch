@@ -39,11 +39,30 @@ NEXT_DIR=""
 ROLLBACK_DIR=""
 SERVICE_BACKUP=""
 SWAPPED=0
+rollback_on_error() {
+  rc=$?
+  trap - ERR
+  if [[ -n "$ROLLBACK_DIR" && -d "$ROLLBACK_DIR/app" ]]; then
+    echo "Update interrupted; restoring previous application files..." >&2
+    systemctl stop v2raywatch >/dev/null 2>&1 || true
+    if [[ -d "$APP_DIR" ]]; then
+      mv "$APP_DIR" "$ROLLBACK_DIR/failed-app" 2>/dev/null || true
+    fi
+    mv "$ROLLBACK_DIR/app" "$APP_DIR"
+    if [[ -f "$SERVICE_BACKUP" ]]; then
+      install -o root -g root -m 0644 "$SERVICE_BACKUP" /etc/systemd/system/v2raywatch.service
+    fi
+    systemctl daemon-reload || true
+    systemctl start v2raywatch || echo "Previous files restored; service did not start automatically." >&2
+  fi
+  exit "$rc"
+}
 cleanup() {
   [[ -z "$NEXT_DIR" || ! -d "$NEXT_DIR" ]] || rm -rf "$NEXT_DIR"
   [[ -z "$ROLLBACK_DIR" || ! -d "$ROLLBACK_DIR" ]] || rm -rf "$ROLLBACK_DIR"
   rm -rf "$WORK_DIR"
 }
+trap rollback_on_error ERR
 trap cleanup EXIT
 
 export TMPDIR="$WORK_DIR/tmp"
