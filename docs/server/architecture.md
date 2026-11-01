@@ -12,4 +12,4 @@ Security: require authentication for dashboard and APIs; keep generated admin pa
 
 Next: profile parser/repository; Linux Xray runner with loopback-only SOCKS and HTTPS probe through selected profile; SQLite history and monitor worker; 50 recent checks and 24h/7d analytics; dashboard/settings/backup.
 
-This foundation commit is not a feature-complete monitoring server.
+Milestone 2 adds the cross-platform profile parser, manual import/delete/test API, SQLite persistence with AES-256-GCM payload encryption, Linux Xray process runner, and Hysteria2 parser tests. This is still not a feature-complete continuous monitoring server.
