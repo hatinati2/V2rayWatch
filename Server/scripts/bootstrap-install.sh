@@ -30,7 +30,10 @@ for tool in apt-get systemctl; do
   }
 done
 
-WORK_DIR="$(mktemp -d /tmp/v2raywatch-setup.XXXXXX)"
+WORK_DIR="$(mktemp -d /var/tmp/v2raywatch-setup.XXXXXX)"
+mkdir -p "$WORK_DIR/tmp"
+# Keep .NET SDK extraction off the size-limited /tmp tmpfs.
+export TMPDIR="$WORK_DIR/tmp"
 cleanup() { rm -rf "$WORK_DIR"; }
 trap cleanup EXIT
 
