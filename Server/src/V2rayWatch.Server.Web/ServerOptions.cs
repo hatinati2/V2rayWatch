@@ -4,7 +4,7 @@ namespace V2rayWatch.Server.Web;
 public sealed class ServerOptions
 {
  public string ListenAddress { get; init; } = "0.0.0.0";
- public int Port { get; init; } = 6000;
+ public int Port { get; init; } = 6100;
  public string BasePath { get; init; } = "/vw-dev-6f2e0a5f9d4c8b1e";
  public string DataDirectory { get; init; } = "/var/lib/v2raywatch";
  public void Validate()
