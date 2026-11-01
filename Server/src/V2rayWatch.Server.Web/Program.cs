@@ -216,6 +216,23 @@ app.MapDelete("/api/v1/profiles", async (
     return Results.Ok(new { deleted = all.Count });
 }).RequireAuthorization();
 
+app.MapGet("/api/v1/profiles/{id:guid}/qr", async (
+    Guid id,
+    SqliteProfileRepository profileStore) =>
+{
+    var profile = await profileStore.GetAsync(id);
+    if (profile is null) return Results.NotFound();
+    try
+    {
+        var png = QrCodeService.GeneratePng(profile.RawUri);
+        return Results.File(png, "image/png", "V2rayWatch-QR.png");
+    }
+    catch (InvalidDataException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+}).RequireAuthorization();
+
 app.MapPost("/api/v1/profiles/{id:guid}/test", async (
     Guid id,
     SqliteProfileRepository profileStore,
@@ -258,6 +275,101 @@ app.MapGet("/api/v1/profiles/{id:guid}/history", async (
     var from = DateTimeOffset.UtcNow.AddDays(sevenDays ? -7 : -1);
     var samples = await stateStore.GetHistoryAsync(id, from, cancellationToken);
     return Results.Ok(new { period = sevenDays ? "7d" : "24h", samples });
+}).RequireAuthorization();
+
+app.MapPost("/api/v1/backup/export", async (
+    BackupRequest request,
+    SqliteProfileRepository profileStore,
+    SqliteServerStateRepository stateStore) =>
+{
+    if (string.IsNullOrEmpty(request.Passphrase) ||
+        request.Passphrase.Length is < PortableBackupCodec.MinimumPassphraseLength or > PortableBackupCodec.MaximumPassphraseLength)
+        return Results.BadRequest(new { error = "عبارت عبور باید بین ۱۲ تا ۲۵۶ کاراکتر باشد." });
+
+    var passphrase = request.Passphrase.ToCharArray();
+    try
+    {
+        var allProfiles = await profileStore.ListAsync();
+        var settings = (await stateStore.GetSettingsAsync()).Settings;
+        var encrypted = PortableBackupService.CreateBackup(allProfiles, settings, passphrase);
+        return Results.File(encrypted, "application/octet-stream", "V2rayWatch.v2vwbackup");
+    }
+    catch (Exception ex) when (ex is InvalidDataException or ArgumentException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    finally
+    {
+        Array.Clear(passphrase, 0, passphrase.Length);
+    }
+}).RequireAuthorization();
+
+app.MapPost("/api/v1/backup/import", async (
+    HttpRequest request,
+    SqliteProfileRepository profileStore,
+    SqliteServerStateRepository stateStore,
+    CancellationToken cancellationToken) =>
+{
+    if (!request.HasFormContentType)
+        return Results.BadRequest(new { error = "فایل پشتیبان و عبارت عبور ارسال نشده‌اند." });
+
+    IFormCollection form;
+    try
+    {
+        form = await request.ReadFormAsync(cancellationToken);
+    }
+    catch (InvalidDataException)
+    {
+        return Results.BadRequest(new { error = "فرمت درخواست فایل پشتیبان معتبر نیست." });
+    }
+
+    var file = form.Files.GetFile("file");
+    var passphraseText = form["passphrase"].ToString();
+    if (file is null || file.Length is <= 0 or > PortableBackupCodec.MaximumBackupBytes)
+        return Results.BadRequest(new { error = "فایل پشتیبان خالی است یا بیش از ۲۵ مگابایت حجم دارد." });
+    if (passphraseText.Length is < PortableBackupCodec.MinimumPassphraseLength or > PortableBackupCodec.MaximumPassphraseLength)
+        return Results.BadRequest(new { error = "عبارت عبور باید بین ۱۲ تا ۲۵۶ کاراکتر باشد." });
+
+    var passphrase = passphraseText.ToCharArray();
+    try
+    {
+        await using var input = file.OpenReadStream();
+        using var memory = new MemoryStream();
+        await input.CopyToAsync(memory, cancellationToken);
+        if (memory.Length > PortableBackupCodec.MaximumBackupBytes)
+            return Results.BadRequest(new { error = "فایل پشتیبان بیش از ۲۵ مگابایت حجم دارد." });
+
+        var encryptedBackup = memory.ToArray();
+        var existing = await profileStore.ListAsync(cancellationToken);
+        var restored = PortableBackupService.RestoreBackup(encryptedBackup, passphrase, existing);
+        var existingIds = existing.Select(p => p.Id).ToHashSet();
+        var newProfiles = restored.Profiles.Where(p => !existingIds.Contains(p.Id)).ToList();
+        var imported = await profileStore.ImportAsync(newProfiles, cancellationToken);
+
+        var appSettings = await stateStore.GetSettingsAsync(cancellationToken);
+        appSettings.Settings = restored.Settings;
+        // Restoring data must never silently enable unattended monitoring.
+        appSettings.MonitoringEnabled = false;
+        appSettings.Validate();
+        await stateStore.SaveSettingsAsync(appSettings, cancellationToken);
+        var total = (await profileStore.ListAsync(cancellationToken)).Count;
+        return Results.Ok(new
+        {
+            added = imported.Imported,
+            skipped = restored.SkippedProfiles + imported.Ignored,
+            total,
+            limit = SqliteProfileRepository.MaximumProfiles,
+            monitoringEnabled = false
+        });
+    }
+    catch (Exception ex) when (ex is InvalidDataException or ArgumentException or CryptographicException or FormatException or JsonException)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    finally
+    {
+        Array.Clear(passphrase, 0, passphrase.Length);
+    }
 }).RequireAuthorization();
 
 app.MapGet("/api/v1/settings", async (SqliteServerStateRepository stateStore) =>
@@ -380,6 +492,7 @@ static ProfileView ToProfileView(ServerProfile p) => new(
 
 public sealed record LoginRequest(string Password);
 public sealed record ImportRequest(string? Text);
+public sealed record BackupRequest(string Passphrase);
 public sealed record SubscriptionRequest(string? Name, string? Url);
 public sealed record MonitoringRequest(bool Enabled);
 public sealed record ProfileView(
