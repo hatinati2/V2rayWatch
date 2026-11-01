@@ -27,7 +27,7 @@ class UptimeHistoryTest {
 
     @Test
     fun historyKeepsOnlyTheFiftyMostRecentResultsInOrder() {
-        val source = (1..25).map {
+        val source = (1..65).map {
             if (it % 2 == 0) UptimeMark.CONNECTED else UptimeMark.DISCONNECTED
         }
         val history = source.fold(emptyList<UptimeMark>()) { acc, mark ->
