@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.QrCodeScanner
@@ -80,6 +81,7 @@ import androidx.core.content.ContextCompat
 import com.linkwatch.app.AppLanguage
 import com.linkwatch.app.uiText
 import com.linkwatch.app.uiError
+import com.linkwatch.app.data.ConnectionHistoryRange
 import com.linkwatch.app.data.EncryptedBackupCodec
 import com.linkwatch.app.data.LinkState
 import com.linkwatch.app.data.MonitorSettings
@@ -90,6 +92,7 @@ import com.linkwatch.app.data.UptimeMark
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -121,6 +124,24 @@ fun LinkWatchScreen(
     var pendingExportPassphrase by remember { mutableStateOf("") }
     var pendingImportPassphrase by remember { mutableStateOf("") }
     var importText by remember { mutableStateOf("") }
+    var historyProfile by remember { mutableStateOf<ProxyProfile?>(null) }
+    var historyRange by remember { mutableStateOf(ConnectionHistoryRange.LAST_24_HOURS) }
+    val historyState by viewModel.connectionHistory.collectAsState()
+
+    LaunchedEffect(historyProfile?.id, historyRange, state.monitoring) {
+        val selected = historyProfile
+        if (selected == null) {
+            viewModel.clearConnectionHistorySelection()
+        } else {
+            viewModel.refreshConnectionHistory(selected.id, historyRange)
+            if (state.monitoring) {
+                while (true) {
+                    delay(5_000L)
+                    viewModel.refreshConnectionHistory(selected.id, historyRange)
+                }
+            }
+        }
+    }
     val exportBackupLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/vnd.v2raywatch.backup")
     ) { uri ->
@@ -294,13 +315,17 @@ fun LinkWatchScreen(
                         language = language,
                         profile = profile,
                         onTest = { viewModel.testNow(profile) },
+                        onHistory = {
+                            historyRange = ConnectionHistoryRange.LAST_24_HOURS
+                            historyProfile = profile
+                        },
                         onDelete = { viewModel.deleteProfile(profile) }
                     )
                 }
             }
             item {
                 Text(
-                    uiText(language, "برای پایش ۲۰ثانیه‌ای، اعلان دائمی سرویس روشن می‌ماند. محدودیت‌های باتری بعضی گوشی‌ها ممکن است فاصله واقعی بررسی‌ها را بیشتر کند.", "For 20-second monitoring, the service keeps a persistent notification active. Battery restrictions on some phones may increase the actual interval between checks."),
+                    uiText(language, "هنگام فعال‌بودن پایش، اعلان دائمی سرویس روشن می‌ماند. محدودیت‌های باتری بعضی گوشی‌ها ممکن است فاصلهٔ واقعی بررسی‌ها را بیشتر کند.", "While monitoring is active, the service keeps a persistent notification. Battery restrictions on some phones may increase the actual interval between checks."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
@@ -390,6 +415,26 @@ fun LinkWatchScreen(
             onSave = { viewModel.saveSettings(it); showSettings = false }
         )
     }
+
+    if (historyProfile != null) {
+        val selectedProfile = historyProfile!!
+        val selectedHistory = historyState?.takeIf {
+            it.profileId == selectedProfile.id && it.range == historyRange
+        }
+        ConnectionHistoryDialog(
+            language = language,
+            profile = selectedProfile,
+            range = historyRange,
+            summary = selectedHistory?.summary,
+            loading = selectedHistory?.loading ?: true,
+            onRangeChange = { historyRange = it },
+            onDismiss = {
+                historyProfile = null
+                viewModel.clearConnectionHistorySelection()
+            }
+        )
+    }
+
 }
 
 @Composable
@@ -446,7 +491,7 @@ private fun StatPill(label: String, value: String, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: () -> Unit, onDelete: () -> Unit) {
+private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: () -> Unit, onHistory: () -> Unit, onDelete: () -> Unit) {
     val statusColor = when (profile.state) {
         LinkState.CONNECTED -> Color(0xFF16834F)
         LinkState.DISCONNECTED -> MaterialTheme.colorScheme.error
@@ -492,6 +537,9 @@ private fun ProfileCard(language: AppLanguage, profile: ProxyProfile, onTest: ()
                     Spacer(Modifier.width(4.dp))
                     Text(uiText(language, "تست الآن", "Test Now"))
                 }
+                IconButton(onClick = onHistory, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Outlined.History, contentDescription = uiText(language, "تاریخچهٔ بلندمدت", "Long-term history"), tint = MaterialTheme.colorScheme.primary)
+                }
                 IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Outlined.DeleteOutline, contentDescription = uiText(language, "حذف", "Delete"), tint = MaterialTheme.colorScheme.error)
                 }
@@ -509,7 +557,7 @@ private fun UptimeHistoryBar(language: AppLanguage, history: List<UptimeMark>) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(
-                uiText(language, "تاریخچهٔ ۲۰ بررسی اخیر", "Last 20 checks"),
+                uiText(language, "۵۰ بررسی خودکار اخیر", "Last 50 automatic checks"),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.SemiBold,
@@ -596,8 +644,8 @@ private fun BackupDialog(
                 Text(
                     uiText(
                         language,
-                        "فایل پشتیبان شامل کانفیگ‌ها، تنظیمات و تاریخچهٔ ۲۰تایی است و با رمز عبور خودت رمزگذاری می‌شود. این رمز را فراموش نکن؛ بازیابی بدون آن ممکن نیست.",
-                        "The backup contains profiles, settings, and 20-check history. It is encrypted with your own passphrase. Keep that passphrase safe; the backup cannot be restored without it."
+                        "فایل پشتیبان شامل کانفیگ‌ها، تنظیمات و ۵۰ نتیجهٔ اخیر است و با رمز عبور خودت رمزگذاری می‌شود. تاریخچهٔ بلندمدت جداگانه و فقط روی همین دستگاه نگهداری می‌شود.",
+                        "The backup contains profiles, settings, and the 50 most recent checks. Long-term history is stored separately on this device and is not included in the portable backup."
                     ),
                     style = MaterialTheme.typography.bodySmall
                 )
