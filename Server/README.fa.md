@@ -12,7 +12,18 @@
 
 **آماده در این مرحله:** واردکردن لینک‌های VLESS، VMess، Trojan، Shadowsocks، Hysteria2 (hy2:// و hysteria2://) و Xray JSON؛ ذخیره SQLite با رمزنگاری AES-256-GCM؛ حذف پروفایل و تست دستی واقعی از مسیر Xray. سقف فعلی 100 پروفایل است. Subscription URL، پایش پس‌زمینه، تاریخچه و نمودار در مرحله‌های بعدی می‌آیند.
 
-## ساخت و نصب
+## نصب با یک دستور
+روی سرور تازه Ubuntu 24.04 فقط این دستور را اجرا کن:
+```bash
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash
+```
+پورت پیش‌فرض 6000 است. برای تغییر پورت، مثلاً:
+```bash
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6100
+```
+این دستور SDK موردنیاز را نصب می‌کند، سورس همین شاخه را دانلود و build می‌کند و سپس Xray Core و سرویس systemd را نصب می‌کند. نصب‌کننده اگر نصب قبلی را تشخیص دهد، برای جلوگیری از بازنویسی داده‌ها متوقف می‌شود.
+
+## ساخت و نصب دستی
 روی سیستم build، .NET 10 SDK نصب باشد:
 ```bash
 bash Server/scripts/publish-linux.sh
