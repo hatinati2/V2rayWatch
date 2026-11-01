@@ -15,6 +15,24 @@ Android and Windows are published together under one shared release tag.
 
 See the [combined V2rayWatch 0.3.2 release](https://github.com/hatinati2/V2rayWatch/releases/tag/v0.3.2) for both packages and the combined checksum manifest.
 
+## Linux Server (preview)
+
+The native Linux Server installer supports **Ubuntu 24.04 LTS (Noble)** and **Ubuntu 26.04 LTS (Resolute)** on x86_64 and ARM64. The server implementation is currently on the [draft Linux Server pull request](https://github.com/hatinati2/V2rayWatch/pull/16) and is not part of the stable 0.3.2 release yet.
+
+Fresh install (default panel port 6000):
+
+```bash
+sudo apt-get update && sudo apt-get install -y curl && curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash
+```
+
+Custom port example:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/linux-server/Server/scripts/bootstrap-install.sh | sudo bash -s -- --port 6100
+```
+
+The panel currently uses HTTP. Restrict its TCP port to trusted IP addresses with your firewall; HTTP does not encrypt passwords or session cookies in transit.
+
 ## Shared encrypted backup
 
 Android and Windows use the same authenticated backup format (`V2VWBAK1`). A `.v2vwbackup` file can be exported on either platform and restored on the other with the same passphrase. The payload contains profiles, monitoring settings, notification preferences, and uptime history. Existing profiles are preserved during restore and duplicate links are skipped.
