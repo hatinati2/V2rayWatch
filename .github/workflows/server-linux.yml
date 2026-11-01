@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash -n Server/scripts/bootstrap-install.sh Server/scripts/install-ubuntu.sh Server/scripts/publish-linux.sh
+          bash -n Server/scripts/bootstrap-install.sh Server/scripts/install-ubuntu.sh Server/scripts/update-ubuntu.sh Server/scripts/publish-linux.sh
           profile_key="$(openssl rand -base64 32 | tr -d '\r\n')"
           test "$(printf '%s' "$profile_key" | base64 --decode | wc -c)" -eq 32
           python3 - <<'PY'
