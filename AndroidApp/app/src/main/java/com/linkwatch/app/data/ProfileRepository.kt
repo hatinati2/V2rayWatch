@@ -36,7 +36,9 @@ class ProfileRepository private constructor(context: Context) {
     private val connectionHistory = ConnectionHistoryStore(appContext)
 
     init {
-        connectionHistory.pruneExpired(System.currentTimeMillis() - 7L * 24L * 60L * 60L * 1000L)
+        runCatching {
+            connectionHistory.pruneExpired(System.currentTimeMillis() - 7L * 24L * 60L * 60L * 1000L)
+        }
     }
     private val _profiles = MutableStateFlow(loadProfiles())
     val profiles: StateFlow<List<ProxyProfile>> = _profiles
