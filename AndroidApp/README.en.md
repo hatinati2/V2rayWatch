@@ -35,9 +35,21 @@ The app uses `CoreController.measureDelay(url)` from AndroidLibXrayLite. The def
 - An original approximately 5.6-second disconnect warning motif with an extended vibration pattern, plus a mellow approximately 4.9-second recovery melody with a separate, gentler vibration pattern.
 - An Android launcher icon matching the Windows stopwatch artwork and color palette, including a themed monochrome layer on Android 13+.
 
-## Uptime history
+## Uptime and long-term connection history
 
-Each profile retains its 20 most recent automatic monitoring results. The history is stored with the encrypted profile data and survives app restarts. Manual one-off tests do not add entries to this strip.
+Each profile keeps its 50 most recent automatic checks. The oldest result appears on the left and the newest on the right. Empty slots are gray, and one-off manual tests do not update this strip. The recent history is saved together with the encrypted profile data and remains available after app restarts.
+
+Open **Connection history** from a profile to inspect two ranges:
+
+- **Last 24 hours:** hourly chart, successful and failed check counts, success rate, and average/minimum/maximum successful delay.
+- **Last 7 days:** daily chart and the same statistics for each day.
+- Longest consecutive failed-check run and the observed time span between its first and last failed probe.
+
+Long-term samples are recorded only while monitoring has been manually started from the app. One-off manual tests are excluded, and periods when monitoring is stopped are left as no data rather than counted as downtime. Failure runs are never joined across separate monitoring sessions.
+
+Long-term records are kept in a local SQLite database inside the app's private storage. It stores only the profile ID, check time, result, and delay—not proxy links or credentials. Samples older than seven days are pruned automatically, and deleting a profile also deletes its long-term history.
+
+Long-term history is local to this installation and is not included in portable backup files. Backups continue to include each profile's 50-check recent uptime strip. After this feature is installed, long-term data starts accumulating from newly started monitoring sessions; older history is not reconstructed or estimated.
 
 ## Secure backup and restore
 
