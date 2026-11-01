@@ -60,7 +60,7 @@ public sealed class SqliteProfileRepository
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         using var transaction = connection.BeginTransaction();
-        var totalCommand = connection.CreateCommand();
+        await using var totalCommand = connection.CreateCommand();
         totalCommand.Transaction = transaction;
         totalCommand.CommandText = "SELECT COUNT(*) FROM Profiles;";
         var total = Convert.ToInt32(await totalCommand.ExecuteScalarAsync(cancellationToken));
@@ -159,7 +159,7 @@ public sealed class SqliteProfileRepository
         command.Parameters.AddWithValue("$status", profile.Status);
         command.Parameters.AddWithValue("$delay", (object?)profile.DelayMs ?? DBNull.Value);
         command.Parameters.AddWithValue("$checked", (object?)profile.LastCheckedUtc?.ToUniversalTime().ToString("O") ?? DBNull.Value);
-        command.ExecuteNonQuery();
+        await command.ExecuteNonQueryAsync(cancellationToken);
         CryptographicOperations.ZeroMemory(encrypted);
     }
 

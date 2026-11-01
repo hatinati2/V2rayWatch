@@ -15,9 +15,15 @@ esac; done
 . /etc/os-release
 [[ "$ID" == ubuntu && "$VERSION_ID" == 24.04 ]] || { echo "Ubuntu 24.04 required." >&2; exit 1; }
 [[ "$PORT" =~ ^[0-9]+$ ]] && ((PORT>=1024 && PORT<=65535)) || { echo "Port must be 1024-65535." >&2; exit 2; }
-command -v ss >/dev/null && command -v openssl >/dev/null || { echo "iproute2 and openssl are required." >&2; exit 1; }
-command -v dotnet >/dev/null || { echo ".NET 10 ASP.NET Core Runtime is required." >&2; exit 1; }
-dotnet --list-runtimes | grep -q '^Microsoft.AspNetCore.App 10\.' || { echo "ASP.NET Core Runtime 10.x missing." >&2; exit 1; }
+command -v apt-get >/dev/null || { echo "apt-get is required on Ubuntu 24.04." >&2; exit 1; }
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl jq unzip iproute2 openssl
+mkdir -p /opt/dotnet
+if [[ ! -x /opt/dotnet/dotnet ]] || ! /opt/dotnet/dotnet --list-runtimes | grep -q '^Microsoft.AspNetCore.App 10\.'; then
+  curl --fail --silent --show-error --location https://dot.net/v1/dotnet-install.sh -o /tmp/v2raywatch-dotnet-install.sh
+  bash /tmp/v2raywatch-dotnet-install.sh --runtime aspnetcore --channel 10.0 --install-dir /opt/dotnet
+  rm -f /tmp/v2raywatch-dotnet-install.sh
+fi
 [[ -f "$PUBLISH_DIR/V2rayWatch.Server.Web.dll" ]] || { echo "Publish first using Server/scripts/publish-linux.sh." >&2; exit 1; }
 ss -H -ltn "sport = :$PORT" | grep -q . && { echo "TCP port $PORT is occupied." >&2; exit 1; }
 [[ -n "$ADMIN_PATH" ]] || ADMIN_PATH="/vw-$(openssl rand -hex 16)"

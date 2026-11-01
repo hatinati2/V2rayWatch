@@ -8,9 +8,13 @@ User=v2raywatch
 Group=v2raywatch
 WorkingDirectory=/opt/v2raywatch
 Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_ROOT=/opt/dotnet
 Environment=V2RAYWATCH_CONFIG=/etc/v2raywatch/server.json
+Environment=V2RAYWATCH_PROFILE_KEY_FILE=/etc/v2raywatch/profile.key
+Environment=V2RAYWATCH_XRAY_PATH=/opt/v2raywatch/xray
+Environment=V2RAYWATCH_RUNTIME_DIR=/var/lib/v2raywatch/runtime
 EnvironmentFile=/etc/v2raywatch/admin.env
-ExecStart=/usr/bin/dotnet /opt/v2raywatch/V2rayWatch.Server.Web.dll
+ExecStart=/opt/dotnet/dotnet /opt/v2raywatch/V2rayWatch.Server.Web.dll
 Restart=always
 RestartSec=5
 TimeoutStopSec=20
