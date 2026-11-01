@@ -49,7 +49,7 @@ Long-term samples are recorded only while monitoring has been manually started f
 
 Long-term records are kept in a local SQLite database inside the app's private storage. It stores only the profile ID, check time, result, and delay—not proxy links or credentials. Samples older than seven days are pruned automatically, and deleting a profile also deletes its long-term history.
 
-Long-term history is local to this installation and is not included in portable backup files. Backups continue to include each profile's 50-check recent uptime strip. After this feature is installed, long-term data starts accumulating from newly started monitoring sessions; older history is not reconstructed or estimated.
+Long-term history is local to this installation and is not included in portable backup files. Backups continue to include each profile's available recent uptime results, up to the 50-check limit. After this feature is installed, long-term data starts accumulating from newly started monitoring sessions; older history is not reconstructed or estimated.
 
 ## Secure backup and restore
 
