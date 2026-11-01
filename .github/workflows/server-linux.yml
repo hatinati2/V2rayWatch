@@ -31,13 +31,22 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
+          import xml.etree.ElementTree as ET
+
           root = Path("Server/src/V2rayWatch.Server.Web/wwwroot")
+          ET.parse(root / "favicon.svg")
           for name in ("index.html", "login.html"):
               html = (root / name).read_text(encoding="utf-8")
+              if 'href="./favicon.svg"' not in html or 'src="./favicon.svg"' not in html:
+                  raise SystemExit(f"Shared V2rayWatch icon is not linked from {name}")
               scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
               if not scripts:
                   raise SystemExit(f"No inline script found in {name}")
               Path(f"/tmp/{name}.js").write_text("\\n".join(scripts), encoding="utf-8")
+          project = ET.parse("Server/src/V2rayWatch.Server.Web/V2rayWatch.Server.Web.csproj").getroot()
+          version = project.findtext("./PropertyGroup/Version")
+          if version != "0.3.2":
+              raise SystemExit(f"Expected Linux Server version 0.3.2, got {version}")
           PY
           node --check /tmp/index.html.js
           node --check /tmp/login.html.js
