@@ -187,7 +187,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshConnectionHistory(profileId: String, range: ConnectionHistoryRange) {
         val current = _connectionHistory.value
-        if (current?.profileId != profileId || current.range != range) {
+        if (current == null || current.profileId != profileId || current.range != range) {
             _connectionHistory.value = ConnectionHistoryUiState(profileId, range, loading = true)
         } else {
             _connectionHistory.value = current.copy(loading = true)
