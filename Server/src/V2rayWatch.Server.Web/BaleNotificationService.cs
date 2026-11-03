@@ -26,17 +26,24 @@ public sealed class BaleNotificationService
         int profileNumber,
         string previousStatus,
         string currentStatus,
-        MonitorSettings monitorSettings,
         CancellationToken cancellationToken)
     {
+        // These transitions are server-side Bale alerts. Browser notification
+        // preferences (MonitorSettings.NotifyOnDisconnect/Recovery) must not gate them.
         var disconnected = currentStatus == "Disconnected" &&
-            previousStatus != "Disconnected" && monitorSettings.NotifyOnDisconnect;
+            previousStatus != "Disconnected";
         var recovered = previousStatus == "Disconnected" &&
-            currentStatus == "Connected" && monitorSettings.NotifyOnRecovery;
+            currentStatus == "Connected";
         if (!disconnected && !recovered) return;
 
         var settings = await _state.GetBaleNotificationSettingsAsync(cancellationToken).ConfigureAwait(false);
-        if (!settings.Enabled) return;
+        if (!settings.Enabled)
+        {
+            _logger.LogInformation(
+                "Bale notification skipped for profile {ProfileId}: Bale notifications are disabled.",
+                profile.Id);
+            return;
+        }
 
         var body = BaleNotificationMessageFormatter.Format(profileNumber, currentStatus);
         try
