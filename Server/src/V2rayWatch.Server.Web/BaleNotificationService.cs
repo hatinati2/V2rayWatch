@@ -69,7 +69,7 @@ public sealed class BaleNotificationService
     public async Task<string> DetectLatestPrivateChatIdAsync(CancellationToken cancellationToken)
     {
         var settings = await _state.GetBaleNotificationSettingsAsync(cancellationToken).ConfigureAwait(false);
-        ValidateCredentials(settings);
+        ValidateBotToken(settings);
 
         using var request = new HttpRequestMessage(
             HttpMethod.Get, $"bot{settings.BotToken}/getUpdates?limit=100");
@@ -125,13 +125,18 @@ public sealed class BaleNotificationService
 
     private static void ValidateCredentials(BaleNotificationSettings settings)
     {
+        ValidateBotToken(settings);
+        if (string.IsNullOrWhiteSpace(settings.ChatId))
+            throw new InvalidOperationException("Chat ID بله ثبت نشده است.");
+    }
+
+    private static void ValidateBotToken(BaleNotificationSettings settings)
+    {
         if (string.IsNullOrWhiteSpace(settings.BotToken))
             throw new InvalidOperationException("توکن ربات بله ذخیره نشده است.");
         if (settings.BotToken.Length > 512 ||
             settings.BotToken.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is ':' or '_' or '-')))
             throw new InvalidOperationException("فرمت توکن ربات بله معتبر نیست.");
-        if (string.IsNullOrWhiteSpace(settings.ChatId))
-            throw new InvalidOperationException("Chat ID بله ثبت نشده است.");
     }
 
     private static async Task<JsonDocument> ReadSuccessfulResponseAsync(
