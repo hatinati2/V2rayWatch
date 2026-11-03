@@ -23,6 +23,7 @@ public sealed class BaleNotificationService
 
     public async Task NotifyStatusChangeAsync(
         ServerProfile profile,
+        int profileNumber,
         string previousStatus,
         string currentStatus,
         MonitorSettings monitorSettings,
@@ -37,7 +38,7 @@ public sealed class BaleNotificationService
         var settings = await _state.GetBaleNotificationSettingsAsync(cancellationToken).ConfigureAwait(false);
         if (!settings.Enabled) return;
 
-        var body = FormatStatusMessage(profile, currentStatus);
+        var body = BaleNotificationMessageFormatter.Format(profileNumber, currentStatus);
         try
         {
             await SendMessageAsync(settings, body, cancellationToken).ConfigureAwait(false);
@@ -61,7 +62,7 @@ public sealed class BaleNotificationService
         var settings = await _state.GetBaleNotificationSettingsAsync(cancellationToken).ConfigureAwait(false);
         await SendMessageAsync(
             settings,
-            "✅ پیام آزمایشی V2rayWatch\n\nاگر این پیام را در بله دریافت کرده‌ای، تنظیمات اعلان بله با موفقیت کار می‌کند.",
+            "no 1 green",
             cancellationToken).ConfigureAwait(false);
     }
 
