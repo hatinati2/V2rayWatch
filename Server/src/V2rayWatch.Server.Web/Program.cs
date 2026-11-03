@@ -499,6 +499,30 @@ app.MapGet("/api/v1/notifications/bale", async (SqliteServerStateRepository stat
         !string.IsNullOrWhiteSpace(settings.BotToken)));
 }).RequireAuthorization();
 
+app.MapPut("/api/v1/notifications/bale/enabled", async (
+    BaleNotificationEnabledRequest request,
+    SqliteServerStateRepository stateStore,
+    CancellationToken cancellationToken) =>
+{
+    // Keep the enabled switch independent from credential form fields. The browser
+    // intentionally never receives the saved bot token, so toggling must not depend
+    // on resubmitting any secret or Chat ID.
+    var current = await stateStore.GetBaleNotificationSettingsAsync(cancellationToken);
+    if (request.Enabled &&
+        (string.IsNullOrWhiteSpace(current.BotToken) || string.IsNullOrWhiteSpace(current.ChatId)))
+        return Results.BadRequest(new { error = "برای فعال‌سازی، توکن ربات بله و Chat ID لازم است." });
+
+    current.Enabled = request.Enabled;
+    await stateStore.SaveBaleNotificationSettingsAsync(current, cancellationToken);
+
+    // Read back the encrypted row so the response reflects the persisted state.
+    var persisted = await stateStore.GetBaleNotificationSettingsAsync(cancellationToken);
+    return Results.Ok(new BaleNotificationView(
+        persisted.Enabled,
+        persisted.ChatId,
+        !string.IsNullOrWhiteSpace(persisted.BotToken)));
+}).RequireAuthorization();
+
 app.MapPut("/api/v1/notifications/bale", async (
     BaleNotificationRequest request,
     SqliteServerStateRepository stateStore,
@@ -712,6 +736,7 @@ public sealed record BaleNotificationRequest(
     string? BotToken,
     string? ChatId,
     bool ClearBotToken);
+public sealed record BaleNotificationEnabledRequest(bool Enabled);
 public sealed record BaleNotificationView(
     bool Enabled,
     string ChatId,
