@@ -12,6 +12,9 @@ using V2rayWatch.Server.Engine;
 using V2rayWatch.Server.Web;
 
 var builder = WebApplication.CreateBuilder(args);
+// Bale bot tokens are embedded in the Bot API URL path. Suppress HttpClient
+// Information logs for this named client so credentials are never written to journald.
+builder.Logging.AddFilter("System.Net.Http.HttpClient.BaleBot", LogLevel.Warning);
 var configPath = Environment.GetEnvironmentVariable("V2RAYWATCH_CONFIG") ?? "/etc/v2raywatch/server.json";
 builder.Configuration.AddJsonFile(configPath, optional: true, reloadOnChange: false);
 var server = builder.Configuration.GetSection("Server").Get<ServerOptions>() ?? new();
