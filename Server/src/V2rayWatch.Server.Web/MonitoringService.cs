@@ -98,7 +98,7 @@ public sealed class MonitoringService : BackgroundService
                                         _notifications.NotifyStatusChangeAsync(
                                             profile, previousStatus, profile.Status, settings, token),
                                         _baleNotifications.NotifyStatusChangeAsync(
-                                            profile, item.Number, previousStatus, profile.Status, settings, token))
+                                            profile, item.Number, previousStatus, profile.Status, token))
                                         .ConfigureAwait(false);
                                 }
                             }
