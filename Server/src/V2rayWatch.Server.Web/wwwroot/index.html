@@ -131,9 +131,9 @@ html[data-theme="light"]{color-scheme:light;--bg:#eef2f8;--header:#fff;--panel:#
       <section class="card">
         <div class="card-head"><div><h2 class="section-title" data-i18n="baleTitle">اعلان با بله</h2><div class="hint" data-i18n="baleHint">ارسال هشدار قطع و بازیابی کانفیگ به ربات بله، حتی وقتی پنل بسته است.</div></div></div>
         <div class="toggle-row"><span data-i18n="baleEnabled">فعال‌سازی اعلان بله</span><label class="switch"><input id="baleEnabled" type="checkbox"><span class="slider"></span></label></div>
-        <div class="field"><label for="baleBotToken" data-i18n="baleBotToken">توکن ربات بله</label><input id="baleBotToken" class="input ltr" type="password" autocomplete="new-password" maxlength="512" placeholder="123456789:••••••••"></div>
+        <div class="field"><label for="baleBotToken" data-i18n="baleBotToken">توکن ربات بله</label><input id="baleBotToken" class="input ltr" type="password" autocomplete="new-password" maxlength="512" placeholder="توکن ذخیره‌شده نمایش داده نمی‌شود؛ برای تغییر، توکن جدید وارد کن"></div>
         <div class="hint" id="baleTokenHint" data-i18n="baleTokenNotSaved">توکن ربات ذخیره نشده است.</div>
-        <div class="field"><label for="baleChatId" data-i18n="baleChatId">شناسه گفت‌وگو (Chat ID)</label><input id="baleChatId" class="input ltr" type="text" inputmode="numeric" autocomplete="off" placeholder="123456789"></div>
+        <div class="field"><label for="baleChatId" data-i18n="baleChatId">شناسه گفت‌وگو (Chat ID)</label><input id="baleChatId" class="input ltr" type="text" inputmode="numeric" autocomplete="off" placeholder="پس از ذخیره، Chat ID واقعی اینجا نمایش داده می‌شود"></div>
         <div class="hint" data-i18n="baleSetupHint">ابتدا با @botfather در بله ربات بساز، وارد گفت‌وگوی ربات شو و /start بفرست. سپس توکن را ذخیره کن و دکمه تشخیص Chat ID را بزن.</div>
         <div class="toggle-row"><span data-i18n="baleClearToken">حذف توکن ذخیره‌شده</span><label class="switch"><input id="baleClearToken" type="checkbox"><span class="slider"></span></label></div>
         <div class="hint" data-i18n="baleSecurityHint">توکن با کلید رمزنگاری V2rayWatch در دیتابیس رمز می‌شود. چون پنل فعلاً HTTP است، توکن را فقط از شبکه مورد اعتماد وارد کن. ارتباط خروجی با API بله از HTTPS استفاده می‌کند.</div>
@@ -300,10 +300,12 @@ function fillGmail(s){
 function fillBale(s){
  baleHasBotToken=!!s.hasBotToken;
  $("baleEnabled").checked=!!s.enabled;
+ // A saved bot token is deliberately never sent back to the browser.
  $("baleBotToken").value="";
- $("baleChatId").value=s.chatId||"";
+ $("baleChatId").value=String(s.chatId??"");
  $("baleClearToken").checked=false;
  $("baleTokenHint").textContent=baleHasBotToken?t("baleTokenSaved"):t("baleTokenNotSaved");
+ $("baleChatId").title=s.chatId?"Chat ID ذخیره‌شده از سرور بارگذاری شد.":"Chat ID در تنظیمات ذخیره نشده است.";
 }
 function statusLabel(status){
  return ({Connected:t("connectedStatus"),Disconnected:t("disconnectedStatus"),Unstable:t("unstable"),Checking:t("checking"),NotTestable:t("notTestable")})[status]||t("unknown");
@@ -427,7 +429,9 @@ async function saveBaleSettings(showSuccess=true){
   const saved=await apiJson("notifications/bale",{method:"PUT",body:JSON.stringify(body)});
   baleHasBotToken=!!saved.hasBotToken;
   $("baleBotToken").value="";$("baleClearToken").checked=false;
+  if(saved.chatId!==undefined)$("baleChatId").value=String(saved.chatId??"");
   $("baleTokenHint").textContent=baleHasBotToken?t("baleTokenSaved"):t("baleTokenNotSaved");
+  $("baleChatId").title=saved.chatId?"Chat ID ذخیره‌شده در سرور ثبت شد.":"Chat ID ثبت نشده است.";
   if(showSuccess){setMessage("baleMessage",t("baleSaved"),"ok");setStatus(t("baleSaved"),"ok");}
   return true;
  }catch(e){setMessage("baleMessage",e.message,"error");return false;}
