@@ -168,18 +168,4 @@ public sealed class BaleNotificationService
         return document;
     }
 
-    private static string FormatStatusMessage(ServerProfile profile, string currentStatus)
-    {
-        var disconnected = currentStatus == "Disconnected";
-        return string.Join("\n",
-            disconnected ? "🔴 هشدار V2rayWatch | کانفیگ قطع شد" : "🟢 V2rayWatch | کانفیگ بازیابی شد",
-            "",
-            $"نام: {profile.Name}",
-            $"پروتکل: {profile.Protocol}",
-            $"سرور: {profile.Host}:{profile.Port}",
-            $"وضعیت: {(disconnected ? "قطع" : "متصل")}",
-            $"زمان (UTC): {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss}",
-            "",
-            "این پیام به‌صورت خودکار توسط پایش پس‌زمینه V2rayWatch ارسال شده است.");
-    }
 }
