@@ -183,6 +183,16 @@ public sealed class SqliteServerStateRepository
         }
     }
 
+    public async Task<int> CountSubscriptionsAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Subscriptions;";
+        var value = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        return Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture);
+    }
+
     public async Task<IReadOnlyList<SubscriptionSource>> ListSubscriptionsAsync(CancellationToken cancellationToken = default)
     {
         var result = new List<SubscriptionSource>();
