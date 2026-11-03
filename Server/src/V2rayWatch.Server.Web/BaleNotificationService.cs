@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using V2rayWatch.Server.Core;
@@ -52,8 +51,8 @@ public sealed class BaleNotificationService
         catch (Exception ex)
         {
             // A notification failure must never interrupt the monitoring cycle.
-            _logger.LogWarning("Bale notification failed for profile {ProfileId}: {Error}",
-                profile.Id, ex.Message);
+            _logger.LogWarning("Bale notification failed for profile {ProfileId} ({ErrorType}).",
+                profile.Id, ex.GetType().Name);
         }
     }
 
