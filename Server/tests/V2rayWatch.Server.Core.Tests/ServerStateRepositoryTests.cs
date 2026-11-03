@@ -158,12 +158,12 @@ public sealed class ServerStateRepositoryTests
                 ? new HttpResponseMessage(HttpStatusCode.BadRequest)
                 {
                     Content = new StringContent(
-                        "{\\"ok\\":false,\\"description\\":\\"test failure\\"}", Encoding.UTF8, "application/json")
+                        "{\"ok\":false,\"description\":\"test failure\"}", Encoding.UTF8, "application/json")
                 }
                 : new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(
-                        "{\\"ok\\":true,\\"result\\":{}}", Encoding.UTF8, "application/json")
+                        "{\"ok\":true,\"result\":{}}", Encoding.UTF8, "application/json")
                 };
         }
     }
