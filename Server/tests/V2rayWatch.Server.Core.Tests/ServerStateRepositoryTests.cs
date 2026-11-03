@@ -64,6 +64,27 @@ public sealed class ServerStateRepositoryTests
         Assert.Equal(expected.ChatId, actual.ChatId);
     }
 
+    [Theory]
+    [InlineData(1, "Disconnected", "no 1 red")]
+    [InlineData(2, "Disconnected", "no 2 red")]
+    [InlineData(1, "Connected", "no 1 green")]
+    [InlineData(12, "Connected", "no 12 green")]
+    public void BaleNotificationMessageFormatter_UsesOnlyNumberAndColor(
+        int number, string status, string expected)
+    {
+        Assert.Equal(expected, BaleNotificationMessageFormatter.Format(number, status));
+    }
+
+    [Theory]
+    [InlineData(0, "Connected")]
+    [InlineData(1, "Unstable")]
+    public void BaleNotificationMessageFormatter_RejectsInvalidNumberOrStatus(
+        int number, string status)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            BaleNotificationMessageFormatter.Format(number, status));
+    }
+
     [Fact]
     public async Task History_StoresAutomaticSamples_AndPrunesOlderThanSevenDays()
     {
