@@ -43,6 +43,28 @@ public sealed class ServerStateRepositoryTests
     }
 
     [Fact]
+    public async Task BaleNotificationSettings_RoundTripThroughEncryptedStorage()
+    {
+        using var env = new TestEnvironment();
+        var state = new SqliteServerStateRepository(env.Options, env.Protector);
+        await state.InitializeAsync();
+
+        var expected = new BaleNotificationSettings
+        {
+            Enabled = true,
+            BotToken = "123456789:TestToken_abcdefghijklmnopqrstuvwxyz",
+            ChatId = "1234567890123"
+        };
+
+        await state.SaveBaleNotificationSettingsAsync(expected);
+        var actual = await state.GetBaleNotificationSettingsAsync();
+
+        Assert.True(actual.Enabled);
+        Assert.Equal(expected.BotToken, actual.BotToken);
+        Assert.Equal(expected.ChatId, actual.ChatId);
+    }
+
+    [Fact]
     public async Task History_StoresAutomaticSamples_AndPrunesOlderThanSevenDays()
     {
         using var env = new TestEnvironment();
