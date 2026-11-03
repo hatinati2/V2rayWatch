@@ -64,6 +64,34 @@ public sealed class ServerStateRepositoryTests
         Assert.Equal(expected.ChatId, actual.ChatId);
     }
 
+    [Fact]
+    public async Task ProfileStatusSummary_CountsStatusesWithoutDecryptingProfilePayloads()
+    {
+        using var env = new TestEnvironment();
+        var profiles = new SqliteProfileRepository(env.Options, env.Protector);
+        await profiles.InitializeAsync();
+
+        var rows = new[]
+        {
+            ServerProfileParser.ParseOne("vless://00000000-0000-0000-0000-000000000101@one.example:443?security=tls#One"),
+            ServerProfileParser.ParseOne("vless://00000000-0000-0000-0000-000000000102@two.example:443?security=tls#Two"),
+            ServerProfileParser.ParseOne("vless://00000000-0000-0000-0000-000000000103@three.example:443?security=tls#Three")
+        };
+
+        var imported = await profiles.ImportAsync(rows);
+        Assert.Equal(3, imported.Imported);
+
+        rows[0].Status = "Connected";
+        rows[1].Status = "Disconnected";
+        rows[2].Status = "Unstable";
+        foreach (var profile in rows)
+            await profiles.UpdateAsync(profile);
+
+        var summary = await profiles.GetStatusSummaryAsync();
+
+        Assert.Equal((3, 1, 1, 1), summary);
+    }
+
     [Theory]
     [InlineData(1, "Disconnected", "no 1 red")]
     [InlineData(2, "Disconnected", "no 2 red")]
@@ -115,6 +143,8 @@ public sealed class ServerStateRepositoryTests
         await profiles.InitializeAsync();
         await state.InitializeAsync();
 
+        Assert.Equal(0, await state.CountSubscriptionsAsync());
+
         var source = new SubscriptionSource
         {
             Id = Guid.NewGuid().ToString("N"),
@@ -130,6 +160,7 @@ public sealed class ServerStateRepositoryTests
         Assert.Equal(1, result.Imported);
         Assert.Equal(1, result.Owned);
         var saved = Assert.Single(await state.ListSubscriptionsAsync());
+        Assert.Equal(1, await state.CountSubscriptionsAsync());
         Assert.Equal(source.Id, saved.Id);
         Assert.Equal(source.Url, saved.Url);
         Assert.Equal(1, saved.ProfileCount);
