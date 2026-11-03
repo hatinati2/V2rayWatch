@@ -432,6 +432,11 @@ async function saveBaleSettings(showSuccess=true){
   if(!!saved.enabled!==!!persisted.enabled||!!saved.hasBotToken!==!!persisted.hasBotToken||String(saved.chatId??"")!==String(persisted.chatId??""))
    throw new Error("تنظیمات بله ذخیره شد اما تأیید مجدد از سرور با مقادیر ارسالی یکسان نبود؛ وضعیت را دوباره بارگذاری کن.");
   fillBale(persisted);
+  if(showSuccess){
+   const message=t("baleSaved");
+   setMessage("baleMessage",message,"ok");
+   setStatus(message,"ok");
+  }
   return true;
  }catch(e){setMessage("baleMessage",e.message,"error");return false;}
  finally{$("saveBaleButton").disabled=false;}
