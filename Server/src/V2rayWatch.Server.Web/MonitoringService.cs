@@ -90,10 +90,12 @@ public sealed class MonitoringService : BackgroundService
                                 {
                                     _logger.LogInformation("Profile {ProfileId} changed from {Previous} to {Current}",
                                         profile.Id, previousStatus, profile.Status);
-                                    await _notifications.NotifyStatusChangeAsync(
-                                        profile, previousStatus, profile.Status, settings, token).ConfigureAwait(false);
-                                    await _baleNotifications.NotifyStatusChangeAsync(
-                                        profile, previousStatus, profile.Status, settings, token).ConfigureAwait(false);
+                                    await Task.WhenAll(
+                                        _notifications.NotifyStatusChangeAsync(
+                                            profile, previousStatus, profile.Status, settings, token),
+                                        _baleNotifications.NotifyStatusChangeAsync(
+                                            profile, previousStatus, profile.Status, settings, token))
+                                        .ConfigureAwait(false);
                                 }
                             }
                             catch (OperationCanceledException) when (token.IsCancellationRequested)
