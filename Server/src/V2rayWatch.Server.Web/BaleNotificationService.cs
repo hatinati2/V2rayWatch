@@ -144,25 +144,33 @@ public sealed class BaleNotificationService
         CancellationToken cancellationToken)
     {
         var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"ارتباط با API بله ناموفق بود (HTTP {(int)response.StatusCode}).");
 
         JsonDocument document;
         try { document = JsonDocument.Parse(json); }
         catch (JsonException)
         {
-            throw new InvalidOperationException("پاسخ API بله قابل‌خواندن نیست.");
+            var status = (int)response.StatusCode;
+            throw new InvalidOperationException(response.IsSuccessStatusCode
+                ? "پاسخ API بله قابل‌خواندن نیست."
+                : $"ارتباط با API بله ناموفق بود (HTTP {status}) و پاسخ آن JSON معتبر نبود.");
         }
 
-        if (!document.RootElement.TryGetProperty("ok", out var ok) ||
-            ok.ValueKind != JsonValueKind.True)
+        var apiOk = document.RootElement.TryGetProperty("ok", out var ok) &&
+            ok.ValueKind == JsonValueKind.True;
+        if (!response.IsSuccessStatusCode || !apiOk)
         {
             var description = document.RootElement.TryGetProperty("description", out var detail)
                 ? detail.GetString()
                 : null;
+            var errorCode = document.RootElement.TryGetProperty("error_code", out var error)
+                ? error.ToString()
+                : null;
             document.Dispose();
+
+            var codeText = string.IsNullOrWhiteSpace(errorCode) ? "" : $", API code {errorCode}";
+            var detailText = string.IsNullOrWhiteSpace(description) ? "" : $": {description}";
             throw new InvalidOperationException(
-                string.IsNullOrWhiteSpace(description) ? "API بله درخواست را نپذیرفت." : $"API بله: {description}");
+                $"API بله درخواست را نپذیرفت (HTTP {(int)response.StatusCode}{codeText}){detailText}");
         }
 
         return document;
