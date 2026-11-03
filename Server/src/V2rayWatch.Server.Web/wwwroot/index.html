@@ -254,7 +254,7 @@ async function loadAll(initial=false){
  $("monitorBadge").textContent=monitorEnabled?t("monitorOn"):t("monitorOff");$("monitorBadge").className="status "+(monitorEnabled?"Connected":"");
  $("monitorButton").textContent=monitorEnabled?t("stopMonitor"):t("startMonitor");
  $("monitorButton").className=monitorEnabled?"danger":"good";
- if(initial){fillSettings(settings.Settings);fillGmail(gmail);}
+ if(initial){fillGmail(gmail);fillSettings(settings.settings??settings.Settings);}
  else renderGmailProfileOptions($("gmailEgressProfile").value);
  renderProfiles();renderSubscriptions();
 }
