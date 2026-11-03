@@ -620,6 +620,12 @@ $("saveSettingsButton").addEventListener("click",saveSettings);
 $("saveGmailButton").addEventListener("click",saveGmailSettings);
 $("testGmailButton").addEventListener("click",testGmail);
 $("saveBaleButton").addEventListener("click",()=>saveBaleSettings());
+$("baleEnabled").addEventListener("change",async event=>{
+ const checkbox=event.currentTarget,requested=checkbox.checked;
+ const saved=await saveBaleSettings(false);
+ if(saved)setMessage("baleMessage",t("baleSaved"),"ok");
+ else checkbox.checked=!requested;
+});
 $("detectBaleChatButton").addEventListener("click",detectBaleChat);
 $("testBaleButton").addEventListener("click",testBale);
 $("monitorButton").addEventListener("click",toggleMonitoring);
