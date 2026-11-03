@@ -20,6 +20,12 @@ systemctl cat "$SERVICE" >/dev/null 2>&1 || {
   echo "The isolated Bale test systemd service was not found." >&2
   exit 1
 }
+SERVICE_USER="$(systemctl show "$SERVICE" -p User --value)"
+SERVICE_GROUP="$(systemctl show "$SERVICE" -p Group --value)"
+[[ "$SERVICE_USER" == "v2raywatch-bale-test" && "$SERVICE_GROUP" == "v2raywatch-bale-test" ]] || {
+  echo "The test service is not using its dedicated OS account. Reinstall the isolated test instance first." >&2
+  exit 1
+}
 [[ -x /opt/dotnet/dotnet ]] || {
   echo ".NET SDK/runtime not found at /opt/dotnet/dotnet." >&2
   exit 1
