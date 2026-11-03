@@ -100,7 +100,7 @@ server = config.setdefault("Server", {})
 server["ListenAddress"] = "127.0.0.1"
 with open(path, "w", encoding="utf-8") as stream:
     json.dump(config, stream, ensure_ascii=False, separators=(",", ":"))
-    stream.write("\\n")
+    stream.write("\n")
 PY
 chown root:"$TEST_GROUP" "$CONFIG_FILE"
 chmod 0640 "$CONFIG_FILE"
