@@ -72,7 +72,7 @@ public sealed class BaleNotificationService
         ValidateBotToken(settings);
 
         using var request = new HttpRequestMessage(
-            HttpMethod.Get, $"bot{settings.BotToken}/getUpdates?limit=100");
+            HttpMethod.Get, $"/bot{settings.BotToken}/getUpdates?limit=100");
         using var response = await _httpClientFactory.CreateClient("BaleBot")
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
@@ -113,7 +113,7 @@ public sealed class BaleNotificationService
             throw new InvalidOperationException("Chat ID بله باید یک عدد صحیح باشد.");
 
         using var request = new HttpRequestMessage(
-            HttpMethod.Post, $"bot{settings.BotToken}/sendMessage")
+            HttpMethod.Post, $"/bot{settings.BotToken}/sendMessage")
         {
             Content = JsonContent.Create(new { chat_id = chatId, text })
         };
