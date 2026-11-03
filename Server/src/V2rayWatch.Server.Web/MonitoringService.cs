@@ -53,13 +53,17 @@ public sealed class MonitoringService : BackgroundService
                 var settings = appSettings.Settings;
                 var cycle = Stopwatch.StartNew();
                 var profiles = await _profiles.ListAsync(stoppingToken).ConfigureAwait(false);
-                if (profiles.Count > 0)
+                var numberedProfiles = profiles
+                    .Select((profile, index) => (Profile: profile, Number: index + 1))
+                    .ToList();
+                if (numberedProfiles.Count > 0)
                 {
                     await Parallel.ForEachAsync(
-                        profiles,
+                        numberedProfiles,
                         new ParallelOptions { MaxDegreeOfParallelism = 2, CancellationToken = stoppingToken },
-                        async (profile, token) =>
+                        async (item, token) =>
                         {
+                            var profile = item.Profile;
                             try
                             {
                                 var previousStatus = profile.Status;
@@ -94,7 +98,7 @@ public sealed class MonitoringService : BackgroundService
                                         _notifications.NotifyStatusChangeAsync(
                                             profile, previousStatus, profile.Status, settings, token),
                                         _baleNotifications.NotifyStatusChangeAsync(
-                                            profile, previousStatus, profile.Status, settings, token))
+                                            profile, item.Number, previousStatus, profile.Status, settings, token))
                                         .ConfigureAwait(false);
                                 }
                             }
