@@ -8,6 +8,9 @@ CONFIG_DIR="/etc/v2raywatch-bale-test"
 DATA_DIR="/var/lib/v2raywatch-bale-test"
 SERVICE="v2raywatch-bale-test"
 PORT="${V2RAYWATCH_BALE_TEST_PORT:-6101}"
+LISTEN_ADDRESS="${V2RAYWATCH_BALE_TEST_LISTEN_ADDRESS:-127.0.0.1}"
+TEST_USER="v2raywatch-bale-test"
+TEST_GROUP="v2raywatch-bale-test"
 
 if [[ $EUID -ne 0 ]]; then
   echo "Run with sudo: curl ... | sudo bash" >&2
@@ -39,6 +42,10 @@ done
 id v2raywatch >/dev/null 2>&1 || {
   echo "The stable v2raywatch service account was not found; install the stable server first." >&2
   exit 1
+}
+[[ "$LISTEN_ADDRESS" == "127.0.0.1" ]] || {
+  echo "The Bale test instance must bind to 127.0.0.1. Use an SSH tunnel for remote access." >&2
+  exit 2
 }
 [[ ! -e "$APP_DIR" && ! -e "$CONFIG_DIR" && ! -e "$DATA_DIR" ]] || {
   echo "A Bale test installation already exists. Refusing to overwrite it." >&2
@@ -91,18 +98,28 @@ BASE_PATH="/vw-bale-test-$(openssl rand -hex 8)"
 ADMIN_PASSWORD="$(openssl rand -hex 24)"
 PROFILE_KEY="$(openssl rand -base64 32 | tr -d '\r\n')"
 
-install -d -o root -g v2raywatch -m 0750 "$CONFIG_DIR"
-install -d -o v2raywatch -g v2raywatch -m 0700 "$DATA_DIR" "$DATA_DIR/runtime"
+if ! getent group "$TEST_GROUP" >/dev/null 2>&1; then
+  groupadd --system "$TEST_GROUP"
+fi
+if ! id "$TEST_USER" >/dev/null 2>&1; then
+  useradd --system --gid "$TEST_GROUP" --home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin "$TEST_USER"
+fi
+if id -nG "$TEST_USER" | tr ' ' '\n' | grep -Fxq v2raywatch; then
+  echo "The Bale test account must not belong to the stable v2raywatch group." >&2
+  exit 1
+fi
+install -d -o root -g "$TEST_GROUP" -m 0750 "$CONFIG_DIR"
+install -d -o "$TEST_USER" -g "$TEST_GROUP" -m 0700 "$DATA_DIR" "$DATA_DIR/runtime"
 cat > "$CONFIG_DIR/server.json" <<EOF
-{"Server":{"ListenAddress":"0.0.0.0","Port":$PORT,"BasePath":"$BASE_PATH","DataDirectory":"$DATA_DIR"}}
+{"Server":{"ListenAddress":"$LISTEN_ADDRESS","Port":$PORT,"BasePath":"$BASE_PATH","DataDirectory":"$DATA_DIR"}}
 EOF
-chown root:v2raywatch "$CONFIG_DIR/server.json"
+chown root:"$TEST_GROUP" "$CONFIG_DIR/server.json"
 chmod 0640 "$CONFIG_DIR/server.json"
 printf 'V2RAYWATCH_ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD" > "$CONFIG_DIR/admin.env"
-chown root:v2raywatch "$CONFIG_DIR/admin.env"
+chown root:"$TEST_GROUP" "$CONFIG_DIR/admin.env"
 chmod 0640 "$CONFIG_DIR/admin.env"
 printf '%s\n' "$PROFILE_KEY" > "$CONFIG_DIR/profile.key"
-chown root:v2raywatch "$CONFIG_DIR/profile.key"
+chown root:"$TEST_GROUP" "$CONFIG_DIR/profile.key"
 chmod 0640 "$CONFIG_DIR/profile.key"
 
 echo "[4/5] Installing a separate systemd service..."
@@ -114,8 +131,8 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=v2raywatch
-Group=v2raywatch
+User=$TEST_USER
+Group=$TEST_GROUP
 WorkingDirectory=$APP_DIR
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=DOTNET_ROOT=/opt/dotnet
@@ -150,7 +167,8 @@ chmod 0644 "/etc/systemd/system/$SERVICE.service"
 umask 077
 cat > /root/v2raywatch-bale-test-credentials.txt <<EOF
 V2rayWatch experimental Bale notification test instance
-URL: http://SERVER-IP:$PORT$BASE_PATH
+URL: http://127.0.0.1:$PORT$BASE_PATH
+ListenAddress: $LISTEN_ADDRESS
 Username: admin
 Password: $ADMIN_PASSWORD
 Service: $SERVICE
@@ -174,7 +192,7 @@ fi
 
 echo
 echo "Experimental Bale test instance installed and healthy."
-echo "URL:      http://SERVER-IP:$PORT$BASE_PATH"
+echo "URL:      http://127.0.0.1:$PORT$BASE_PATH (use SSH tunnel from your workstation)"
 echo "Username: admin"
 echo "Password: $ADMIN_PASSWORD"
 echo "Credentials file: /root/v2raywatch-bale-test-credentials.txt (0600)"
@@ -182,6 +200,6 @@ echo "Service: systemctl status $SERVICE"
 echo "Logs:    journalctl -u $SERVICE -n 100 --no-pager"
 echo
 echo "The stable v2raywatch service, app files, settings and database were not changed."
-echo "The test instance has its own port, service, config, encryption key and database."
+echo "The test instance has its own service account, port, config, encryption key and database."
 echo "Open the test URL, configure Bale, then enable monitoring only in this test instance."
-echo "Firewall rules were not changed; restrict TCP/$PORT to trusted IPs."
+echo "The listener is bound to loopback only; no public firewall rule is needed."
