@@ -44,7 +44,13 @@ curl -fsSL https://raw.githubusercontent.com/hatinati2/V2rayWatch/feature/bale-n
 
 `/root/v2raywatch-bale-test-credentials.txt`
 
-قوانین فایروال خودکار تغییر نمی‌کنند؛ برای دسترسی از بیرون، TCP پورت 6101 را فقط برای IP مورد اعتماد باز کن.
+سرویس آزمایشی به‌صورت پیش‌فرض فقط روی `127.0.0.1:6101` گوش می‌دهد و هیچ Listener عمومی ایجاد نمی‌کند. برای بازکردن پنل از رایانهٔ خودت، از SSH Tunnel استفاده کن:
+
+```bash
+ssh -L 6101:127.0.0.1:6101 USER@SERVER-IP
+```
+
+سپس در مرورگر آدرس `http://127.0.0.1:6101/BASE-PATH` را باز کن (BASE-PATH را از خروجی نصب بردار).
 
 ## به‌روزرسانی نمونهٔ آزمایشی موجود
 
@@ -91,6 +97,8 @@ sudo rm -f /etc/systemd/system/v2raywatch-bale-test.service
 sudo systemctl daemon-reload
 sudo rm -rf /opt/v2raywatch-bale-test /etc/v2raywatch-bale-test /var/lib/v2raywatch-bale-test
 sudo rm -f /root/v2raywatch-bale-test-credentials.txt
+sudo userdel v2raywatch-bale-test 2>/dev/null || true
+sudo groupdel v2raywatch-bale-test 2>/dev/null || true
 ```
 
 این دستورات مسیرهای نسخهٔ پایدار را حذف یا تغییر نمی‌دهند.
@@ -99,6 +107,8 @@ sudo rm -f /root/v2raywatch-bale-test-credentials.txt
 
 - توکن ربات در دیتابیس آزمایشی با `/etc/v2raywatch-bale-test/profile.key` رمز می‌شود.
 - کلید رمزنگاری و اطلاعات ورود نمونهٔ تست با نمونهٔ پایدار مشترک نیستند.
+- سرویس آزمایشی با کاربر و گروه مستقل `v2raywatch-bale-test` اجرا می‌شود و عضو گروه `v2raywatch` نیست؛ بنابراین به کلید و دیتای نسخهٔ پایدار دسترسی ندارد.
+- Listener پنل آزمایشی فقط روی `127.0.0.1` است؛ برای دسترسی راه دور از SSH Tunnel استفاده کن و پورت تست را عمومی نکن.
 - پنل فعلی HTTP است؛ توکن را فقط از شبکهٔ مورد اعتماد وارد کن.
 - درخواست‌های خروجی به API بله از HTTPS به `https://tapi.bale.ai` ارسال می‌شوند.
 - نسخهٔ پایدار، تگ `v0.3.2` و Release رسمی با این آزمایش تغییر نمی‌کنند.
