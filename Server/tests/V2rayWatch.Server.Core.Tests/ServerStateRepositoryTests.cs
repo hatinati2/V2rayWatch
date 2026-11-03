@@ -1,5 +1,9 @@
 using System.Security.Cryptography;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
 using V2rayWatch.Server.Core;
 using V2rayWatch.Server.Web;
 using Xunit;
@@ -62,6 +66,106 @@ public sealed class ServerStateRepositoryTests
         Assert.True(actual.Enabled);
         Assert.Equal(expected.BotToken, actual.BotToken);
         Assert.Equal(expected.ChatId, actual.ChatId);
+    }
+
+    [Fact]
+    public async Task BaleNotificationService_SendsDisconnectAndRecoveryTransitions()
+    {
+        using var env = new TestEnvironment();
+        var state = new SqliteServerStateRepository(env.Options, env.Protector);
+        await state.InitializeAsync();
+        await state.SaveBaleNotificationSettingsAsync(new BaleNotificationSettings
+        {
+            Enabled = true,
+            BotToken = "123456789:TestToken_abcdefghijklmnopqrstuvwxyz",
+            ChatId = "1234567890123"
+        });
+
+        var handler = new RecordingBaleHandler();
+        var clients = new TestHttpClientFactory(handler);
+        var service = new BaleNotificationService(
+            clients, state, NullLogger<BaleNotificationService>.Instance);
+        var profile = ServerProfileParser.ParseOne(
+            "vless://00000000-0000-0000-0000-000000000111@edge.example:443?security=tls#Test");
+
+        await service.NotifyStatusChangeAsync(profile, 1, "Unstable", "Disconnected", CancellationToken.None);
+        await service.NotifyStatusChangeAsync(profile, 1, "Disconnected", "Connected", CancellationToken.None);
+
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal("/bot123456789:TestToken_abcdefghijklmnopqrstuvwxyz/sendMessage", handler.Requests[0].Path);
+        Assert.Equal("/bot123456789:TestToken_abcdefghijklmnopqrstuvwxyz/sendMessage", handler.Requests[1].Path);
+        using var disconnected = JsonDocument.Parse(handler.Requests[0].Body);
+        using var recovered = JsonDocument.Parse(handler.Requests[1].Body);
+        Assert.Equal("no 1 red", disconnected.RootElement.GetProperty("text").GetString());
+        Assert.Equal(1234567890123L, disconnected.RootElement.GetProperty("chat_id").GetInt64());
+        Assert.Equal("no 1 green", recovered.RootElement.GetProperty("text").GetString());
+    }
+
+    [Fact]
+    public async Task BaleNotificationService_DoesNotSendWhenDisabled_AndDoesNotThrowOnApiFailure()
+    {
+        using var env = new TestEnvironment();
+        var state = new SqliteServerStateRepository(env.Options, env.Protector);
+        await state.InitializeAsync();
+        await state.SaveBaleNotificationSettingsAsync(new BaleNotificationSettings
+        {
+            Enabled = false,
+            BotToken = "123456789:TestToken_abcdefghijklmnopqrstuvwxyz",
+            ChatId = "1234567890123"
+        });
+
+        var handler = new RecordingBaleHandler();
+        var service = new BaleNotificationService(
+            new TestHttpClientFactory(handler), state, NullLogger<BaleNotificationService>.Instance);
+        var profile = ServerProfileParser.ParseOne(
+            "vless://00000000-0000-0000-0000-000000000112@edge.example:443?security=tls#Test");
+
+        await service.NotifyStatusChangeAsync(profile, 2, "Connected", "Disconnected", CancellationToken.None);
+        Assert.Empty(handler.Requests);
+
+        await state.SaveBaleNotificationSettingsAsync(new BaleNotificationSettings
+        {
+            Enabled = true,
+            BotToken = "123456789:TestToken_abcdefghijklmnopqrstuvwxyz",
+            ChatId = "1234567890123"
+        });
+        handler.RespondWithFailure = true;
+
+        // Notification failures are intentionally swallowed so monitoring continues.
+        await service.NotifyStatusChangeAsync(profile, 2, "Connected", "Disconnected", CancellationToken.None);
+        Assert.Single(handler.Requests);
+    }
+
+    private sealed class TestHttpClientFactory(RecordingBaleHandler handler) : IHttpClientFactory
+    {
+        private readonly HttpClient _client = new(handler) { BaseAddress = new Uri("https://tapi.bale.ai/") };
+        public HttpClient CreateClient(string name) => _client;
+    }
+
+    private sealed class RecordingBaleHandler : HttpMessageHandler
+    {
+        public List<(string Path, string Body)> Requests { get; } = [];
+        public bool RespondWithFailure { get; set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var body = request.Content is null
+                ? ""
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            Requests.Add((request.RequestUri?.PathAndQuery ?? "", body));
+            return RespondWithFailure
+                ? new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent(
+                        "{\\"ok\\":false,\\"description\\":\\"test failure\\"}", Encoding.UTF8, "application/json")
+                }
+                : new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        "{\\"ok\\":true,\\"result\\":{}}", Encoding.UTF8, "application/json")
+                };
+        }
     }
 
     [Fact]
