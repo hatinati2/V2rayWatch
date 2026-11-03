@@ -156,23 +156,27 @@ app.MapGet("/", async (IWebHostEnvironment env) =>
 
 app.MapGet("/api/v1/health", async (
     SqliteProfileRepository profileStore,
-    SqliteServerStateRepository stateStore) =>
+    SqliteServerStateRepository stateStore,
+    CancellationToken cancellationToken) =>
 {
-    var all = await profileStore.ListAsync();
-    var appSettings = await stateStore.GetSettingsAsync();
-    var subscriptionItems = await stateStore.ListSubscriptionsAsync();
+    // The profiles endpoint already decrypts profile payloads for the dashboard.
+    // Keep this lightweight summary SQL-only to avoid decrypting every profile twice
+    // and subscription payloads again during the initial page load.
+    var profileSummary = await profileStore.GetStatusSummaryAsync(cancellationToken);
+    var appSettings = await stateStore.GetSettingsAsync(cancellationToken);
+    var subscriptionCount = await stateStore.CountSubscriptionsAsync(cancellationToken);
     var corePath = Environment.GetEnvironmentVariable("V2RAYWATCH_XRAY_PATH") ?? "/opt/v2raywatch/xray";
     return Results.Ok(new
     {
         status = "online",
         service = "V2rayWatch Server",
         version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.4.0",
-        profileCount = all.Count,
+        profileCount = profileSummary.Total,
         profileCapacity = SqliteProfileRepository.MaximumProfiles,
-        connectedCount = all.Count(p => p.Status == "Connected"),
-        disconnectedCount = all.Count(p => p.Status == "Disconnected"),
-        unstableCount = all.Count(p => p.Status == "Unstable"),
-        subscriptionCount = subscriptionItems.Count,
+        connectedCount = profileSummary.Connected,
+        disconnectedCount = profileSummary.Disconnected,
+        unstableCount = profileSummary.Unstable,
+        subscriptionCount,
         monitoringEnabled = appSettings.MonitoringEnabled,
         probeEngine = File.Exists(corePath) ? "ready" : "missing",
         storage = "sqlite-aes-256-gcm"
