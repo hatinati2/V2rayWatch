@@ -28,6 +28,12 @@ builder.Services.AddSingleton(new ProfileSecretProtector(keyFile));
 builder.Services.AddSingleton<SqliteProfileRepository>();
 builder.Services.AddSingleton<SqliteServerStateRepository>();
 builder.Services.AddSingleton<GmailNotificationService>();
+builder.Services.AddHttpClient("BaleBot", client =>
+{
+    client.BaseAddress = new Uri("https://tapi.bale.ai/");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddSingleton<BaleNotificationService>();
 builder.Services.AddSingleton<SubscriptionClient>();
 builder.Services.AddSingleton<IProbeEngine, XrayDelayTester>();
 builder.Services.AddHostedService<MonitoringService>();
@@ -477,6 +483,89 @@ app.MapPost("/api/v1/notifications/gmail/test", async (
     }
 }).RequireAuthorization();
 
+app.MapGet("/api/v1/notifications/bale", async (SqliteServerStateRepository stateStore) =>
+{
+    var settings = await stateStore.GetBaleNotificationSettingsAsync();
+    return Results.Ok(new BaleNotificationView(
+        settings.Enabled,
+        settings.ChatId,
+        !string.IsNullOrWhiteSpace(settings.BotToken)));
+}).RequireAuthorization();
+
+app.MapPut("/api/v1/notifications/bale", async (
+    BaleNotificationRequest request,
+    SqliteServerStateRepository stateStore,
+    CancellationToken cancellationToken) =>
+{
+    var current = await stateStore.GetBaleNotificationSettingsAsync(cancellationToken);
+    var token = (request.BotToken ?? "").Trim();
+    var chatId = (request.ChatId ?? "").Trim();
+
+    if (token.Length > 512 || token.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is ':' or '_' or '-')))
+        return Results.BadRequest(new { error = "فرمت توکن ربات بله معتبر نیست." });
+    if (chatId.Length > 32 || (!string.IsNullOrWhiteSpace(chatId) &&
+        !long.TryParse(chatId, System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out _)))
+        return Results.BadRequest(new { error = "Chat ID باید یک عدد صحیح معتبر باشد." });
+
+    if (request.ClearBotToken)
+        current.BotToken = "";
+    else if (token.Length > 0)
+        current.BotToken = token;
+
+    if (chatId.Length > 0)
+        current.ChatId = chatId;
+
+    current.Enabled = request.Enabled;
+    if (current.Enabled &&
+        (string.IsNullOrWhiteSpace(current.BotToken) || string.IsNullOrWhiteSpace(current.ChatId)))
+        return Results.BadRequest(new { error = "برای فعال‌سازی، توکن ربات بله و Chat ID لازم است." });
+
+    await stateStore.SaveBaleNotificationSettingsAsync(current, cancellationToken);
+    return Results.Ok(new BaleNotificationView(
+        current.Enabled,
+        current.ChatId,
+        !string.IsNullOrWhiteSpace(current.BotToken)));
+}).RequireAuthorization();
+
+app.MapPost("/api/v1/notifications/bale/detect-chat", async (
+    BaleNotificationService notifications,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var chatId = await notifications.DetectLatestPrivateChatIdAsync(cancellationToken);
+        return Results.Ok(new { chatId });
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+}).RequireAuthorization();
+
+app.MapPost("/api/v1/notifications/bale/test", async (
+    BaleNotificationService notifications,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        await notifications.SendTestAsync(cancellationToken);
+        return Results.Ok(new { sent = true });
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+}).RequireAuthorization();
+
 app.MapGet("/api/v1/monitoring", async (SqliteServerStateRepository stateStore) =>
 {
     var current = await stateStore.GetSettingsAsync();
@@ -611,6 +700,15 @@ public sealed record GmailNotificationView(
     string RecipientEmail,
     string? EgressProfileId,
     bool HasAppPassword);
+public sealed record BaleNotificationRequest(
+    bool Enabled,
+    string? BotToken,
+    string? ChatId,
+    bool ClearBotToken);
+public sealed record BaleNotificationView(
+    bool Enabled,
+    string ChatId,
+    bool HasBotToken);
 public sealed record ProfileView(
     Guid Id,
     string Name,
