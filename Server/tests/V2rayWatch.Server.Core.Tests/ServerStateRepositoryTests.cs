@@ -1,5 +1,9 @@
 using System.Security.Cryptography;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
 using V2rayWatch.Server.Core;
 using V2rayWatch.Server.Web;
 using Xunit;
@@ -43,6 +47,177 @@ public sealed class ServerStateRepositoryTests
     }
 
     [Fact]
+    public async Task BaleNotificationSettings_RoundTripThroughEncryptedStorage()
+    {
+        using var env = new TestEnvironment();
+        var state = new SqliteServerStateRepository(env.Options, env.Protector);
+        await state.InitializeAsync();
+
+        var expected = new BaleNotificationSettings
+        {
+            Enabled = true,
+            BotToken = "123456789:TestToken_abcdefghijklmnopqrstuvwxyz",
+            ChatId = "1234567890123"
+        };
+
+        await state.SaveBaleNotificationSettingsAsync(expected);
+        var actual = await state.GetBaleNotificationSettingsAsync();
+
+        Assert.True(actual.Enabled);
+        Assert.Equal(expected.BotToken, actual.BotToken);
+        Assert.Equal(expected.ChatId, actual.ChatId);
+    }
+
+    [Fact]
+    public async Task BaleNotificationService_SendsDisconnectAndRecoveryTransitions()
+    {
+        using var env = new TestEnvironment();
+        var state = new SqliteServerStateRepository(env.Options, env.Protector);
+        await state.InitializeAsync();
+        await state.SaveBaleNotificationSettingsAsync(new BaleNotificationSettings
+        {
+            Enabled = true,
+            BotToken = "123456789:TestToken_abcdefghijklmnopqrstuvwxyz",
+            ChatId = "1234567890123"
+        });
+
+        var handler = new RecordingBaleHandler();
+        var clients = new TestHttpClientFactory(handler);
+        var service = new BaleNotificationService(
+            clients, state, NullLogger<BaleNotificationService>.Instance);
+        var profile = ServerProfileParser.ParseOne(
+            "vless://00000000-0000-0000-0000-000000000111@edge.example:443?security=tls#Test");
+
+        await service.NotifyStatusChangeAsync(profile, 1, "Unstable", "Disconnected", CancellationToken.None);
+        await service.NotifyStatusChangeAsync(profile, 1, "Disconnected", "Connected", CancellationToken.None);
+
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal("/bot123456789:TestToken_abcdefghijklmnopqrstuvwxyz/sendMessage", handler.Requests[0].Path);
+        Assert.Equal("/bot123456789:TestToken_abcdefghijklmnopqrstuvwxyz/sendMessage", handler.Requests[1].Path);
+        using var disconnected = JsonDocument.Parse(handler.Requests[0].Body);
+        using var recovered = JsonDocument.Parse(handler.Requests[1].Body);
+        Assert.Equal("no 1 red", disconnected.RootElement.GetProperty("text").GetString());
+        Assert.Equal(1234567890123L, disconnected.RootElement.GetProperty("chat_id").GetInt64());
+        Assert.Equal("no 1 green", recovered.RootElement.GetProperty("text").GetString());
+    }
+
+    [Fact]
+    public async Task BaleNotificationService_DoesNotSendWhenDisabled_AndDoesNotThrowOnApiFailure()
+    {
+        using var env = new TestEnvironment();
+        var state = new SqliteServerStateRepository(env.Options, env.Protector);
+        await state.InitializeAsync();
+        await state.SaveBaleNotificationSettingsAsync(new BaleNotificationSettings
+        {
+            Enabled = false,
+            BotToken = "123456789:TestToken_abcdefghijklmnopqrstuvwxyz",
+            ChatId = "1234567890123"
+        });
+
+        var handler = new RecordingBaleHandler();
+        var service = new BaleNotificationService(
+            new TestHttpClientFactory(handler), state, NullLogger<BaleNotificationService>.Instance);
+        var profile = ServerProfileParser.ParseOne(
+            "vless://00000000-0000-0000-0000-000000000112@edge.example:443?security=tls#Test");
+
+        await service.NotifyStatusChangeAsync(profile, 2, "Connected", "Disconnected", CancellationToken.None);
+        Assert.Empty(handler.Requests);
+
+        await state.SaveBaleNotificationSettingsAsync(new BaleNotificationSettings
+        {
+            Enabled = true,
+            BotToken = "123456789:TestToken_abcdefghijklmnopqrstuvwxyz",
+            ChatId = "1234567890123"
+        });
+        handler.RespondWithFailure = true;
+
+        // Notification failures are intentionally swallowed so monitoring continues.
+        await service.NotifyStatusChangeAsync(profile, 2, "Connected", "Disconnected", CancellationToken.None);
+        Assert.Single(handler.Requests);
+    }
+
+    private sealed class TestHttpClientFactory(RecordingBaleHandler handler) : IHttpClientFactory
+    {
+        private readonly HttpClient _client = new(handler) { BaseAddress = new Uri("https://tapi.bale.ai/") };
+        public HttpClient CreateClient(string name) => _client;
+    }
+
+    private sealed class RecordingBaleHandler : HttpMessageHandler
+    {
+        public List<(string Path, string Body)> Requests { get; } = [];
+        public bool RespondWithFailure { get; set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var body = request.Content is null
+                ? ""
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            Requests.Add((request.RequestUri?.PathAndQuery ?? "", body));
+            return RespondWithFailure
+                ? new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent(
+                        "{\"ok\":false,\"description\":\"test failure\"}", Encoding.UTF8, "application/json")
+                }
+                : new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        "{\"ok\":true,\"result\":{}}", Encoding.UTF8, "application/json")
+                };
+        }
+    }
+
+    [Fact]
+    public async Task ProfileStatusSummary_CountsStatusesWithoutDecryptingProfilePayloads()
+    {
+        using var env = new TestEnvironment();
+        var profiles = new SqliteProfileRepository(env.Options, env.Protector);
+        await profiles.InitializeAsync();
+
+        var rows = new[]
+        {
+            ServerProfileParser.ParseOne("vless://00000000-0000-0000-0000-000000000101@one.example:443?security=tls#One"),
+            ServerProfileParser.ParseOne("vless://00000000-0000-0000-0000-000000000102@two.example:443?security=tls#Two"),
+            ServerProfileParser.ParseOne("vless://00000000-0000-0000-0000-000000000103@three.example:443?security=tls#Three")
+        };
+
+        var imported = await profiles.ImportAsync(rows);
+        Assert.Equal(3, imported.Imported);
+
+        rows[0].Status = "Connected";
+        rows[1].Status = "Disconnected";
+        rows[2].Status = "Unstable";
+        foreach (var profile in rows)
+            await profiles.UpdateAsync(profile);
+
+        var summary = await profiles.GetStatusSummaryAsync();
+
+        Assert.Equal((3, 1, 1, 1), summary);
+    }
+
+    [Theory]
+    [InlineData(1, "Disconnected", "no 1 red")]
+    [InlineData(2, "Disconnected", "no 2 red")]
+    [InlineData(1, "Connected", "no 1 green")]
+    [InlineData(12, "Connected", "no 12 green")]
+    public void BaleNotificationMessageFormatter_UsesOnlyNumberAndColor(
+        int number, string status, string expected)
+    {
+        Assert.Equal(expected, BaleNotificationMessageFormatter.Format(number, status));
+    }
+
+    [Theory]
+    [InlineData(0, "Connected")]
+    [InlineData(1, "Unstable")]
+    public void BaleNotificationMessageFormatter_RejectsInvalidNumberOrStatus(
+        int number, string status)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            BaleNotificationMessageFormatter.Format(number, status));
+    }
+
+    [Fact]
     public async Task History_StoresAutomaticSamples_AndPrunesOlderThanSevenDays()
     {
         using var env = new TestEnvironment();
@@ -72,6 +247,8 @@ public sealed class ServerStateRepositoryTests
         await profiles.InitializeAsync();
         await state.InitializeAsync();
 
+        Assert.Equal(0, await state.CountSubscriptionsAsync());
+
         var source = new SubscriptionSource
         {
             Id = Guid.NewGuid().ToString("N"),
@@ -87,6 +264,7 @@ public sealed class ServerStateRepositoryTests
         Assert.Equal(1, result.Imported);
         Assert.Equal(1, result.Owned);
         var saved = Assert.Single(await state.ListSubscriptionsAsync());
+        Assert.Equal(1, await state.CountSubscriptionsAsync());
         Assert.Equal(source.Id, saved.Id);
         Assert.Equal(source.Url, saved.Url);
         Assert.Equal(1, saved.ProfileCount);

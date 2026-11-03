@@ -12,6 +12,9 @@ using V2rayWatch.Server.Engine;
 using V2rayWatch.Server.Web;
 
 var builder = WebApplication.CreateBuilder(args);
+// Bale bot tokens are embedded in the Bot API URL path. Suppress HttpClient
+// Information logs for this named client so credentials are never written to journald.
+builder.Logging.AddFilter("System.Net.Http.HttpClient.BaleBot", LogLevel.Warning);
 var configPath = Environment.GetEnvironmentVariable("V2RAYWATCH_CONFIG") ?? "/etc/v2raywatch/server.json";
 builder.Configuration.AddJsonFile(configPath, optional: true, reloadOnChange: false);
 var server = builder.Configuration.GetSection("Server").Get<ServerOptions>() ?? new();
@@ -28,6 +31,12 @@ builder.Services.AddSingleton(new ProfileSecretProtector(keyFile));
 builder.Services.AddSingleton<SqliteProfileRepository>();
 builder.Services.AddSingleton<SqliteServerStateRepository>();
 builder.Services.AddSingleton<GmailNotificationService>();
+builder.Services.AddHttpClient("BaleBot", client =>
+{
+    client.BaseAddress = new Uri("https://tapi.bale.ai/");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddSingleton<BaleNotificationService>();
 builder.Services.AddSingleton<SubscriptionClient>();
 builder.Services.AddSingleton<IProbeEngine, XrayDelayTester>();
 builder.Services.AddHostedService<MonitoringService>();
@@ -147,23 +156,27 @@ app.MapGet("/", async (IWebHostEnvironment env) =>
 
 app.MapGet("/api/v1/health", async (
     SqliteProfileRepository profileStore,
-    SqliteServerStateRepository stateStore) =>
+    SqliteServerStateRepository stateStore,
+    CancellationToken cancellationToken) =>
 {
-    var all = await profileStore.ListAsync();
-    var appSettings = await stateStore.GetSettingsAsync();
-    var subscriptionItems = await stateStore.ListSubscriptionsAsync();
+    // The profiles endpoint already decrypts profile payloads for the dashboard.
+    // Keep this lightweight summary SQL-only to avoid decrypting every profile twice
+    // and subscription payloads again during the initial page load.
+    var profileSummary = await profileStore.GetStatusSummaryAsync(cancellationToken);
+    var appSettings = await stateStore.GetSettingsAsync(cancellationToken);
+    var subscriptionCount = await stateStore.CountSubscriptionsAsync(cancellationToken);
     var corePath = Environment.GetEnvironmentVariable("V2RAYWATCH_XRAY_PATH") ?? "/opt/v2raywatch/xray";
     return Results.Ok(new
     {
         status = "online",
         service = "V2rayWatch Server",
         version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.4.0",
-        profileCount = all.Count,
+        profileCount = profileSummary.Total,
         profileCapacity = SqliteProfileRepository.MaximumProfiles,
-        connectedCount = all.Count(p => p.Status == "Connected"),
-        disconnectedCount = all.Count(p => p.Status == "Disconnected"),
-        unstableCount = all.Count(p => p.Status == "Unstable"),
-        subscriptionCount = subscriptionItems.Count,
+        connectedCount = profileSummary.Connected,
+        disconnectedCount = profileSummary.Disconnected,
+        unstableCount = profileSummary.Unstable,
+        subscriptionCount,
         monitoringEnabled = appSettings.MonitoringEnabled,
         probeEngine = File.Exists(corePath) ? "ready" : "missing",
         storage = "sqlite-aes-256-gcm"
@@ -477,6 +490,113 @@ app.MapPost("/api/v1/notifications/gmail/test", async (
     }
 }).RequireAuthorization();
 
+app.MapGet("/api/v1/notifications/bale", async (SqliteServerStateRepository stateStore) =>
+{
+    var settings = await stateStore.GetBaleNotificationSettingsAsync();
+    return Results.Ok(new BaleNotificationView(
+        settings.Enabled,
+        settings.ChatId,
+        !string.IsNullOrWhiteSpace(settings.BotToken)));
+}).RequireAuthorization();
+
+app.MapPut("/api/v1/notifications/bale/enabled", async (
+    BaleNotificationEnabledRequest request,
+    SqliteServerStateRepository stateStore,
+    CancellationToken cancellationToken) =>
+{
+    // Keep the enabled switch independent from credential form fields. The browser
+    // intentionally never receives the saved bot token, so toggling must not depend
+    // on resubmitting any secret or Chat ID.
+    var current = await stateStore.GetBaleNotificationSettingsAsync(cancellationToken);
+    if (request.Enabled &&
+        (string.IsNullOrWhiteSpace(current.BotToken) || string.IsNullOrWhiteSpace(current.ChatId)))
+        return Results.BadRequest(new { error = "برای فعال‌سازی، توکن ربات بله و Chat ID لازم است." });
+
+    current.Enabled = request.Enabled;
+    await stateStore.SaveBaleNotificationSettingsAsync(current, cancellationToken);
+
+    // Read back the encrypted row so the response reflects the persisted state.
+    var persisted = await stateStore.GetBaleNotificationSettingsAsync(cancellationToken);
+    return Results.Ok(new BaleNotificationView(
+        persisted.Enabled,
+        persisted.ChatId,
+        !string.IsNullOrWhiteSpace(persisted.BotToken)));
+}).RequireAuthorization();
+
+app.MapPut("/api/v1/notifications/bale", async (
+    BaleNotificationRequest request,
+    SqliteServerStateRepository stateStore,
+    CancellationToken cancellationToken) =>
+{
+    var current = await stateStore.GetBaleNotificationSettingsAsync(cancellationToken);
+    var token = (request.BotToken ?? "").Trim();
+    var chatId = (request.ChatId ?? "").Trim();
+
+    if (token.Length > 512 || token.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is ':' or '_' or '-')))
+        return Results.BadRequest(new { error = "فرمت توکن ربات بله معتبر نیست." });
+    if (chatId.Length > 32 || (!string.IsNullOrWhiteSpace(chatId) &&
+        !long.TryParse(chatId, System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out _)))
+        return Results.BadRequest(new { error = "Chat ID باید یک عدد صحیح معتبر باشد." });
+
+    if (request.ClearBotToken)
+        current.BotToken = "";
+    else if (token.Length > 0)
+        current.BotToken = token;
+
+    if (chatId.Length > 0)
+        current.ChatId = chatId;
+
+    current.Enabled = request.Enabled;
+    if (current.Enabled &&
+        (string.IsNullOrWhiteSpace(current.BotToken) || string.IsNullOrWhiteSpace(current.ChatId)))
+        return Results.BadRequest(new { error = "برای فعال‌سازی، توکن ربات بله و Chat ID لازم است." });
+
+    await stateStore.SaveBaleNotificationSettingsAsync(current, cancellationToken);
+    return Results.Ok(new BaleNotificationView(
+        current.Enabled,
+        current.ChatId,
+        !string.IsNullOrWhiteSpace(current.BotToken)));
+}).RequireAuthorization();
+
+app.MapPost("/api/v1/notifications/bale/detect-chat", async (
+    BaleNotificationService notifications,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var chatId = await notifications.DetectLatestPrivateChatIdAsync(cancellationToken);
+        return Results.Ok(new { chatId });
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+}).RequireAuthorization();
+
+app.MapPost("/api/v1/notifications/bale/test", async (
+    BaleNotificationService notifications,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        await notifications.SendTestAsync(cancellationToken);
+        return Results.Ok(new { sent = true });
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+}).RequireAuthorization();
+
 app.MapGet("/api/v1/monitoring", async (SqliteServerStateRepository stateStore) =>
 {
     var current = await stateStore.GetSettingsAsync();
@@ -611,6 +731,16 @@ public sealed record GmailNotificationView(
     string RecipientEmail,
     string? EgressProfileId,
     bool HasAppPassword);
+public sealed record BaleNotificationRequest(
+    bool Enabled,
+    string? BotToken,
+    string? ChatId,
+    bool ClearBotToken);
+public sealed record BaleNotificationEnabledRequest(bool Enabled);
+public sealed record BaleNotificationView(
+    bool Enabled,
+    string ChatId,
+    bool HasBotToken);
 public sealed record ProfileView(
     Guid Id,
     string Name,

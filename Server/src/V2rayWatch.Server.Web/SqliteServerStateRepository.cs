@@ -46,6 +46,10 @@ public sealed class SqliteServerStateRepository
                 Id INTEGER PRIMARY KEY CHECK (Id = 1),
                 Payload BLOB NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS BaleNotificationSettings (
+                Id INTEGER PRIMARY KEY CHECK (Id = 1),
+                Payload BLOB NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS HistoryChecks (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ProfileId TEXT NOT NULL,
@@ -130,6 +134,63 @@ public sealed class SqliteServerStateRepository
         {
             CryptographicOperations.ZeroMemory(encrypted);
         }
+    }
+
+    public async Task<BaleNotificationSettings> GetBaleNotificationSettingsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Payload FROM BaleNotificationSettings WHERE Id=1;";
+        var value = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        if (value is not byte[] encrypted) return new BaleNotificationSettings();
+
+        var clear = _protector.Unprotect(encrypted);
+        try
+        {
+            return JsonSerializer.Deserialize<BaleNotificationSettings>(clear, JsonOptions)
+                ?? new BaleNotificationSettings();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(clear);
+        }
+    }
+
+    public async Task SaveBaleNotificationSettingsAsync(
+        BaleNotificationSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        var clear = JsonSerializer.SerializeToUtf8Bytes(settings, JsonOptions);
+        var encrypted = _protector.Protect(clear);
+        CryptographicOperations.ZeroMemory(clear);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO BaleNotificationSettings(Id, Payload) VALUES(1, $payload)
+                ON CONFLICT(Id) DO UPDATE SET Payload=excluded.Payload;
+                """;
+            command.Parameters.AddWithValue("$payload", encrypted);
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(encrypted);
+        }
+    }
+
+    public async Task<int> CountSubscriptionsAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Subscriptions;";
+        var value = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        return Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture);
     }
 
     public async Task<IReadOnlyList<SubscriptionSource>> ListSubscriptionsAsync(CancellationToken cancellationToken = default)

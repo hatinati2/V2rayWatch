@@ -15,6 +15,7 @@ public sealed class MonitoringService : BackgroundService
     private readonly SqliteServerStateRepository _state;
     private readonly IProbeEngine _probe;
     private readonly GmailNotificationService _notifications;
+    private readonly BaleNotificationService _baleNotifications;
     private readonly ILogger<MonitoringService> _logger;
 
     public MonitoringService(
@@ -22,12 +23,14 @@ public sealed class MonitoringService : BackgroundService
         SqliteServerStateRepository state,
         IProbeEngine probe,
         GmailNotificationService notifications,
+        BaleNotificationService baleNotifications,
         ILogger<MonitoringService> logger)
     {
         _profiles = profiles;
         _state = state;
         _probe = probe;
         _notifications = notifications;
+        _baleNotifications = baleNotifications;
         _logger = logger;
     }
 
@@ -50,13 +53,17 @@ public sealed class MonitoringService : BackgroundService
                 var settings = appSettings.Settings;
                 var cycle = Stopwatch.StartNew();
                 var profiles = await _profiles.ListAsync(stoppingToken).ConfigureAwait(false);
-                if (profiles.Count > 0)
+                var numberedProfiles = profiles
+                    .Select((profile, index) => (Profile: profile, Number: index + 1))
+                    .ToList();
+                if (numberedProfiles.Count > 0)
                 {
                     await Parallel.ForEachAsync(
-                        profiles,
+                        numberedProfiles,
                         new ParallelOptions { MaxDegreeOfParallelism = 2, CancellationToken = stoppingToken },
-                        async (profile, token) =>
+                        async (item, token) =>
                         {
+                            var profile = item.Profile;
                             try
                             {
                                 var previousStatus = profile.Status;
@@ -87,8 +94,12 @@ public sealed class MonitoringService : BackgroundService
                                 {
                                     _logger.LogInformation("Profile {ProfileId} changed from {Previous} to {Current}",
                                         profile.Id, previousStatus, profile.Status);
-                                    await _notifications.NotifyStatusChangeAsync(
-                                        profile, previousStatus, profile.Status, settings, token).ConfigureAwait(false);
+                                    await Task.WhenAll(
+                                        _notifications.NotifyStatusChangeAsync(
+                                            profile, previousStatus, profile.Status, settings, token),
+                                        _baleNotifications.NotifyStatusChangeAsync(
+                                            profile, item.Number, previousStatus, profile.Status, token))
+                                        .ConfigureAwait(false);
                                 }
                             }
                             catch (OperationCanceledException) when (token.IsCancellationRequested)

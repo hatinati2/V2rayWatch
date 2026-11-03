@@ -109,6 +109,31 @@ public sealed class SqliteProfileRepository
         return (imported, ignored, total);
     }
 
+    public async Task<(int Total, int Connected, int Disconnected, int Unstable)> GetStatusSummaryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT
+                COUNT(*),
+                COALESCE(SUM(CASE WHEN Status = 'Connected' THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN Status = 'Disconnected' THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN Status = 'Unstable' THEN 1 ELSE 0 END), 0)
+            FROM Profiles;
+            """;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+            return (0, 0, 0, 0);
+
+        return (
+            Convert.ToInt32(reader.GetInt64(0)),
+            Convert.ToInt32(reader.GetInt64(1)),
+            Convert.ToInt32(reader.GetInt64(2)),
+            Convert.ToInt32(reader.GetInt64(3)));
+    }
+
     public async Task<IReadOnlyList<ServerProfile>> ListAsync(CancellationToken cancellationToken = default)
     {
         var result = new List<ServerProfile>();
